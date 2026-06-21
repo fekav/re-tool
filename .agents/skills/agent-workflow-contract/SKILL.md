@@ -1,49 +1,27 @@
 ---
 name: agent-workflow-contract
-description: Creates or completes agent-consumable workflow contracts in docs/workflows/*.md using strict Markdown state-machine tables. Use this skill whenever the user mentions workflows, SOPs, runbooks, playbooks, process contracts, agent handoffs, autonomous agent execution, or asks to turn an incomplete process into something agents can reliably execute, especially when states, transitions, artifacts, human decisions, assumptions, or abort conditions matter.
+description: Creates workflow contracts as state-machine tables. Use this when a workflow must be expressed as an agent-executable contract, especially from incomplete or informal process descriptions. The contract should make states, transitions, artifacts, human decisions, assumptions, failure paths, and abort conditions explicit.
 ---
 
 # Agent Workflow Contract
 
-Create compact Markdown workflow contracts that agents can execute without relying on hidden assumptions.
 
-This skill does not produce attractive process documentation, narrative SOPs, or diagrams. It produces an execution contract: what state the agent is in, what inputs are required, what actions are allowed, what artifacts are produced, how transitions happen, when a human must decide, and when the agent must stop.
+Creates explicit workflow contracts from source information so agents can execute workflows based on defined inputs, outputs, responsibilities, and constraints rather than hidden assumptions.
 
-## Core Rule
+## How it works
 
-Do not silently fill gaps.
+1. **Create & Deliver** transform raw workflow idea into structured workflow contract.
+2. **Ask & Clarify:** clarify open questions, determine missing parts, stop-and-ask human.
 
-When required information is missing, make the missing information visible in the generated workflow contract. Add a targeted human question, list plausible assumptions the human can confirm or reject, and add an abort condition wherever an agent would otherwise be forced to guess.
+## Usage
 
-## Modes
+This skill primarly outputs workflow documentations and asks the human to fill in the gaps in the workflow documentation.
+Invoke it with an idea, and the agent will guide you through the process.
 
-Use one of two modes based on the user's request.
-
-### Create Mode
-
-Use create mode when the user gives a raw workflow idea, process description, goal, team practice, or agent handoff that does not already exist as a workflow contract.
-
-Your job is to turn that idea into a complete contract under:
-
-```text
-docs/workflows/[workflow-name].md
-```
-
-If the workflow name is not provided, derive a short kebab-case name from the process. If the process itself is too vague to identify, ask one targeted question before writing.
-
-### Completion Mode
-
-Use completion mode when the user gives an existing workflow file or partial process and asks to complete, harden, review, make agent-ready, or turn it into a contract.
-
-Read the existing material first. Preserve useful domain language and existing decisions, but restructure it into the contract format below. Identify missing states, ambiguous transitions, undefined actors, unsafe assumptions, missing artifacts, missing human decisions, and missing abort conditions.
-
-## Workflow
-
-1. Determine whether the task is create mode or completion mode.
-2. Read any files the user names. If completing an existing workflow, inspect the current content before editing.
-3. Identify the workflow's purpose, consuming agents, boundaries, states, transitions, artifacts, human decisions, abort conditions, open questions, and assumptions.
-4. Write or update the Markdown contract
-5. Finish with a short summary naming the file and calling out any blocking open questions or high-risk assumptions.
+**Trigger Phrases:**
+- "Create a workflow for this feature"
+- "Is this [workflow] clear enough for an agent?"
+- "What is missing in this [workflow]?" 
 
 ## Contract Design Rules
 
@@ -56,9 +34,9 @@ Read the existing material first. Preserve useful domain language and existing d
 - Separate assumptions from open questions. Assumptions are tentative beliefs; open questions are unresolved decisions or missing facts.
 - Do not mark an assumption as true unless the source material states it or the user confirms it.
 
-## Required Contract Format
+## Output: Contract Format
 
-Use this structure for every generated workflow contract.
+The final output is a markdown one-pager saved to `docs/workflows/[workflow-name].md` (after user confirmation), containing
 
 ```markdown
 # [Workflow Name] Workflow Contract
@@ -134,7 +112,7 @@ Use this structure for every generated workflow contract.
 - [ ] Assumptions are visible and never silently applied.
 ```
 
-## Writing State Tables
+## Phase 1: Writing State Tables
 
 State names should be stable identifiers such as `INTAKE`, `VALIDATE_INPUTS`, `EXECUTE_CHANGE`, `VERIFY_RESULT`, `REQUEST_HUMAN_DECISION`, `DONE`, and `ABORTED`. Use names that fit the workflow, but keep them short and unambiguous.
 
@@ -149,7 +127,7 @@ For each state:
 
 If a state depends on missing information, do not invent the information. Put the missing fact in `Open Questions`, include plausible answers, and add an `Abort If` condition to the dependent state.
 
-## Writing Transitions
+## Phase 2: Writing Transitions
 
 Every transition needs an explicit condition. Avoid vague transitions like "when ready", "after review", or "if successful" unless the contract defines what ready, reviewed, or successful means.
 
@@ -167,7 +145,7 @@ Weak transition conditions to rewrite:
 - "If it looks good"
 - "Once the agent understands the request"
 
-## Handling Missing Information
+## Phase 3: Handling Missing Information
 
 Ask the user before writing only when the missing information prevents identifying the workflow at all. Examples:
 
@@ -185,9 +163,9 @@ Targeted questions should include plausible assumptions:
 | Who is allowed to approve production deployment? | Agents cannot safely transition from `READY_FOR_DEPLOY` to `DEPLOY` without an owner. | Engineering manager, release captain, product owner | `DEPLOY` transition |
 ```
 
-## Completion Review Pass
+## Phase 4: Completion Review Pass
 
-When completing an existing workflow, explicitly check for these gaps:
+When user ask for completing an existing workflow, explicitly check for these gaps:
 
 - Missing initial, terminal, or abort states
 - States without required inputs
@@ -200,7 +178,33 @@ When completing an existing workflow, explicitly check for these gaps:
 - Risky steps without abort conditions
 - Scope creep hidden in prose
 
-Fix the structure directly when the source material supports it. When the source material does not support a fix, record the gap as an open question or assumption instead of inventing an answer.
+Then stop and interview the user for these gaps like below:
+
+### Ask one question at a time, each with a guess attached
+
+Format:
+
+```
+Q: <one focused question>
+GUESS: <your hypothesis for the answer, with the reasoning that produced it>
+```
+
+Wait for the user to react before asking the next question.
+
+**Why one at a time, not a batch:**
+
+- The user can't react to your hypotheses if you bury them in a list
+- Batches encourage skim-reading and surface answers
+- The third question often depends on the answer to the first; asking them all at once locks in the wrong framing
+- The user's energy for thinking carefully is finite; spend it one question at a time
+
+**Why attach a guess:**
+
+- The user reacts faster to a wrong guess than they generate an answer from scratch
+- It commits you to a hypothesis you can be visibly wrong about, which keeps you honest
+- It surfaces *your* assumptions, which is what the interview is meant to expose
+
+The risk here is a polite user agreeing with your guess to be agreeable. Mitigate by being visibly willing to be wrong, and occasionally guess in a direction you expect the user to push back on.
 
 ## Response Format
 
@@ -212,8 +216,6 @@ Created/updated docs/workflows/[workflow-name].md.
 Blocking open questions: [count and short summary, or "none"]
 High-risk assumptions: [count and short summary, or "none"]
 ```
-
-Do not run evaluations or build a workflow execution engine as part of this skill. The deliverable is the Markdown contract.
 
 ## Verification
 
