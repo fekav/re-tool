@@ -91,6 +91,7 @@ Use this section order for every workflow contract.
 | Assumption | Source | Risk Level | Impact If Wrong | How To Validate |
 |---|---|---|---|---|
 | [Tentative assumption] | [User input, file path, or inference] | [HIGH/MEDIUM/LOW] | [What breaks if wrong] | [Validation action or owner] |
+| [Tentative assumption] | [User input, file path, or inference] | [Medium/MEDIUM/LOW] | [What breaks if wrong] | [Validation action or owner] |
 ```
 
 ## Glossary Template
@@ -162,29 +163,23 @@ Soft sections are only useful when they affect executable structure. Before fini
 | `Open Questions` row with a `Blocks` value | Matching `Abort If` condition in the blocked state or transition |
 | Global `Abort Conditions` entry | `ANY_STATE -> ABORTED` or `ANY_STATE -> REQUEST_HUMAN_DECISION` transition |
 | Medium/high-risk `Assumption Log` row | Validation action in `Allowed Actions` or an `Abort If` condition |
+| Medium/Medium-risk `Assumption Log` row | Validation action in `Allowed Actions` or an `Abort If` condition |
 | Human approval or choice | `Human Decision Points` row plus transition condition using the required response |
 | New domain term | `docs/glossary.md` entry using the same meaning |
 
 If a soft-section entry cannot be connected to structure, keep it visible and mark the affected state, transition, or artifact as blocked.
 
-## Completion Review
+## Make Workflow Contract executable
 
-When the user asks to complete a workflow or make it executable, inspect the contract for these gaps:
+When the user asks to complete a workflow contract documentation or make it executable, check:
 
-- Missing start, terminal, or abort states
-- Non-terminal states without outgoing transitions
-- States without concrete required inputs
-- Broad or unsafe allowed actions
-- Outputs that are not durable artifacts, decisions, or status changes
-- Transitions without concrete conditions
-- Human approvals without owner, options, or response format
-- Assumptions mixed into facts
-- Open questions with no blocked state, transition, or artifact
-- Risky steps without abort conditions
-- Domain terms missing from the glossary
-- Scope creep hidden in prose
+- for open questions
+- medium and high risk assumptions
+- human decisions
 
-If gaps require human input, ask one question at a time:
+and resolve them by interviewing the user:
+
+Ask one question at a time:
 
 ```text
 Q: <one focused question>
@@ -204,6 +199,8 @@ Findings:
 Open questions:
 - [Question that blocks executability]
 
+Assumptions
+
 Recommended edits:
 - [Concrete change]
 ```
@@ -220,6 +217,7 @@ Glossary: [updated docs/glossary.md / no changes needed]
 
 Blocking open questions: [count and short summary, or "none"]
 High-risk assumptions: [count and short summary, or "none"]
+Medium-risk assumptions: [count and short summary, or "none"]
 ```
 
 If no files were changed because the user requested review only, summarize the review result instead.
@@ -239,3 +237,14 @@ Before finishing, verify that:
 - No missing information was silently applied as fact.
 - `docs/glossary.md` is in sync with all new or changed domain terms.
 - Every `Open Questions`, `Abort Conditions`, and `Assumption Log` entry satisfies the closing rules or clearly blocks a named structure.
+- Missing start, terminal, or abort states
+- Non-terminal states without outgoing transitions
+- States without concrete required inputs
+- Broad or unsafe allowed actions
+- Outputs that are not durable artifacts, decisions, or status changes
+- Transitions without concrete conditions
+- Human approvals without owner, options, or response format
+- Assumptions mixed into facts
+- Risky steps without abort conditions
+- Domain terms missing from the glossary
+- Scope creep hidden in prose
