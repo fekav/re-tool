@@ -1,50 +1,48 @@
 ---
 name: agent-workflow-contract
-description: Creates workflow contracts as state-machine tables. Use this when a workflow must be expressed as an agent-executable contract, especially from incomplete or informal process descriptions. The contract should make states, transitions, artifacts, human decisions, assumptions, failure paths, and abort conditions explicit.
+description: Creates or reviews agent-executable workflow contracts as compact state-machine tables. Use this whenever a user asks for a workflow, process, handoff, runbook, agent instructions, completion criteria, or whether a workflow is clear enough for an agent, especially when the source is informal, incomplete, cross-role, or risky. The skill turns ambiguity into explicit states, transitions, artifacts, human decisions, assumptions, open questions, abort paths, glossary terms, and verification checks.
 ---
 
 # Agent Workflow Contract
 
+Use this skill to turn workflow source material into a contract another agent can execute without relying on hidden assumptions.
 
-Creates explicit workflow contracts from source information so agents can execute workflows based on defined inputs, outputs, responsibilities, and constraints rather than hidden assumptions.
+## Core Principles
 
-## How it works
+A workflow contract is not a prose explanation. It is an executable agreement: clear boundaries, explicit state transitions, concrete artifacts, named human decisions, and visible failure paths. Prefer durable structure over narrative because future agents will follow the tables more reliably than paragraphs.
 
-1. **Create & Deliver** transform raw workflow idea into structured workflow contract.
-2. **Ask & Clarify:** clarify open questions, determine missing parts, stop-and-ask human.
+- Start from the user's source material. Use referenced files, existing workflow docs, glossary entries, and repository conventions before inventing structure.
+- Keep the working context small. Read only sources needed to identify the workflow boundary, states, artifacts, and decision points.
+- Preserve provenance. When a fact comes from a file, user statement, or inference, keep that source visible in the contract or assumption log.
+- Convert uncertainty into structure. Use `Open Questions`, `Assumption Log`, `Abort If`, and `Human Decision Points` instead of burying ambiguity in prose.
+- Ask before writing only when the workflow itself or the target file cannot be identified. Otherwise produce the contract and mark unresolved facts explicitly.
+- Do not silently widen scope. Start and terminal states define the workflow boundary; everything outside them belongs in `Non-goals` or a separate workflow.
+- Do not introduce YAML, JSON, diagrams, or a formal DSL unless the user explicitly asks. Markdown tables are the contract artifact.
 
-## Usage
+## Operating Modes
 
-This skill primarily outputs workflow documentations and asks the human to fill in the gaps in the workflow documentation.
-Invoke it with an idea, and the agent will guide you through the process.
+Choose the mode that matches the user's request:
 
-**Trigger Phrases:**
-- "Create a workflow for this feature"
-- "Is this [workflow] clear enough for an agent?"
-- "What is missing in this [workflow]?" 
+- **Create:** Turn an idea, notes, chat transcript, or process description into a new workflow contract.
+- **Review:** Inspect an existing workflow contract for gaps, unsafe assumptions, weak transitions, or missing artifacts. Return findings unless the user asks for edits.
+- **Update:** Modify an existing workflow contract and keep the glossary synchronized.
+- **Make executable:** Strengthen a draft workflow until another agent could execute it with clear stop conditions.
 
-## Contract Design Rules
+## Default Artifacts
 
-- Prefer state-machine structure over prose. Agents need explicit states and transitions more than narrative explanation.
-- Keep the contract compact and human-readable. Markdown tables are the artifact; do not introduce YAML, JSON, a formal DSL, or generated diagrams unless the user asks.
-- Write allowed actions as specific verbs an agent may perform. If an action is not listed, the consuming agent should treat it as out of scope.
-- Make all required inputs concrete. Name documents, code paths, commands, approvals, credentials, data sources, or human decisions where possible.
-- Name human decision points explicitly. Avoid vague phrases like "confirm with the team" unless the role, trigger, and expected response are defined.
-- Prefer aborting over guessing. Every risky or ambiguous step should have an `Abort If` condition.
-- Separate assumptions from open questions. Assumptions are tentative beliefs; open questions are unresolved decisions or missing facts.
-- Do not mark an assumption as true unless the source material states it or the user confirms it.
-- name every domain term introduced in the workflow contract explicitly with a brief description
-- start and terminal states are the workflows boundaries, everything outside the workflows boundaries are out of scope.
+- Save workflow contracts to `docs/workflows/[workflow-name].md` unless the user requests another path.
+- Save or update domain terms in `docs/glossary.md`.
+- If the user only asks for a review, do not write files unless they ask for changes.
 
-## Output: Contract Format
+## Contract Template
 
-The final output is a markdown one-pager saved to `docs/workflows/[workflow-name].md` (after user confirmation), containing
+Use this section order for every workflow contract.
 
 ```markdown
 # [Workflow Name] Workflow Contract
 
 ## Purpose
-[One or two sentences describing what the workflow enables agents to execute.]
+[One or two sentences describing what this workflow enables an agent to execute.]
 
 ## Scope
 
@@ -52,112 +50,102 @@ The final output is a markdown one-pager saved to `docs/workflows/[workflow-name
 - [What this workflow governs]
 
 ### Non-goals
-- [What this workflow does not attempt to do]
+- [What this workflow deliberately excludes]
 
 ## State Table
 
 | State | Goal | Required Inputs | Allowed Actions | Outputs | Abort If |
 |---|---|---|---|---|---|
-| [STATE_NAME] [START/TERMINAL or nothing] | [Goal of this state] | [Inputs needed before action] | [Allowed actions only] | [Durable outputs] | [Stop condition] |
+| [STATE_NAME] (START/TERMINAL if applicable) | [Single outcome for this state] | [Concrete inputs needed before action] | [Specific allowed verbs only] | [Durable outputs, decisions, or status changes] | [Concrete stop condition] |
 
 ## Transition Table
 
 | From | Condition | To | Human Needed? | Notes |
 |---|---|---|---|---|
-| [STATE_NAME] | [Explicit condition] | [NEXT_STATE] | [Yes/No, role if yes] | [Clarifying note] |
+| [STATE_NAME] | [Concrete condition that can be checked] | [NEXT_STATE] | [No / Yes: role and required response] | [Clarifying note or "-"] |
 
 ## Required Artifacts
 
 | Artifact | Produced By | Required By | Format/Location | Validation |
 |---|---|---|---|---|
-| [Artifact name] | [State or actor] | [State or actor] | [Expected path/format] | [How to verify it exists or is usable] |
+| [Artifact name] | [State or actor] | [State or actor] | [Expected path or format] | [How to verify it exists and is usable] |
 
 ## Human Decision Points
 
 | Decision | Trigger | Owner/Role | Options | Required Response |
 |---|---|---|---|---|
-| [Decision name] | [When this decision is needed] | [Human role] | [Allowed options] | [What the agent needs back] |
+| [Decision name] | [When this decision is needed] | [Human role] | [Allowed options] | [Exact response shape the agent needs] |
 
 ## Abort Conditions
-- [Condition that requires the consuming agent to stop]
-- [Condition that requires human clarification before proceeding]
+- [Global condition that requires the consuming agent to stop]
+- [Global condition that requires human clarification before continuing]
 
 ## Open Questions
 
 | Question | Why It Matters | Plausible Assumptions | Blocks |
 |---|---|---|---|
-| [Targeted question] | [Why agents cannot safely proceed without this] | [Options the human can confirm, reject, or refine] | [State, transition, or artifact affected] |
+| [Targeted question] | [Why agents cannot safely proceed without this] | [Options a human can confirm, reject, or refine] | [State, transition, or artifact affected] |
 
 ## Assumption Log
 
 | Assumption | Source | Risk Level | Impact If Wrong | How To Validate |
 |---|---|---|---|---|
-| [Tentative assumption] | [User input, file, or inference] | [HIGH/MEDIUM/LOW] | [What breaks if wrong] | [How a human or agent can validate] |
-
+| [Tentative assumption] | [User input, file path, or inference] | [HIGH/MEDIUM/LOW] | [What breaks if wrong] | [Validation action or owner] |
 ```
-## Output: Glossary
 
-If not exists, save domain terms in `docs/glossary.md`, containing:
+## Glossary Template
 
+If `docs/glossary.md` does not exist, create it with this table. If it exists, update it without duplicating terms.
+
+```markdown
 | Term | Type | Aliases | Used In | Description |
 |---|---|---|---|---|
-| [Domain term] | [STATE/CONDITION/ARTIFACT] | [Known synonyms, or "—"] | [Workflow documentation section(s) using this term] | [brief description] |
+| [Domain term] | [STATE/CONDITION/ARTIFACT/ROLE/DECISION] | [Known synonyms, or "-"] | [Workflow section or file] | [Brief operational meaning] |
+```
 
-### Matching Policy
+Before adding a term, compare it with existing entries by meaning, not only exact spelling. Never resolve a naming collision by silently choosing one meaning; add an open question instead. Keep every workflow document and glossary entry consistent after edits.
 
-Before adding a new glossary entry, check the candidate term against existing entries:
+## State Rules
 
-Never resolve a naming collision (same term, different meaning across workflows) by silently picking one meaning — surface it as an Open Question instead.
+- Use stable uppercase identifiers such as `INTAKE`, `VALIDATE_INPUTS`, `EXECUTE_CHANGE`, `VERIFY_RESULT`, `REQUEST_HUMAN_DECISION`, `DONE`, and `ABORTED`.
+- Mark exactly one start state with `(START)`.
+- Mark terminal states with `(TERMINAL)`. `DONE` and `ABORTED` are common terminal states.
+- Give each state one goal. If a row has multiple goals, split it into multiple states.
+- List only required inputs that must exist before the agent acts in that state.
+- Write allowed actions as concrete verbs the agent may perform. If an action is not listed, it is out of scope for the consuming agent.
+- Name durable outputs. Avoid vague outputs such as "updated status" unless the location or status value is defined.
+- Add an `Abort If` condition for every non-terminal state. The condition should tell the consuming agent when to stop or request human input.
+- If a field depends on missing information, write `MISSING`, add an open question, and add a matching `Abort If` condition.
 
-Keep the glossary always in sync with every workflow document that references it.
+## Transition Rules
 
-
-## Phase 1: Writing State Tables
-
-- State names should be stable identifiers such as `INTAKE`, `VALIDATE_INPUTS`, `EXECUTE_CHANGE`, `VERIFY_RESULT`, `REQUEST_HUMAN_DECISION`, `DONE`, and `ABORTED`. 
-- Use names that fit the workflow, but keep them short and unambiguous.
-
-For each state:
-
-- `Goal`: define the single outcome of the state.
-- `Required Inputs`: list only inputs that must exist before the agent can act in that state. Make all required inputs concrete. Name documents, or human decisions where possible.
-- `Allowed Actions`: define what the agent may do. Keep this operational, not aspirational. 
-- `Outputs`: name durable artifacts, decisions, or status changes produced by the state.
-- `Transition`: state the condition that moves execution forward.
-- `Abort If`: name the condition that forces the agent to stop or ask a human.
-
-If a state depends on missing information, do not invent the information. Insert `MISSING` in the corresponding field and put the missing fact in `Open Questions`, include plausible answers, and add an `Abort If` condition to the dependent state.
-
-
-## Phase 2: Writing Transitions
-
-Every transition needs an explicit condition. Avoid vague transitions like "when ready", "after review", or "if successful" unless the contract defines what ready, reviewed, or successful means.
+Every non-terminal state needs at least one outgoing transition. Every transition needs a condition that another agent can evaluate without guessing.
 
 Good transition conditions:
 
-- "All required artifacts exist and pass validation."
-- "Human owner selects one option from `Human Decision Points`."
-- "`./gradlew test` exits successfully."
-- "No blocking open questions affect the next state."
+- `All required artifacts exist and pass validation.`
+- `Human owner selects one option from Human Decision Points.`
+- `./gradlew test` exits successfully.
+- `No blocking open questions affect the next state.`
 
-Weak transition conditions to rewrite:
+Rewrite weak conditions:
 
-- "When done"
-- "After approval"
-- "If it looks good"
-- "Once the agent understands the request"
+- `When done`
+- `After approval`
+- `If it looks good`
+- `Once the agent understands the request`
 
-## Phase 3: Handling Missing Information
+Use `ANY_STATE -> ABORTED` for global failures. Use `ANY_STATE -> REQUEST_HUMAN_DECISION` when execution can continue only after clarification.
 
-Ask the user before writing only when the missing information prevents identifying the workflow at all. Examples:
+## Handling Missing Information
+
+Ask the user before drafting only when the missing information prevents identifying the workflow or edit target. Examples:
 
 - The user says "make a workflow contract" without naming or describing the workflow.
 - The user asks to update an existing workflow but does not provide a path and multiple likely files exist.
 - The requested edit would overwrite important existing content and the intended target is ambiguous.
 
-Otherwise, write the contract and make the uncertainty explicit inside it. Use `Open Questions`, `Assumption Log`, and `Abort If` fields to prevent consuming agents from treating guesses as facts.
-
-Targeted questions should include plausible assumptions:
+Otherwise, draft the contract and make uncertainty explicit. Targeted questions should include plausible assumptions:
 
 ```markdown
 | Question | Why It Matters | Plausible Assumptions | Blocks |
@@ -165,104 +153,89 @@ Targeted questions should include plausible assumptions:
 | Who is allowed to approve production deployment? | Agents cannot safely transition from `READY_FOR_DEPLOY` to `DEPLOY` without an owner. | Engineering manager, release captain, product owner | `DEPLOY` transition |
 ```
 
-## Phase 4: Completion Review Pass
+## Closing The Loop
 
-When user ask for completing, or making an existing workflow executable, explicitly check for these gaps:
+Soft sections are only useful when they affect executable structure. Before finishing, connect each soft-section entry to a table row or explain why it cannot be closed yet.
 
-- Missing initial, terminal, or abort states
-- States without required inputs
-- States with broad or unsafe allowed actions
-- Outputs that are not durable artifacts
+| Source Entry | Required Structural Counterpart |
+|---|---|
+| `Open Questions` row with a `Blocks` value | Matching `Abort If` condition in the blocked state or transition |
+| Global `Abort Conditions` entry | `ANY_STATE -> ABORTED` or `ANY_STATE -> REQUEST_HUMAN_DECISION` transition |
+| Medium/high-risk `Assumption Log` row | Validation action in `Allowed Actions` or an `Abort If` condition |
+| Human approval or choice | `Human Decision Points` row plus transition condition using the required response |
+| New domain term | `docs/glossary.md` entry using the same meaning |
+
+If a soft-section entry cannot be connected to structure, keep it visible and mark the affected state, transition, or artifact as blocked.
+
+## Completion Review
+
+When the user asks to complete a workflow or make it executable, inspect the contract for these gaps:
+
+- Missing start, terminal, or abort states
+- Non-terminal states without outgoing transitions
+- States without concrete required inputs
+- Broad or unsafe allowed actions
+- Outputs that are not durable artifacts, decisions, or status changes
 - Transitions without concrete conditions
-- Human approvals without named owner or response format
+- Human approvals without owner, options, or response format
 - Assumptions mixed into facts
-- Open questions with no blocked state or artifact
+- Open questions with no blocked state, transition, or artifact
 - Risky steps without abort conditions
+- Domain terms missing from the glossary
 - Scope creep hidden in prose
 
-Then stop and interview the user for these gaps like below:
+If gaps require human input, ask one question at a time:
 
-### Ask one question at a time, each with a guess attached
-
-Format:
-
-```
+```text
 Q: <one focused question>
 GUESS: <your hypothesis for the answer, with the reasoning that produced it>
 ```
 
-Wait for the user to react before asking the next question.
+Wait for the user to respond before asking the next question. A guess makes assumptions visible and easier to correct.
 
-**Why one at a time, not a batch:**
+## Review-Only Output
 
-- The user can't react to your hypotheses if you bury them in a list
-- Batches encourage skim-reading and surface answers
-- The third question often depends on the answer to the first; asking them all at once locks in the wrong framing
-- The user's energy for thinking carefully is finite; spend it one question at a time
+When reviewing an existing workflow without editing it, lead with findings:
 
-**Why attach a guess:**
+```text
+Findings:
+- [Severity] [Section/table]: [issue and why it matters]
 
-- The user reacts faster to a wrong guess than they generate an answer from scratch
-- It commits you to a hypothesis you can be visibly wrong about, which keeps you honest
-- It surfaces *your* assumptions, which is what the interview is meant to expose
+Open questions:
+- [Question that blocks executability]
 
-The risk here is a polite user agreeing with your guess to be agreeable. Mitigate by being visibly willing to be wrong, and occasionally guess in a direction you expect the user to push back on.
+Recommended edits:
+- [Concrete change]
+```
 
-## Phase 5: Closing the Loop on Soft Sections
+Focus on bugs in executability: hidden assumptions, missing transitions, unsafe actions, ambiguous approvals, missing artifacts, and unresolved glossary terms.
 
-`Open Questions`, `Abort Conditions`, and the `Assumption Log` are narrative by nature — they exist to hold uncertainty that hasn't been resolved into structure yet. But narrative that never resolves into the State Table or Transition Table is invisible to a consuming agent: it reads like prose hiding inside a section header, which is exactly what this contract format exists to prevent. Each rule below names the concrete structural change that
-must exist before a soft-section entry can be considered closed.
+## Final Response
 
-### Open Questions → Abort If
-
-**Trigger:** An `Open Questions` entry names a state, transition, or artifact in its `Blocks` column. 
-**Required target:** The named state gets an explicit `Abort If` condition that reflects the unresolved question.
-**If not closed:** The dependent state is incomplete. Do not let the question stand on its own as the only record of the risk.
-
-### Abort Conditions → Transition Table
-
-**Trigger:** An entry in the global `Abort Conditions` list is not scoped to a single state — it applies regardless of where execution currently is.
-**Required target:** A row in the Transition Table of the form `ANY_STATE → ABORTED` (or `ANY_STATE → REQUEST_HUMAN_DECISION` if human clarification is needed first).
-**If not closed:** The condition has no trigger point a consuming agent can act on. Either give it a Transition Table row, or rewrite it as a per-state
-`Abort If` if it's actually state-specific.
-
-### Assumption Log → Abort If or Allowed Actions
-
-**Trigger:** An `Assumption Log` entry carries non-trivial `Risk`. 
-**Required target:** Either (a) a validation step added to the dependent state's `Allowed Actions` that checks the assumption before relying on it,
-or (b) an `Abort If` condition that fires if the assumption later proves false.
-**If not closed:** The assumption is not actually tentative — it's load-bearing and unverified. If neither (a) nor (b) is possible, it isn't
-safe to assume; move it to `Open Questions` instead.
-
-No soft-section entry is finished once it's written down. It's finished once it has produced — or explicitly failed to produce — one of these structural counterparts.
-
-## Response Format
-
-After creating or updating the contract, reply briefly:
+After creating or updating files, reply briefly:
 
 ```text
 Created/updated docs/workflows/[workflow-name].md.
+Glossary: [updated docs/glossary.md / no changes needed]
 
 Blocking open questions: [count and short summary, or "none"]
 High-risk assumptions: [count and short summary, or "none"]
 ```
 
-## Red Flags
+If no files were changed because the user requested review only, summarize the review result instead.
 
-- Making assumptions and decisions without documenting them.
-- Introducing new domain terms without saving them in the glossary.
-- Any `Open Questions`, `Abort Conditions`, or `Assumption Log` entry that does not close the loop per Phase 5
+## Verification Checklist
 
-## Verification
+Before finishing, verify that:
 
-Before finishing, check that:
-
-- The file is under `docs/workflows/*.md` unless the user requested another path.
-- The contract uses the required section order and table formats.
-- Every state has a transition and an abort condition.
+- The contract is saved under `docs/workflows/*.md` unless the user requested another path.
+- The required section order and table formats are present.
+- Exactly one start state exists.
+- Every terminal state is marked `(TERMINAL)`.
+- Every non-terminal state has at least one outgoing transition and one `Abort If` condition.
 - Every transition has a concrete condition.
-- Human decision points are explicit.
+- Human decision points are explicit and referenced by transitions.
 - Open questions and assumptions are separated.
 - No missing information was silently applied as fact.
-- `glossary.md` is in sync with workflow document.
-- Every `Open Questions`, `Abort Conditions`, and `Assumption Log` entry satisfies its Phase 5 closing rule.
+- `docs/glossary.md` is in sync with all new or changed domain terms.
+- Every `Open Questions`, `Abort Conditions`, and `Assumption Log` entry satisfies the closing rules or clearly blocks a named structure.
