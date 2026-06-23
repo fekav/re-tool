@@ -34,3 +34,9 @@ compileJava {
 compileTestJava {
     options.encoding = 'UTF-8'
 }
+
+tasks.withType(Test).configureEach {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
