@@ -1,4 +1,4 @@
-# Assertions Cheat Sheet (JUnit 5 + AssertJ)
+# Assertions (JUnit 5 + AssertJ)
 
 Read this when you need concrete assertion syntax beyond what SKILL.md covers. Prefer
 AssertJ when it's on the classpath; otherwise use the JUnit 5 equivalents shown alongside.

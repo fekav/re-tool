@@ -1,9 +1,8 @@
 package io.fekav.platform.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.fekav.platform.cqrs.Command;
 import io.fekav.platform.cqrs.CommandBus;
 import io.fekav.platform.cqrs.CommandHandlerRegistry;
@@ -45,7 +44,7 @@ public class RestController {
         if (
             request == null ||
             request.command() == null ||
-            request.payload().isNull()
+            request.payload() == null
         ) {
             throw new BadRequestException("Request body error");
         }

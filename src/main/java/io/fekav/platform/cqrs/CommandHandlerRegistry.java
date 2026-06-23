@@ -17,7 +17,6 @@ public class CommandHandlerRegistry {
         this.handlers = handlers;
     }
 
-    @SuppressWarnings("unchecked")
     public Class<? extends Command<?>> commandType(String commandName) {
         return handlers
             .stream()
