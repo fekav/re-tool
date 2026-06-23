@@ -8,7 +8,7 @@ mocking API, and tooling are different — don't port Spring idioms over by name
 
 | Annotation | Loads | Use it for |
 |---|---|---|
-| Plain JUnit + Mockito (no Quarkus annotations) | Nothing — pure POJO test | Services and domain logic with no CDI injection to verify. **Prefer this whenever possible.** |
+| Plain JUnit + Mockito (no Quarkus annotations) | Nothing — pure POJO test | Services and domain logic with no CDI injection to verify. **Prefer this for testing domain logic.** |
 | `@QuarkusComponentTest` | Just the CDI beans you declare, not the full app | Unit-testing one or two beans together with their real or mocked collaborators, without paying for full application startup |
 | `@QuarkusTest` | The full CDI container, in the same JVM as the test (fast — this is the point of Quarkus's testing model) | REST endpoint tests, integration tests against the running application |
 | `@QuarkusIntegrationTest` | The packaged artifact (JAR or native image), started as a separate process | True end-to-end checks against what actually ships; the slowest option — use sparingly and tag accordingly |

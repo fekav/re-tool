@@ -59,6 +59,8 @@ A few hard rules that prevent the most common test-quality complaints in code re
 - **Only mock what you don't own** — collaborators that cross a boundary (repositories,
   HTTP clients, clocks, message publishers). Don't mock simple value objects, DTOs, or
   classes with no real behavior — just construct them.
+- **Prefer constructor injection** with `@InjectMocks` over manual `Mockito.mock(...)` wiring or static-mocking tools —
+  it's less code and fails fast if the constructor changes.
 - **Never silence `UnnecessaryStubbingException` with `lenient()`** as a first move — it's
   Mockito telling you a stub isn't used by this test. Delete the unused stub instead; adding `lenient()` papers over a real signal that the test has drifted from the code.
 
@@ -100,12 +102,13 @@ A short list to flag while writing or reviewing tests:
 - Large blocks of duplicated setup across many tests — extract to `@BeforeEach`, a helper
   method, or a test-data builder.
 - Non-descriptive names (`test1`, `testSomething`, `worksCorrectly`), prefer pattern **returnsY_whenDidX, pocketIsEmpty_whenSpentTooMuch ** 
+- Exceptions are not tested, even system under test throws 
 
 ## If the project uses Quarkus
 
 Read `references/quarkus-testing.md` for more information
 
-## Before you call it done
+## Verification Checklist
 
 - [ ] Test class mirrors the source package and follows the project's naming convention
 - [ ] Method names / `@DisplayName` describe behavior, not implementation details
@@ -113,3 +116,5 @@ Read `references/quarkus-testing.md` for more information
 - [ ] No unused stubs, no mocking of plain value objects
 - [ ] Tests are independent of each other and of execution order
 - [ ] Assertions are specific (checking actual values/messages, not just "is not null")
+- [ ] Exception messages are tested
+- [ ] Test code is structured in arrange-act-assert
