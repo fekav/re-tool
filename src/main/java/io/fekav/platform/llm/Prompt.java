@@ -8,9 +8,15 @@ public record Prompt(
         String inputLabel,
         String taskDescription,
         String instructions,
-        List<Example> examples,
+        List<PromptExample> examples,
         Map<String, Object> outputSchema) {
 
-    public record Example(String input, Object expectedOutput) {
+    public Prompt {
+        input = PromptValues.textOrEmpty(input);
+        inputLabel = PromptValues.labelOrDefault(inputLabel);
+        taskDescription = PromptValues.textOrEmpty(taskDescription);
+        instructions = PromptValues.textOrEmpty(instructions);
+        examples = PromptValues.copyExamples(examples);
+        outputSchema = PromptValues.copyObjectMap(outputSchema);
     }
 }
