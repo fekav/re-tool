@@ -16,25 +16,24 @@ Before generating tests, spend one quick pass figuring out what's actually avail
 
 1. **Find the build file** — `pom.xml` (Maven) or `build.gradle` / `build.gradle.kts` (Gradle).
 2. **Check test dependencies** - grep it for `junit`, `mockito`, `assertj`
-3. **Black-box tests** - this skill is designed for fluctuating code. Do not rely on implemetation details of code under test.
 
 It is best practice that unit tests are isolated. Because of that, do not inspect code, except the code under test.
 
-## Core structure: Arrange-Act-Assert
+## Core structure: Given-When-Then
 
-Every test follows the same three beats, visually separated by a blank line and comment:
+Some teams prefer the arrange-act-assert vocabulary for readability — match whatever the existing suite already uses.
 
 ```java
 @Test
 void shouldApplyDiscount_whenCustomerIsLoyaltyMember() {
-    // Arrange
+    // Given
     Customer customer = CustomerTestData.loyaltyMember();
     Order order = new Order(customer, List.of(new LineItem("SKU-1", 100.0)));
 
-    // Act
+    // When
     PricedOrder result = pricingService.price(order);
 
-    // Assert
+    // Then
     assertThat(result.total()).isEqualTo(90.0);
 }
 ```
@@ -60,32 +59,12 @@ A few hard rules that prevent the most common test-quality complaints in code re
 - **Only mock what you don't own** — collaborators that cross a boundary (repositories,
   HTTP clients, clocks, message publishers). Don't mock simple value objects, DTOs, or
   classes with no real behavior — just construct them.
-- **Prefer constructor injection** with `@ExtendWith(MockitoExtension.class)` and
-  `@Mock` / `@InjectMocks` over manual `Mockito.mock(...)` wiring or static-mocking tools —
-  it's less code and fails fast if the constructor changes.
 - **Never silence `UnnecessaryStubbingException` with `lenient()`** as a first move — it's
   Mockito telling you a stub isn't used by this test. Delete the unused stub instead; adding `lenient()` papers over a real signal that the test has drifted from the code.
 
-See `references/mocking.md` for mock vs. spy vs. fake guidance, `ArgumentCaptor`, and
-BDD-style Mockito (`given(...).willReturn(...)`).
-
 ## Parameterized and data-driven tests
 
-Don't copy-paste near-identical tests for different inputs — use `@ParameterizedTest`:
-
-```java
-@ParameterizedTest(name = "{0} is not a valid email")
-@ValueSource(strings = {"", "no-at-sign", "@no-local-part.com"})
-void rejectsInvalidEmail(String input) {
-    assertThat(validator.isValid(input)).isFalse();
-}
-```
-
-Use `@CsvSource` for small input/output pairs, `@MethodSource` once arguments stop fitting
-on one line or need real objects, and `@EnumSource` / `@NullAndEmptySource` for exhaustive
-edge-case coverage. Give each generated case a readable `name` so a failing run tells you
-*which* input failed without opening the source. Full patterns and examples in
-`references/parameterized-tests.md`.
+When a test needs to run the same logic across several inputs, see `references/parameterized-tests.md`
 
 ## Cover the edges, not just the happy path
 
@@ -111,8 +90,7 @@ defaulting to only the success case:
 
 ## Test smells to catch in review
 
-A short list to flag while writing or reviewing tests — full before/after examples in
-`references/test-smells.md`:
+A short list to flag while writing or reviewing tests:
 
 - A single test asserting several unrelated behaviors (split it).
 - Mocking everything in sight, including plain value objects.
@@ -123,13 +101,9 @@ A short list to flag while writing or reviewing tests — full before/after exam
   method, or a test-data builder.
 - Non-descriptive names (`test1`, `testSomething`, `worksCorrectly`).
 
-## If the project uses Spring Boot
+## If the project uses Quarkus
 
-Don't reach for `@SpringBootTest` by default — it boots the full context and is the slowest
-option. Prefer the narrower test slices (`@WebMvcTest`, `@DataJpaTest`) for layer-focused
-tests, and reserve a full `@SpringBootTest` for genuine end-to-end checks. See
-`references/spring-boot-testing.md` for slice-test selection, `MockMvc`, and
-`@MockBean`/`@SpyBean` vs. constructor-based fakes.
+Read `references/quarkus-testing.md` for more information
 
 ## Before you call it done
 
