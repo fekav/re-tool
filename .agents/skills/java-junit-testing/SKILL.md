@@ -19,9 +19,9 @@ Before generating tests, spend one quick pass figuring out what's actually avail
 
 It is best practice that unit tests are isolated. Because of that, do not inspect code, except the code under test.
 
-## Core structure: Given-When-Then
+## Core structure: Arrange-Act-Assert
 
-Some teams prefer the arrange-act-assert vocabulary for readability — match whatever the existing suite already uses.
+Some teams prefer the given-when-then vocabulary for readability — match whatever the existing suite already uses.
 
 ```java
 @Test
@@ -99,7 +99,7 @@ A short list to flag while writing or reviewing tests:
   a test with its own logic is itself untested code.
 - Large blocks of duplicated setup across many tests — extract to `@BeforeEach`, a helper
   method, or a test-data builder.
-- Non-descriptive names (`test1`, `testSomething`, `worksCorrectly`).
+- Non-descriptive names (`test1`, `testSomething`, `worksCorrectly`), prefer pattern **returnsY_whenDidX, pocketIsEmpty_whenSpentTooMuch ** 
 
 ## If the project uses Quarkus
 
