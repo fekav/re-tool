@@ -16,6 +16,7 @@ dependencies {
     implementation 'io.quarkiverse.neo4j:quarkus-neo4j:6.6.0'
     testImplementation 'io.quarkus:quarkus-junit'
     testImplementation 'io.rest-assured:rest-assured'
+    testImplementation 'org.assertj:assertj-core:3.27.7'
 }
 
 group = 'io.fevkav'
