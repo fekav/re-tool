@@ -46,13 +46,7 @@
       "extensions": [
         "redhat.java",
         "redhat.vscode-quarkus"
-      ],
-      "settings": {
-        "java.import.gradle.enabled": true,
-        "java.configuration.updateBuildConfiguration": "automatic",
-        "java.compile.nullAnalysis.mode": "automatic",
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
+      ]
     }
   },
 
