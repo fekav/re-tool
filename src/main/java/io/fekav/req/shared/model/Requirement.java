@@ -3,8 +3,8 @@ package io.fekav.req.shared.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.fekav.req.entityextraction.model.RequirementSyntax;
 import io.fekav.platform.messaging.DomainEvent;
+import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.shared.event.EntitiesExtractedEvent;
 
 // Domain Model / Aggregat-Root

@@ -1,7 +1,7 @@
-package io.fekav.req.entityextraction;
+package io.fekav.req.entityextraction.application;
 
 import io.fekav.platform.cqrs.Command;
-import io.fekav.req.entityextraction.model.RequirementSyntax;
+import io.fekav.req.entityextraction.domain.RequirementSyntax;
 
 public record ExtractEntitiesCommand(
     String rawText

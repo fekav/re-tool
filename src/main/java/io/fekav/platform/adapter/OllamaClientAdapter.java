@@ -1,4 +1,4 @@
-package io.fekav.platform.llm;
+package io.fekav.platform.adapter;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,8 +11,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.fekav.platform.llm.LlmClientPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -23,9 +25,9 @@ import jakarta.inject.Inject;
  *
  */
 @ApplicationScoped
-public class OllamaAdapter implements LlmClientPort {
+public class OllamaClientAdapter implements LlmClientPort {
 
-    private static final Logger log = Logger.getLogger(OllamaAdapter.class.getName());
+    private static final Logger log = Logger.getLogger(OllamaClientAdapter.class.getName());
 
     @ConfigProperty(name = "llm.base.url", defaultValue = "http://ollama:11434/api/")
     String llmBaseUrl;
@@ -44,20 +46,20 @@ public class OllamaAdapter implements LlmClientPort {
     private final boolean stream;
 
     @Inject
-    public OllamaAdapter(ObjectMapper objectMapper) {
+    public OllamaClientAdapter(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
         this.stream = false;
     }
 
     @Override
-    public String generate(LlmRequest llmRequest) {
+    public String generate(String prompt, JsonNode format) {
         if (llmBaseUrl.isBlank()) {
             throw new IllegalStateException("config property not set for llm Url");
         }
 
         try {
-            String payload = buildRequestPayload(llmRequest);
+            String payload = buildRequestPayload(prompt, format);
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(llmBaseUrl + "generate"))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(payload))
@@ -73,15 +75,15 @@ public class OllamaAdapter implements LlmClientPort {
         }
     }
 
-    private String buildRequestPayload(LlmRequest llmRequest) {
+    private String buildRequestPayload(String prompt, JsonNode format) {
         Map<String, Object> options = new HashMap<>();
         options.put("temperature", llmTemperature);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("model", llmModel);
-        payload.put("prompt", llmRequest.prompt());
+        payload.put("prompt", prompt);
         payload.put("stream", stream);
-        payload.put("format", llmRequest.jsonSchema() != null ? llmRequest.jsonSchema() : "json");
+        payload.put("format", format != null ? format : "json");
         payload.put("options", options);
 
         try {

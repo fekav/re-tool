@@ -1,22 +1,27 @@
 package io.fekav.platform.llm;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
-public record Prompt(
-        String input,
-        String inputLabel,
-        String taskDescription,
-        String instructions,
-        List<PromptExample> examples,
-        Map<String, Object> outputSchema) {
+/**
+ * Immutable prompt data model.
+ *
+ * @param promptText   the final user prompt text sent to the LLM
+ * @param systemPrompt the system-level instruction text
+ */
+public record Prompt(String promptText, String systemPrompt) {
 
     public Prompt {
-        input = PromptValues.textOrEmpty(input);
-        inputLabel = PromptValues.labelOrDefault(inputLabel);
-        taskDescription = PromptValues.textOrEmpty(taskDescription);
-        instructions = PromptValues.textOrEmpty(instructions);
-        examples = PromptValues.copyExamples(examples);
-        outputSchema = PromptValues.copyObjectMap(outputSchema);
+        promptText = requireNonBlank(promptText, "promptText");
+        systemPrompt = requireNonBlank(systemPrompt, "systemPrompt");
+    }
+
+    private static String requireNonBlank(String value, String fieldName) {
+        Objects.requireNonNull(value, fieldName + " must not be null");
+
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " must not be blank");
+        }
+
+        return value;
     }
 }

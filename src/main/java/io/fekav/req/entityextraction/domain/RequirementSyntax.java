@@ -1,8 +1,6 @@
-package io.fekav.req.entityextraction.model;
+package io.fekav.req.entityextraction.domain;
 
 import java.util.Map;
-
-import io.fekav.req.shared.model.RequirementSyntaxType;
 
 public record RequirementSyntax(
     Map<RequirementSyntaxType, String> syntaxElements

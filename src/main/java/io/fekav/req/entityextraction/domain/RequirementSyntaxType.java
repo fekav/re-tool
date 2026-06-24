@@ -1,4 +1,4 @@
-package io.fekav.req.shared.model;
+package io.fekav.req.entityextraction.domain;
 
 /**
  * 

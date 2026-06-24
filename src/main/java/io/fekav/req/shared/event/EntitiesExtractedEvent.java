@@ -4,7 +4,7 @@ import java.time.Instant;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventId;
-import io.fekav.req.entityextraction.model.RequirementSyntax;
+import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.shared.model.RequirementId;
 
 /**
