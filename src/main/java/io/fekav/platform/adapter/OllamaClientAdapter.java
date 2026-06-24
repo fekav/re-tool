@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.fekav.platform.llm.LlmClientPort;
+import io.fekav.platform.llm.Prompt;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -53,7 +54,7 @@ public class OllamaClientAdapter implements LlmClientPort {
     }
 
     @Override
-    public String generate(String prompt, JsonNode format) {
+    public String generate(Prompt prompt, JsonNode format) {
         if (llmBaseUrl.isBlank()) {
             throw new IllegalStateException("config property not set for llm Url");
         }
@@ -75,13 +76,14 @@ public class OllamaClientAdapter implements LlmClientPort {
         }
     }
 
-    private String buildRequestPayload(String prompt, JsonNode format) {
+    private String buildRequestPayload(Prompt prompt, JsonNode format) {
         Map<String, Object> options = new HashMap<>();
         options.put("temperature", llmTemperature);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("model", llmModel);
-        payload.put("prompt", prompt);
+        payload.put("prompt", prompt.promptText());
+        payload.put("system", prompt.systemPrompt());
         payload.put("stream", stream);
         payload.put("format", format != null ? format : "json");
         payload.put("options", options);
