@@ -40,18 +40,20 @@ public class ExtractEntitiesCommandHandler
         // build prompt
         Prompt prompt = buildPrompt(command.rawText());
 
-    
+        // extract with llm request and prompt
+        // TODO how to use JsonNode for expected structured output from ollama? expected: RequirementSyntax
+        // simpler approach to provide ollama a json schema?        
 
-        // extract entities
-        RequirementSyntax result = extractionService.extract(requirement);
+        // String response from llmClientPort.generate() to Requirementsyntax
 
-        // 3. apply extraction to aggregate
-        requirement.applyExtraction(result);
+        // apply extraction to aggregate
+        
 
         // 4. publish Event
         eventPublisher.publishAll(requirement.domainEvents());
 
-        return result;
+        // return RequirementSyntax
+        return null;
     }
 
     @Override
