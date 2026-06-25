@@ -90,10 +90,10 @@ defaulting to only the success case:
   and `@Tag("integration")` for anything touching a real database, container, or network —
   then filter by tag in the build file rather than mixing speeds in one suite.
 
-## Test smells to catch in review
+## Red Flags
 
-A short list to flag while writing or reviewing tests:
-
+- Test class introduces new static classes.
+- Mocking dependencies in a end-to-end test.
 - A single test asserting several unrelated behaviors (split it).
 - Mocking everything in sight, including plain value objects.
 - Assertions on private/internal state instead of the public contract.
