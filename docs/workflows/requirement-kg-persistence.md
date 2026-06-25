@@ -1,12 +1,12 @@
 # Requirement KG Persistence Workflow Contract
 
 ## Purpose
-Enable an agent to persist a textual software requirement into a knowledge graph while preserving provenance, extracting requirement syntax, mapping candidate terms to KG concepts, and applying a configured policy for new concept creation.
+Persist textual requirements into a knowledge graph while preserving provenance, extracting requirement syntax, mapping candidate terms to KG concepts, and applying different configured policies control behaviour.
 
 ## Scope
 
 ### In Scope
-- Persisting raw software requirement text and source provenance.
+- Persisting raw software requirements, business goals, stakeholder needs, text, and source provenance.
 - Extracting candidate requirement terms from subject, object, action, condition, and constraint syntax.
 - Retrieving matching candidate concepts from the KG.
 - Creating term-to-concept candidate mappings.
@@ -21,11 +21,10 @@ Enable an agent to persist a textual software requirement into a knowledge graph
 - Updating source requirement documents after KG persistence.
 
 ## State Table
-
 | State | Goal | Required Inputs | Allowed Actions | Outputs | Abort If |
 |---|---|---|---|---|---|
 | `INTAKE_REQUIREMENT` (START) | Capture the raw requirement and its provenance. | Raw requirement text; source identifier; submitter or ingestion actor. | Validate non-empty text; assign requirement id; record source metadata; normalize line endings. | `RequirementRecord` with `rawText`, `sourceIdentifier`, `ingestedAt`, and `status=INTAKED`. | Raw text or source identifier is missing. |
-| `CLASSIFY_REQUIREMENT` | Identify the requirement's initial KG type and context. | `RequirementRecord`; allowed requirement concept types. | Classify as requirement, goal, scenario, or related supported type; attach context tags if available. | `RequirementClassification` linked to `RequirementRecord`. | No allowed requirement concept type exists in KG configuration. |
+| `CLASSIFY_REQUIREMENT` | Identify the requirement's initial KG type, property, confidence, and rationale. | `RequirementRecord`; allowed requirement concept types and properties. | Classify as requirement, goal, or need; classify property as functional or quality when eligible; assign confidence score; attach rationale and context tags if available. | `RequirementClassification` linked to `RequirementRecord`. | No allowed requirement concept type exists in KG configuration. |
 | `EXTRACT_REQUIREMENT_SYNTAX` | Extract syntax elements as candidate terms. | `RequirementRecord`; syntax extraction rules or parser. | Extract subject, object, action, condition, and constraint mentions; preserve text spans; assign extraction confidence. | `TermMentionSet` linked to `RequirementRecord`. | Parser or extraction rules are unavailable; no extractable term mention is found and empty extraction is disallowed by policy. |
 | `RETRIEVE_CANDIDATE_CONCEPTS` | Find KG concepts that may match each candidate term. | `TermMentionSet`; KG concept index; matching strategy. | Query KG by label, alias, type hint, lexical similarity, semantic similarity, or configured matcher; rank matches. | `CandidateConceptMatchSet` with scores and matched evidence. | KG connection fails; concept index is unavailable. |
 | `CREATE_MAPPING_CANDIDATES` | Convert retrieval results into explicit mapping candidates. | `TermMentionSet`; `CandidateConceptMatchSet`; mapping threshold configuration. | Create exact, probable, ambiguous, or no-match mapping candidates; attach confidence and rationale. | `TermConceptMappingSet` linked to mentions and candidate concepts. | Mapping thresholds are missing or contradictory. |
@@ -42,7 +41,7 @@ Enable an agent to persist a textual software requirement into a knowledge graph
 | From | Condition | To | Human Needed? | Notes |
 |---|---|---|---|---|
 | `INTAKE_REQUIREMENT` | `RequirementRecord` exists with raw text and source provenance. | `CLASSIFY_REQUIREMENT` | No | - |
-| `CLASSIFY_REQUIREMENT` | Requirement type is one of the configured KG concept types. | `EXTRACT_REQUIREMENT_SYNTAX` | No | Examples include requirement, goal, and scenario. |
+| `CLASSIFY_REQUIREMENT` | Requirement type is one of the configured KG concept types, property is one of the configured requirement properties, confidence score is valid, and rationale is present. | `EXTRACT_REQUIREMENT_SYNTAX` | No | V1 concept types are requirement, goal, and need. V1 properties are functional and quality. |
 | `EXTRACT_REQUIREMENT_SYNTAX` | `TermMentionSet` exists and every mention has a text span, syntax role, and confidence. | `RETRIEVE_CANDIDATE_CONCEPTS` | No | Empty extraction may continue only if allowed by policy. |
 | `RETRIEVE_CANDIDATE_CONCEPTS` | Candidate retrieval completed for every term mention. | `CREATE_MAPPING_CANDIDATES` | No | A no-match result is valid evidence, not a failure. |
 | `CREATE_MAPPING_CANDIDATES` | Every term mention has exact, probable, ambiguous, or no-match mapping status and `ConceptCreationPolicy` exists. | `EVALUATE_CONCEPT_POLICY` | No | - |
@@ -61,7 +60,7 @@ Enable an agent to persist a textual software requirement into a knowledge graph
 | Artifact | Produced By | Required By | Format/Location | Validation |
 |---|---|---|---|---|
 | `RequirementRecord` | `INTAKE_REQUIREMENT` | All later states | KG node or transaction payload | Contains id, raw text, source identifier, ingestion timestamp, and status. |
-| `RequirementClassification` | `CLASSIFY_REQUIREMENT` | `PERSIST_GRAPH_CHANGES` | KG relationship or transaction payload | Type is one of the configured KG concept types. |
+| `RequirementClassification` | `CLASSIFY_REQUIREMENT` | `PERSIST_GRAPH_CHANGES` | KG relationship or transaction payload | Type is one of the configured KG concept types, property is one of the configured requirement properties, confidence score is between `0.0` and `1.0`, and rationale is non-blank. |
 | `TermMentionSet` | `EXTRACT_REQUIREMENT_SYNTAX` | `RETRIEVE_CANDIDATE_CONCEPTS`; `PERSIST_GRAPH_CHANGES` | Structured collection linked to requirement id | Every term has text, syntax role, source span, and confidence. |
 | `CandidateConceptMatchSet` | `RETRIEVE_CANDIDATE_CONCEPTS` | `CREATE_MAPPING_CANDIDATES` | Structured collection linked to term mention ids | Every term has zero or more ranked matches and retrieval evidence. |
 | `TermConceptMappingSet` | `CREATE_MAPPING_CANDIDATES` | `EVALUATE_CONCEPT_POLICY` | Structured collection linked to terms and candidate concepts | Every term has a mapping status and rationale. |
@@ -92,9 +91,9 @@ Enable an agent to persist a textual software requirement into a knowledge graph
 | Question | Why It Matters | Plausible Assumptions | Blocks |
 |---|---|---|---|
 | Which concept creation policy should be the default for v1? | The workflow cannot safely decide whether no-match terms become new concepts, proposals, pending review items, or blocked items. | `PROPOSE_ONLY` for all new concepts; `REQUIRE_APPROVAL` for domain concepts and `AUTO_CREATE` for aliases; `BLOCK` for unknown concept types. | `EVALUATE_CONCEPT_POLICY`; `REQUEST_HUMAN_REVIEW`; `PERSIST_GRAPH_CHANGES` |
-| Which concept types are supported in the first KG schema? | Extraction and mapping need a bounded target vocabulary. | Start with `Requirement`, `Goal`, `Scenario`, `SystemComponent`, `UIComponent`, and `Concept`. | `CLASSIFY_REQUIREMENT`; `RETRIEVE_CANDIDATE_CONCEPTS` |
+| Which concept types are supported in the first KG schema? | Extraction and mapping need a bounded target vocabulary. | Start with `Requirement`, `Goal`, `Need`, `SystemComponent`, `UIComponent`, and `Concept`. | `CLASSIFY_REQUIREMENT`; `RETRIEVE_CANDIDATE_CONCEPTS` |
 | What query contract defines "a requirement is queryable"? | Verification needs concrete queries, not a vague success statement. | Query by id, raw text provenance, term mention, mapped concept, and review state. | `VERIFY_QUERYABILITY` |
-| Who owns review for each decision type? | Human review transitions need a concrete owner role. | Domain modeler owns concept creation; requirement analyst owns extraction corrections; software developer owns system component mappings; test engineer owns scenario and constraint mappings. | `REQUEST_HUMAN_REVIEW` |
+| Who owns review for each decision type? | Human review transitions need a concrete owner role. | Domain modeler owns concept creation; requirement analyst owns extraction corrections; software developer owns system component mappings; test engineer owns quality and constraint mappings. | `REQUEST_HUMAN_REVIEW` |
 | Are pending mappings allowed to be persisted? | Queryability may require storing incomplete decisions instead of blocking persistence. | Persist pending review state so the requirement is queryable immediately. | `PERSIST_GRAPH_CHANGES`; `VERIFY_QUERYABILITY` |
 
 ## Assumption Log
@@ -104,6 +103,26 @@ Enable an agent to persist a textual software requirement into a knowledge graph
 | The primary users are requirement analysts, test engineers, software developers, and domain modelers. | User input. | LOW | Review roles and query needs may be incomplete. | Confirm role ownership in the concept creation policy. |
 | The first success criterion is that a software requirement is queryable from a KG. | User input. | LOW | Verification could target the wrong outcome. | Define the required query contract before implementation. |
 | New concept creation behavior should be configurable by policy. | User input. | MEDIUM | A hard-coded behavior could violate governance expectations. | Create and review `ConceptCreationPolicy` before persistence behavior is implemented. |
-| The KG already contains or will contain concepts such as requirement, goal, scenario, system component, and UI component. | User input. | MEDIUM | Retrieval and classification may fail if these concept types are absent or differently named. | Validate supported concept types against the KG schema. |
+| The KG already contains or will contain concepts such as requirement, goal, need, system component, and UI component. | User input. | MEDIUM | Retrieval and classification may fail if these concept types are absent or differently named. | Validate supported concept types against the KG schema. |
 | Requirement syntax can be represented as subject, object, action, condition, and constraint. | User-provided workflow outline. | MEDIUM | Important requirement semantics may be missed, such as actor, trigger, exception, priority, or acceptance criteria. | Test extraction against representative real requirements. |
 | No-match retrieval is evidence for proposal, not proof that a concept does not exist. | Inference from KG matching risk. | MEDIUM | Duplicate concepts may be created if no-match is treated as definitive. | Require reviewer approval or stronger retrieval before concept creation. |
+
+## Classification Semantics
+
+`CLASSIFY_REQUIREMENT` classifies raw text on two axes: concept type and property. The concept type records intent and commitment level. The property records whether the classified concept is primarily behavioral or quality-related. The classification also records one overall confidence score and a short rationale for review and persistence.
+
+| Concept Type | Intent / Commitment Level | Classifier Signal | Example |
+|---|---|---|---|
+| `GOAL` | Desired outcome or business objective. Explains why change matters. | Outcome language, benefit, target state, strategic result. Usually not directly testable as one system behavior. | "Reduce failed customer onboarding by 30%." |
+| `NEED` | Stakeholder need or capability gap. Explains what someone needs before it is expressed as a binding system obligation. | Stakeholder-centered language such as "needs", "wants", "must be able to", or problem statements. Often generates multiple requirements. | "Support agents need visibility into failed payment attempts." |
+| `REQUIREMENT` | Binding product or system obligation. Specifies what the system must do or satisfy. | "shall", "must", "is required to", concrete behavior, or measurable constraint. Should be verifiable. | "The billing service must log failed payment attempts with reason codes." |
+
+| Property | Meaning | Classifier Signal | Example |
+|---|---|---|---|
+| `FUNCTIONAL` | Behavior, capability, workflow, operation, or interaction. | Action or capability language describing something the system, user, or stakeholder can do. | "The dashboard shall export monthly usage metrics." |
+| `QUALITY` | Quality attribute or constraint. | Performance, security, availability, usability, reliability, compliance, scalability, or measurable constraint language. | "The dashboard export must complete within 2 seconds." |
+
+| Evidence Field | Meaning | Validation |
+|---|---|---|
+| `confidenceScore` | Overall classifier certainty in the concept type and property assignment. | Required number from `0.0` to `1.0`. |
+| `rationale` | Short explanation grounded in the raw text. | Required non-blank text. |

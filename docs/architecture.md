@@ -90,7 +90,4 @@ validated business concept. New LLM-backed features should follow the same
 boundary: schema and DTOs at the infrastructure edge, reusable validation in
 `platform.structuredoutput`, and domain types inside the owning slice.
 
-See also:
-
-- `docs/json-contracts.md`
-- `docs/requirement-syntax-extraction-implementation.md`
+See also `docs/json-contracts.md` for general conecpt overview

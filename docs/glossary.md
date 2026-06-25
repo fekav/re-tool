@@ -9,7 +9,7 @@
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
 | Requirement Analyst | Analyst | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for validating requirement interpretation and extraction correctness. |
-| Test Engineer | Tester | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for reviewing scenario, condition, and constraint mappings when policy assigns those decisions. |
+| Test Engineer | Tester | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for reviewing quality, condition, and constraint mappings when policy assigns those decisions. |
 | Software Developer | Developer | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for reviewing mappings to implementation-facing concepts such as system components. |
 | Domain Modeler | Ontology curator; domain expert | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for concept quality, concept creation approval, and ontology consistency. |
 
@@ -18,7 +18,7 @@
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
 | RequirementRecord | Requirement node; raw requirement | `INTAKE_REQUIREMENT` | Durable representation of a raw requirement text with source provenance and ingestion metadata. |
-| RequirementClassification | Requirement type assignment | `CLASSIFY_REQUIREMENT` | Assignment of the requirement to a supported KG type such as requirement, goal, or scenario. |
+| RequirementClassification | Requirement type assignment | `CLASSIFY_REQUIREMENT` | Assignment of raw requirement text to a supported KG concept type and property, with confidence score and rationale. |
 | TermMentionSet | Candidate terms; extracted terms | `EXTRACT_REQUIREMENT_SYNTAX` | Extracted subject, object, action, condition, and constraint mentions linked to source text spans. |
 | CandidateConceptMatchSet | Candidate concepts; retrieval results | `RETRIEVE_CANDIDATE_CONCEPTS` | Ranked KG concepts that may match extracted term mentions, including match scores and evidence. |
 | TermConceptMappingSet | Mapping candidates | `CREATE_MAPPING_CANDIDATES` | Candidate mappings between extracted term mentions and KG concepts, with status and rationale. |
@@ -38,13 +38,19 @@
 
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
-| Requirement | Software requirement | `CLASSIFY_REQUIREMENT`; Required Artifacts | KG concept representing a required system behavior, quality, constraint, or capability. |
+| Requirement | Software requirement | `CLASSIFY_REQUIREMENT`; Required Artifacts | KG concept representing a binding system or product obligation. |
 | RequirementSyntax | Extracted requirement syntax | `EXTRACT_REQUIREMENT_SYNTAX` | Domain value describing the required subject, action, and object, with optional condition and constraint extracted from raw requirement text. |
 | RequirementSyntaxExtraction | Syntax extraction capability | `EXTRACT_REQUIREMENT_SYNTAX` | Application capability that extracts RequirementSyntax from RawRequirementText. |
 | MissingRequirementSyntaxElement | Missing required syntax role | `EXTRACT_REQUIREMENT_SYNTAX` | Domain rule violation raised when RequirementSyntax lacks required subject, action, or object. |
 | InvalidRawRequirementText | Invalid source text | `INTAKE_REQUIREMENT` | Domain rule violation raised when RawRequirementText is absent or blank. |
 | Goal | Objective | `CLASSIFY_REQUIREMENT`; Open Questions | KG concept representing a desired outcome or stakeholder objective. |
-| Scenario | Use case; example flow | `CLASSIFY_REQUIREMENT`; Open Questions | KG concept representing a concrete situation or behavioral path relevant to a requirement. |
+| Need | Stakeholder need; capability gap | `CLASSIFY_REQUIREMENT`; Open Questions | KG concept representing what a stakeholder needs before it is expressed as a binding system obligation. |
+| RequirementConceptType | Classification type | `CLASSIFY_REQUIREMENT` | Closed set of supported KG concept types for v1 classification: `GOAL`, `NEED`, and `REQUIREMENT`. |
+| RequirementProperty | Classification property | `CLASSIFY_REQUIREMENT` | Cross-cutting property assigned to eligible `Goal`, `Need`, and `Requirement` classifications: `FUNCTIONAL` or `QUALITY`. |
+| ConfidenceScore | Classification confidence | `CLASSIFY_REQUIREMENT` | Numeric score from `0.0` to `1.0` expressing classifier certainty in the complete classification result. |
+| ClassificationRationale | Classification reason | `CLASSIFY_REQUIREMENT` | Short explanation of why the raw text received the selected concept type and property. |
+| Functional | Behavioral property | `CLASSIFY_REQUIREMENT` | Property for behavior, capability, workflow, or operation. |
+| Quality | Quality property | `CLASSIFY_REQUIREMENT` | Property for quality attributes and constraints such as performance, security, availability, usability, reliability, or compliance. |
 | SystemComponent | Backend component; service; module | `RETRIEVE_CANDIDATE_CONCEPTS`; Human Decision Points | KG concept representing an implementation-facing system part. |
 | UIComponent | User interface component; screen element | `RETRIEVE_CANDIDATE_CONCEPTS`; Human Decision Points | KG concept representing a visible or interactive user interface part. |
 | Subject | Actor; grammatical subject | `EXTRACT_REQUIREMENT_SYNTAX` | Extracted syntax role identifying who or what performs or owns an action. |
@@ -58,7 +64,7 @@
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
 | INTAKE_REQUIREMENT | Intake | State Table | Start state that captures raw requirement text and provenance. |
-| CLASSIFY_REQUIREMENT | Classify | State Table | State that assigns an initial KG type and context to the requirement. |
+| CLASSIFY_REQUIREMENT | Classify | State Table | State that assigns an initial KG type and property to the requirement. |
 | EXTRACT_REQUIREMENT_SYNTAX | Extract syntax | State Table | State that extracts candidate terms from requirement syntax. |
 | RETRIEVE_CANDIDATE_CONCEPTS | Retrieve matches | State Table | State that searches the KG for concepts matching extracted terms. |
 | CREATE_MAPPING_CANDIDATES | Create mappings | State Table | State that converts retrieval results into explicit mapping candidates. |
