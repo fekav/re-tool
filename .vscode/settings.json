@@ -1,0 +1,14 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.test.config": [
+        {
+            "name": "Workspace resources",
+            "classPaths": [
+                "${workspaceFolder}/src/main/resources",
+                "${workspaceFolder}/src/test/resources"
+            ]
+        }
+    ],
+    "java.test.defaultConfig": "Workspace resources"
+}

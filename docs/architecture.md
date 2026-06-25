@@ -21,6 +21,11 @@ src/main/java/io/fekav
     │   ├── event
     │   └── model
     │
+    ├── classification
+    │   ├── application             // command handler and classification port
+    │   ├── domain                  // classification values and evidence
+    │   └── infrastructure          // LLM-backed adapter and output DTOs
+    │
     └── entityextraction
         ├── application             // command handler and application ports
         ├── domain                  // domain values and domain rule exceptions
@@ -65,6 +70,34 @@ REST/API
   -> domain events
 ```
 
+## Requirement Classification
+
+`ClassifyRequirementCommandHandler` is the use-case orchestrator for
+`CLASSIFY_REQUIREMENT`. It creates the requirement, calls the
+`RequirementClassificationService` application port, applies the returned
+`RequirementClassification`, publishes domain events, and returns the domain
+result. Low confidence remains part of the returned result so consumers can
+decide whether review or triage is needed.
+
+The current port implementation is `LlmRequirementClassificationService` in the
+`classification.infrastructure` package. It follows the same provider-boundary
+pattern as syntax extraction: send the app-owned JSON Schema as the
+structured-output format, parse the provider wrapper, validate the model output
+DTO, reject unsupported enum values or invalid evidence, and map only validated
+output into the domain model.
+
+```text
+REST/API
+  -> ClassifyRequirementCommandHandler
+  -> RequirementClassificationService port
+  -> LlmRequirementClassificationService
+  -> LlmClientPort
+  -> structured-output DTO validation
+  -> RequirementClassification domain type
+  -> Requirement aggregate
+  -> domain events
+```
+
 ## Structured-Output Contracts
 
 The structured-output contract is split across artifacts on purpose:
@@ -72,10 +105,13 @@ The structured-output contract is split across artifacts on purpose:
 ```text
 JSON Schema resource
     src/main/resources/contracts/ai/v1/requirement-syntax.schema.json
+    src/main/resources/contracts/ai/v1/requirement-classification.schema.json
 
 Java DTO binding
     RequirementSyntaxOutput
     RequirementSyntaxElementsOutput
+    RequirementClassificationOutput
+    RequirementClassificationFieldsOutput
 
 Executable validation
     StructuredOutputContract
@@ -83,6 +119,7 @@ Executable validation
 
 Domain result
     RequirementSyntax
+    RequirementClassification
 ```
 
 The DTOs describe the external model-output shape. The domain type describes the
@@ -90,4 +127,4 @@ validated business concept. New LLM-backed features should follow the same
 boundary: schema and DTOs at the infrastructure edge, reusable validation in
 `platform.structuredoutput`, and domain types inside the owning slice.
 
-See also `docs/json-contracts.md` for general conecpt overview
+See also `docs/json-contracts.md` for general concept overview.

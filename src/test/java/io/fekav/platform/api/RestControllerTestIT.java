@@ -16,6 +16,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.fekav.req.classification.application.RequirementClassificationService;
+import io.fekav.req.classification.domain.ClassificationRationale;
+import io.fekav.req.classification.domain.ConfidenceScore;
+import io.fekav.req.classification.domain.RequirementClassification;
+import io.fekav.req.classification.domain.RequirementConceptType;
+import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.entityextraction.application.RequirementSyntaxExtraction;
 import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
@@ -33,12 +39,16 @@ class RestControllerTestIT {
     @InjectMock
     RequirementSyntaxExtraction requirementSyntaxExtraction;
 
+    @InjectMock
+    RequirementClassificationService requirementClassificationService;
+
     ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
         reset(requirementSyntaxExtraction);
+        reset(requirementClassificationService);
     }
 
     @ParameterizedTest(name = "{index}: {0}")
@@ -78,6 +88,43 @@ class RestControllerTestIT {
             .containsEntry(RequirementSyntaxType.CONDITION, condition);
     }
 
+    @ParameterizedTest(name = "{index}: {0}")
+    @MethodSource("classificationRequirementTexts")
+    void returnsRequirementClassification_whenClassifyRequirementCommandIsPosted(
+        String requirementText,
+        RequirementConceptType conceptType,
+        RequirementProperty property,
+        double confidenceScore,
+        String rationale
+    ) throws Exception {
+        RequirementClassification classification = new RequirementClassification(
+            conceptType,
+            property,
+            new ConfidenceScore(confidenceScore),
+            new ClassificationRationale(rationale)
+        );
+        when(requirementClassificationService.classifyRequirement(new RawRequirementText(requirementText)))
+            .thenReturn(classification);
+
+        RequirementClassification result =
+            given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(classificationCommandRequest(requirementText))
+            .when()
+                .post("/c")
+            .then()
+                .statusCode(201)
+                .contentType(ContentType.JSON)
+                .extract()
+                .as(RequirementClassification.class);
+
+        assertThat(result.conceptType()).isEqualTo(conceptType);
+        assertThat(result.property()).isEqualTo(property);
+        assertThat(result.confidenceScore()).isEqualTo(new ConfidenceScore(confidenceScore));
+        assertThat(result.rationale()).isEqualTo(new ClassificationRationale(rationale));
+    }
+
     static Stream<Arguments> requirementTexts() {
         return Stream.of(
             Arguments.of(
@@ -107,10 +154,38 @@ class RestControllerTestIT {
         );
     }
 
+    static Stream<Arguments> classificationRequirementTexts() {
+        return Stream.of(
+            Arguments.of(
+                "The checkout service must support guest checkout.",
+                RequirementConceptType.REQUIREMENT,
+                RequirementProperty.FUNCTIONAL,
+                0.94,
+                "The text assigns a verifiable obligation to the service."
+            ),
+            Arguments.of(
+                "Make checkout better for returning customers.",
+                RequirementConceptType.GOAL,
+                RequirementProperty.FUNCTIONAL,
+                0.42,
+                "The wording is ambiguous, so this is a forced best-fit classification."
+            )
+        );
+    }
+
     private String commandRequest(String requirementText) throws Exception {
         return objectMapper.writeValueAsString(Map.of(
             "command",
             "ExtractEntitiesCommand",
+            "payload",
+            Map.of("rawText", requirementText)
+        ));
+    }
+
+    private String classificationCommandRequest(String requirementText) throws Exception {
+        return objectMapper.writeValueAsString(Map.of(
+            "command",
+            "ClassifyRequirementCommand",
             "payload",
             Map.of("rawText", requirementText)
         ));

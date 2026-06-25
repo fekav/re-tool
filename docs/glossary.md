@@ -19,6 +19,9 @@
 |---|---|---|---|
 | RequirementRecord | Requirement node; raw requirement | `INTAKE_REQUIREMENT` | Durable representation of a raw requirement text with source provenance and ingestion metadata. |
 | RequirementClassification | Requirement type assignment | `CLASSIFY_REQUIREMENT` | Assignment of raw requirement text to a supported KG concept type and property, with confidence score and rationale. |
+| RequirementClassificationService | Classification capability | `CLASSIFY_REQUIREMENT` | Application capability that classifies RawRequirementText into a RequirementClassification. |
+| ClassifyRequirementCommand | Classify requirement instruction | `CLASSIFY_REQUIREMENT` | Command requesting classification of RawRequirementText. |
+| RequirementClassified | Requirement classified event | `CLASSIFY_REQUIREMENT` | Domain event raised after a Requirement receives a RequirementClassification. |
 | TermMentionSet | Candidate terms; extracted terms | `EXTRACT_REQUIREMENT_SYNTAX` | Extracted subject, object, action, condition, and constraint mentions linked to source text spans. |
 | CandidateConceptMatchSet | Candidate concepts; retrieval results | `RETRIEVE_CANDIDATE_CONCEPTS` | Ranked KG concepts that may match extracted term mentions, including match scores and evidence. |
 | TermConceptMappingSet | Mapping candidates | `CREATE_MAPPING_CANDIDATES` | Candidate mappings between extracted term mentions and KG concepts, with status and rationale. |
@@ -49,6 +52,8 @@
 | RequirementProperty | Classification property | `CLASSIFY_REQUIREMENT` | Cross-cutting property assigned to eligible `Goal`, `Need`, and `Requirement` classifications: `FUNCTIONAL` or `QUALITY`. |
 | ConfidenceScore | Classification confidence | `CLASSIFY_REQUIREMENT` | Numeric score from `0.0` to `1.0` expressing classifier certainty in the complete classification result. |
 | ClassificationRationale | Classification reason | `CLASSIFY_REQUIREMENT` | Short explanation of why the raw text received the selected concept type and property. |
+| InvalidConfidenceScore | Invalid classification confidence | `CLASSIFY_REQUIREMENT` | Domain rule violation raised when a confidence score is not between `0.0` and `1.0` inclusive. |
+| InvalidClassificationRationale | Invalid classification reason | `CLASSIFY_REQUIREMENT` | Domain rule violation raised when a classification rationale is absent or blank. |
 | Functional | Behavioral property | `CLASSIFY_REQUIREMENT` | Property for behavior, capability, workflow, or operation. |
 | Quality | Quality property | `CLASSIFY_REQUIREMENT` | Property for quality attributes and constraints such as performance, security, availability, usability, reliability, or compliance. |
 | SystemComponent | Backend component; service; module | `RETRIEVE_CANDIDATE_CONCEPTS`; Human Decision Points | KG concept representing an implementation-facing system part. |

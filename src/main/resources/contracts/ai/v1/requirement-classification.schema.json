@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.fekav.io/ai/v1/requirement-classification.schema.json",
+  "type": "object",
+  "required": ["classification"],
+  "additionalProperties": false,
+  "properties": {
+    "classification": {
+      "type": "object",
+      "required": ["conceptType", "property", "confidenceScore", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "conceptType": {
+          "type": "string",
+          "enum": ["GOAL", "NEED", "REQUIREMENT"]
+        },
+        "property": {
+          "type": "string",
+          "enum": ["FUNCTIONAL", "QUALITY"]
+        },
+        "confidenceScore": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "rationale": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
