@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -58,6 +59,10 @@ public class OllamaClientAdapter implements LlmClientPort {
         if (llmBaseUrl.isBlank()) {
             throw new IllegalStateException("config property not set for llm Url");
         }
+        Objects.requireNonNull(prompt, "prompt must not be null");
+        Objects.requireNonNull(format, "format must not be null");
+        log.info("format: " + format);
+        
 
         try {
             String payload = buildRequestPayload(prompt, format);

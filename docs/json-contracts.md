@@ -39,6 +39,12 @@ pass domain type into domain/application core
 
 ## Ownership
 
+In this project, a contract is an owned agreement at a boundary. It is not one
+class, one DTO, or one schema file by itself. For LLM structured output, the
+contract is the combination of the app-owned JSON shape, the Java DTO that binds
+that shape, the validation rules that make the shape executable, and the mapper
+that turns validated output into a domain type.
+
 ```text
 Ollama HTTP request/response schema:
     owned by Ollama
@@ -46,9 +52,21 @@ Ollama HTTP request/response schema:
 Structured-output schema:
     owned by this application
 
+Structured-output DTO:
+    owned by this application; Java binding for the structured-output schema
+
+Structured-output validation:
+    owned by this application; executable checks before mapping to the domain
+
 Domain model:
-    owned by the domain core
+    owned by the domain core; semantic invariants after translation
 ```
+
+Example: `RequirementSyntaxOutput` is the Java binding for the
+requirement-syntax structured-output contract. Its `StructuredOutputContract`
+describes required and optional fields for the handwritten validator. After
+validation, it maps to `RequirementSyntax`, which is the domain type and not the
+LLM output contract.
 
 ## Module Placement
 

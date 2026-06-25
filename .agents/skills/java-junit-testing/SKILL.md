@@ -26,14 +26,14 @@ Some teams prefer the given-when-then vocabulary for readability — match whate
 ```java
 @Test
 void shouldApplyDiscount_whenCustomerIsLoyaltyMember() {
-    // Given
+    // Arrange
     Customer customer = CustomerTestData.loyaltyMember();
     Order order = new Order(customer, List.of(new LineItem("SKU-1", 100.0)));
 
-    // When
+    // Act
     PricedOrder result = pricingService.price(order);
 
-    // Then
+    // Assert
     assertThat(result.total()).isEqualTo(90.0);
 }
 ```
@@ -59,6 +59,7 @@ A few hard rules that prevent the most common test-quality complaints in code re
 - **Only mock what you don't own** — collaborators that cross a boundary (repositories,
   HTTP clients, clocks, message publishers). Don't mock simple value objects, DTOs, or
   classes with no real behavior — just construct them.
+- **Do not mock when writing end-to-end tests**ö
 - **Prefer constructor injection** with `@InjectMocks` over manual `Mockito.mock(...)` wiring or static-mocking tools —
   it's less code and fails fast if the constructor changes.
 - **Never silence `UnnecessaryStubbingException` with `lenient()`** as a first move — it's

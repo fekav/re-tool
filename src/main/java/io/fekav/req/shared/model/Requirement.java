@@ -22,7 +22,11 @@ public class Requirement {
     }    
 
     public static Requirement create(String rawText) {
-        return new Requirement(RequirementId.create(), rawText);
+        return create(new RawRequirementText(rawText));
+    }
+
+    public static Requirement create(RawRequirementText rawRequirementText) {
+        return new Requirement(RequirementId.create(), rawRequirementText.text());
     }
 
     public String getRawText() {
