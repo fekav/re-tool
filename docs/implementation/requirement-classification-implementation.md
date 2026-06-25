@@ -74,7 +74,6 @@ Concept-type tie-breakers:
 | Text describes a desired business or product outcome without a concrete system obligation. | Prefer `GOAL`. |
 | Text is stakeholder-centered and describes what someone needs, wants, or lacks before a binding system obligation is stated. | Prefer `NEED`. |
 | Text assigns an obligation to the product, system, service, component, or team and can be verified. | Prefer `REQUIREMENT`. |
-| Text is scenario-shaped, such as a user-story sentence, but `SCENARIO` is not a v1 output. | Classify by intent and commitment level using `GOAL`, `NEED`, or `REQUIREMENT`. |
 
 Property tie-breakers:
 
@@ -101,6 +100,7 @@ Confidence calibration:
 - Require concept type, property, confidence score, and rationale. Invalid or unsupported model output is an adapter failure, not a domain value.
 - Use one overall confidence score from `0.0` to `1.0`.
 - Include classifier signals, tie-breakers, minimal-pair examples, and confidence calibration in the prompt. Signals are evidence cues, not keyword-only rules.
+- V1 returns low-confidence classifications without adding automatic workflow routing. Consumers can use `confidenceScore` for review or triage policy outside the classifier.
 
 ## Dependency Graph
 
@@ -178,7 +178,9 @@ Glossary and workflow docs
 - [ ] Prompt includes classifier signals and tie-breakers for `GOAL` vs `NEED` vs `REQUIREMENT`.
 - [ ] Prompt includes property tie-breakers for `FUNCTIONAL` vs `QUALITY`.
 - [ ] Prompt includes minimal-pair examples covering all six concept/property combinations.
-- [ ] Prompt explicitly states that `SCENARIO` is not a v1 output.
+- [ ] Prompt includes counterexamples showing that keywords are not sufficient by themselves.
+- [ ] Prompt includes ambiguous or mixed-signal examples that produce lower confidence and name the ambiguity in the rationale.
+- [ ] Prompt constrains `conceptType` to exactly `GOAL`, `NEED`, and `REQUIREMENT`.
 - [ ] Prompt includes the confidence calibration rubric and instructs the model not to inflate confidence for mixed signals.
 - [ ] Prompt requires the rationale to justify both the concept type and property.
 - [ ] Adapter parses the Ollama response wrapper, validates DTO output, and returns `RequirementClassification`.
@@ -186,7 +188,8 @@ Glossary and workflow docs
 
 **Verification:**
 - [ ] Tests pass: `./gradlew test --tests '*LlmRequirementClassification*'`
-- [ ] Prompt contract test confirms the generated prompt contains concept definitions, property definitions, tie-breakers, confidence calibration, and the no-`SCENARIO` instruction.
+- [ ] Prompt contract test confirms the generated prompt contains concept definitions, property definitions, tie-breakers, counterexamples, confidence calibration, and the exact supported concept-type enum.
+- [ ] Fixture-backed prompt test covers the six concept/property combinations plus at least one ambiguous concept-type case and one mixed functional/quality case.
 
 **Dependencies:** Task 2.
 
@@ -205,6 +208,7 @@ Glossary and workflow docs
 **Acceptance criteria:**
 - [ ] `ClassifyRequirementCommand` validates non-blank raw text.
 - [ ] Handler creates `RawRequirementText`, delegates to `RequirementClassificationService`, applies classification to `Requirement`, publishes a classification event, and returns `RequirementClassification` including confidence score and rationale.
+- [ ] Handler returns the classifier's confidence score unchanged, including low-confidence scores.
 - [ ] Existing `ExtractEntitiesCommand` behavior remains unchanged.
 
 **Verification:**
@@ -235,6 +239,7 @@ Glossary and workflow docs
 **Acceptance criteria:**
 - [ ] Posting `ClassifyRequirementCommand` returns a serialized `RequirementClassification`.
 - [ ] Response includes concept type, property, confidence score, and rationale.
+- [ ] Response preserves low-confidence classification results so clients can apply their own triage policy.
 - [ ] Integration test mocks the classification application port, not the LLM provider.
 - [ ] Existing extract-entities REST tests remain unchanged.
 
@@ -250,15 +255,16 @@ Glossary and workflow docs
 
 ### Task 6: Update Project Documentation
 
-**Description:** Keep implementation docs aligned with the new classifier contract and omit `Scenario` from v1 classification language.
+**Description:** Keep implementation docs aligned with the new classifier contract and supported concept vocabulary.
 
 **Acceptance criteria:**
 - [ ] `docs/glossary.md` defines `Need`, `RequirementConceptType`, `RequirementProperty`, `ConfidenceScore`, `ClassificationRationale`, `Functional`, and `Quality`.
 - [ ] `docs/workflows/requirement-kg-persistence.md` names `Goal`, `Need`, and `Requirement` as v1 classification concept types.
+- [ ] Documentation states that low confidence is a consumer review signal, not a classifier failure.
 - [ ] `docs/architecture.md` references the classification slice pattern after implementation.
 
 **Verification:**
-- [ ] Manual doc review confirms `Scenario` is not listed as a v1 classification output.
+- [ ] Manual doc review confirms the only documented concept types are `Goal`, `Need`, and `Requirement`.
 
 **Dependencies:** Tasks 1-5.
 
@@ -284,12 +290,11 @@ Glossary and workflow docs
 | LLM confuses `NEED` and `REQUIREMENT`. | Medium | Prompt with commitment-level definitions and few-shot examples for both. |
 | LLM confuses `FUNCTIONAL` and `QUALITY` for high-level goals. | Medium | Define property as a separate axis and include goal examples for both properties. |
 | Classifier signals cause keyword overfitting. | Medium | Present signals as evidence cues, add tie-breakers and counterexamples, and require confidence to drop when signals conflict. |
-| Scenario-shaped inputs reintroduce a `SCENARIO` category. | Low | Prompt explicitly states that `SCENARIO` is not a v1 output and scenario-shaped text must be classified by intent and commitment level. |
 | Model gives a rationale for only one axis. | Medium | Prompt requires the rationale to explain both concept type and property; prompt contract tests keep that instruction present. |
 | Model is forced to classify ambiguous text because v1 has no `UNKNOWN`. | Medium | Keep the best-fit classification, lower confidence for ambiguity, and let downstream consumers route low-confidence results to human review. |
 | Model returns unsupported values despite schema guidance. | Medium | DTO mapping rejects unsupported enum values before domain construction. |
 | Model returns overconfident or vague evidence. | Medium | Prompt requires a grounded rationale; tests verify score bounds and non-blank rationale, while human review can use low confidence for triage. |
-| Prompt examples drift from domain documentation. | Low | Keep the six classification matrix examples as fixture cases and assert the prompt still includes the current definitions and no-`SCENARIO` constraint. |
+| Prompt examples drift from domain documentation. | Low | Keep the six classification matrix examples as fixture cases and assert the prompt still includes the current definitions and exact supported concept-type enum. |
 | Existing text-only validator does not validate enum membership. | Low | Keep required-field validation in `StructuredOutputValidator`; perform enum membership validation in infrastructure mapping. |
 | Existing text-only validator does not validate numeric confidence. | Low | Keep text validation in `StructuredOutputValidator`; perform confidence range validation in DTO mapping or extend the validator in a focused task if repetition appears. |
 | Adding classification to `Requirement` status changes extraction flow. | Medium | Add a separate command and event; do not change `ExtractEntitiesCommand` result or behavior. |
