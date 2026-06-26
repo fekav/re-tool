@@ -8,6 +8,10 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import io.fekav.req.syntaxextraction.domain.MissingRequirementSyntaxElementException;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntaxType;
+
 class RequirementSyntaxTest {
 
     @Test

@@ -2,12 +2,12 @@ package io.fekav.req.classification.infrastructure;
 
 import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputContract;
-import io.fekav.req.classification.domain.ClassificationRationale;
+import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.InvalidClassificationRationaleException;
 import io.fekav.req.classification.domain.InvalidConfidenceScoreException;
-import io.fekav.req.classification.domain.RequirementClassification;
-import io.fekav.req.classification.domain.RequirementConceptType;
+import io.fekav.req.classification.domain.Classification;
+import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.classification.domain.RequirementProperty;
 
 public record RequirementClassificationOutput(
@@ -23,8 +23,8 @@ public record RequirementClassificationOutput(
             .build();
     }
 
-    RequirementClassification toRequirementClassification() {
-        return new RequirementClassification(
+    Classification toRequirementClassification() {
+        return new Classification(
             requirementConceptType(),
             requirementProperty(),
             confidenceScore(),
@@ -32,9 +32,9 @@ public record RequirementClassificationOutput(
         );
     }
 
-    private RequirementConceptType requirementConceptType() {
+    private RequirementType requirementConceptType() {
         try {
-            return RequirementConceptType.valueOf(conceptType());
+            return RequirementType.valueOf(conceptType());
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new InvalidStructuredOutputException(
                 "unsupported requirement concept type: " + conceptType(),
@@ -62,9 +62,9 @@ public record RequirementClassificationOutput(
         }
     }
 
-    private ClassificationRationale classificationRationale() {
+    private Rationale classificationRationale() {
         try {
-            return new ClassificationRationale(rationale());
+            return new Rationale(rationale());
         } catch (InvalidClassificationRationaleException e) {
             throw new InvalidStructuredOutputException("classification rationale is invalid", e);
         }

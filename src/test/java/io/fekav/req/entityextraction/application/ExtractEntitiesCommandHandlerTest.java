@@ -13,10 +13,13 @@ import org.mockito.ArgumentCaptor;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventPublisher;
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
-import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
 import io.fekav.req.shared.event.EntitiesExtractedEvent;
 import io.fekav.req.shared.model.RawText;
+import io.fekav.req.syntaxextraction.application.ExtractEntitiesCommand;
+import io.fekav.req.syntaxextraction.application.ExtractEntitiesCommandHandler;
+import io.fekav.req.syntaxextraction.application.RequirementSyntaxExtraction;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntaxType;
 
 class ExtractEntitiesCommandHandlerTest {
 

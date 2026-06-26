@@ -13,14 +13,14 @@ import io.fekav.platform.llm.Prompt;
 import io.fekav.platform.llm.PromptFactory;
 import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
-import io.fekav.req.classification.application.RequirementClassificationService;
-import io.fekav.req.classification.domain.RequirementClassification;
+import io.fekav.req.classification.application.ClassificationService;
+import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.shared.model.RawText;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
-public class LlmRequirementClassificationService implements RequirementClassificationService {
+public class LlmRequirementClassificationService implements ClassificationService {
 
     private static final String REQUIREMENT_CLASSIFICATION_FORMAT =
         "/contracts/ai/v1/requirement-classification.schema.json";
@@ -46,7 +46,7 @@ public class LlmRequirementClassificationService implements RequirementClassific
     }
 
     @Override
-    public RequirementClassification classifyRequirement(RawText rawRequirementText) {
+    public Classification classifyRequirement(RawText rawRequirementText) {
         Objects.requireNonNull(rawRequirementText, "rawRequirementText must not be null");
 
         String llmResponse = llmClientPort.generate(

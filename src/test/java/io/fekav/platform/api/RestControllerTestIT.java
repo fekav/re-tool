@@ -16,16 +16,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.fekav.req.classification.application.RequirementClassificationService;
-import io.fekav.req.classification.domain.ClassificationRationale;
+import io.fekav.req.classification.application.ClassificationService;
+import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.ConfidenceScore;
-import io.fekav.req.classification.domain.RequirementClassification;
-import io.fekav.req.classification.domain.RequirementConceptType;
+import io.fekav.req.classification.domain.Classification;
+import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.classification.domain.RequirementProperty;
-import io.fekav.req.entityextraction.application.RequirementSyntaxExtraction;
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
-import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
 import io.fekav.req.shared.model.RawText;
+import io.fekav.req.syntaxextraction.application.RequirementSyntaxExtraction;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntaxType;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -40,7 +40,7 @@ class RestControllerTestIT {
     RequirementSyntaxExtraction requirementSyntaxExtraction;
 
     @InjectMock
-    RequirementClassificationService requirementClassificationService;
+    ClassificationService requirementClassificationService;
 
     ObjectMapper objectMapper;
 
@@ -92,21 +92,21 @@ class RestControllerTestIT {
     @MethodSource("classificationRequirementTexts")
     void returnsRequirementClassification_whenClassifyRequirementCommandIsPosted(
         String requirementText,
-        RequirementConceptType conceptType,
+        RequirementType conceptType,
         RequirementProperty property,
         double confidenceScore,
         String rationale
     ) throws Exception {
-        RequirementClassification classification = new RequirementClassification(
+        Classification classification = new Classification(
             conceptType,
             property,
             new ConfidenceScore(confidenceScore),
-            new ClassificationRationale(rationale)
+            new Rationale(rationale)
         );
         when(requirementClassificationService.classifyRequirement(new RawText(requirementText)))
             .thenReturn(classification);
 
-        RequirementClassification result =
+        Classification result =
             given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
@@ -117,12 +117,12 @@ class RestControllerTestIT {
                 .statusCode(201)
                 .contentType(ContentType.JSON)
                 .extract()
-                .as(RequirementClassification.class);
+                .as(Classification.class);
 
         assertThat(result.conceptType()).isEqualTo(conceptType);
         assertThat(result.property()).isEqualTo(property);
         assertThat(result.confidenceScore()).isEqualTo(new ConfidenceScore(confidenceScore));
-        assertThat(result.rationale()).isEqualTo(new ClassificationRationale(rationale));
+        assertThat(result.rationale()).isEqualTo(new Rationale(rationale));
     }
 
     static Stream<Arguments> requirementTexts() {
@@ -158,14 +158,14 @@ class RestControllerTestIT {
         return Stream.of(
             Arguments.of(
                 "The checkout service must support guest checkout.",
-                RequirementConceptType.REQUIREMENT,
+                RequirementType.REQUIREMENT,
                 RequirementProperty.FUNCTIONAL,
                 0.94,
                 "The text assigns a verifiable obligation to the service."
             ),
             Arguments.of(
                 "Make checkout better for returning customers.",
-                RequirementConceptType.GOAL,
+                RequirementType.GOAL,
                 RequirementProperty.FUNCTIONAL,
                 0.42,
                 "The wording is ambiguous, so this is a forced best-fit classification."

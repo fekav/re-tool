@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.Objects;
 
 import io.fekav.platform.messaging.DomainEvent;
-import io.fekav.req.classification.domain.RequirementClassification;
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
+import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.shared.event.EntitiesExtractedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
 
 // Domain Model / Aggregat-Root
 public class Requirement {
@@ -16,7 +16,7 @@ public class Requirement {
     private final String rawText;
     private RequirementStatus status;
     private RequirementSyntax extractionResult;
-    private RequirementClassification classificationResult;
+    private Classification classificationResult;
     private final List<DomainEvent> domainEvents = new ArrayList<>();
     
     private Requirement(RequirementId id, String rawText) {
@@ -49,7 +49,7 @@ public class Requirement {
         );
     }
 
-    public void applyClassification(RequirementClassification classification) {
+    public void applyClassification(Classification classification) {
         this.classificationResult = Objects.requireNonNull(
             classification,
             "classification must not be null"

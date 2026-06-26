@@ -11,29 +11,29 @@ class RequirementClassificationTest {
 
     @Test
     void acceptsRequirementClassification_whenAllClassificationEvidenceIsValid() {
-        RequirementClassification classification = new RequirementClassification(
-            RequirementConceptType.REQUIREMENT,
+        Classification classification = new Classification(
+            RequirementType.REQUIREMENT,
             RequirementProperty.QUALITY,
             new ConfidenceScore(0.93),
-            new ClassificationRationale("The sentence uses must and gives a measurable response-time constraint.")
+            new Rationale("The sentence uses must and gives a measurable response-time constraint.")
         );
 
-        assertThat(classification.conceptType()).isEqualTo(RequirementConceptType.REQUIREMENT);
+        assertThat(classification.conceptType()).isEqualTo(RequirementType.REQUIREMENT);
         assertThat(classification.property()).isEqualTo(RequirementProperty.QUALITY);
         assertThat(classification.confidenceScore()).isEqualTo(new ConfidenceScore(0.93));
         assertThat(classification.rationale())
-            .isEqualTo(new ClassificationRationale(
+            .isEqualTo(new Rationale(
                 "The sentence uses must and gives a measurable response-time constraint."
             ));
     }
 
     @Test
     void requiresRequirementConceptType() {
-        assertThatThrownBy(() -> new RequirementClassification(
+        assertThatThrownBy(() -> new Classification(
             null,
             RequirementProperty.QUALITY,
             new ConfidenceScore(0.93),
-            new ClassificationRationale("The sentence gives a measurable constraint.")
+            new Rationale("The sentence gives a measurable constraint.")
         ))
             .isInstanceOf(NullPointerException.class)
             .hasMessage("conceptType must not be null");
@@ -41,11 +41,11 @@ class RequirementClassificationTest {
 
     @Test
     void requiresRequirementProperty() {
-        assertThatThrownBy(() -> new RequirementClassification(
-            RequirementConceptType.REQUIREMENT,
+        assertThatThrownBy(() -> new Classification(
+            RequirementType.REQUIREMENT,
             null,
             new ConfidenceScore(0.93),
-            new ClassificationRationale("The sentence gives a measurable constraint.")
+            new Rationale("The sentence gives a measurable constraint.")
         ))
             .isInstanceOf(NullPointerException.class)
             .hasMessage("property must not be null");
@@ -53,11 +53,11 @@ class RequirementClassificationTest {
 
     @Test
     void requiresConfidenceScore() {
-        assertThatThrownBy(() -> new RequirementClassification(
-            RequirementConceptType.REQUIREMENT,
+        assertThatThrownBy(() -> new Classification(
+            RequirementType.REQUIREMENT,
             RequirementProperty.QUALITY,
             null,
-            new ClassificationRationale("The sentence gives a measurable constraint.")
+            new Rationale("The sentence gives a measurable constraint.")
         ))
             .isInstanceOf(NullPointerException.class)
             .hasMessage("confidenceScore must not be null");
@@ -65,8 +65,8 @@ class RequirementClassificationTest {
 
     @Test
     void requiresClassificationRationale() {
-        assertThatThrownBy(() -> new RequirementClassification(
-            RequirementConceptType.REQUIREMENT,
+        assertThatThrownBy(() -> new Classification(
+            RequirementType.REQUIREMENT,
             RequirementProperty.QUALITY,
             new ConfidenceScore(0.93),
             null
@@ -77,11 +77,11 @@ class RequirementClassificationTest {
 
     @Test
     void supportsExactlyV1RequirementConceptTypes() {
-        assertThat(RequirementConceptType.values())
+        assertThat(RequirementType.values())
             .containsExactly(
-                RequirementConceptType.GOAL,
-                RequirementConceptType.NEED,
-                RequirementConceptType.REQUIREMENT
+                RequirementType.GOAL,
+                RequirementType.NEED,
+                RequirementType.REQUIREMENT
             );
     }
 
@@ -110,20 +110,20 @@ class RequirementClassificationTest {
 
     @Test
     void stripsClassificationRationale() {
-        assertThat(new ClassificationRationale(" rationale ").text()).isEqualTo("rationale");
+        assertThat(new Rationale(" rationale ").text()).isEqualTo("rationale");
     }
 
     @ParameterizedTest
     @ValueSource(strings = { "", " " })
     void throwsInvalidClassificationRationale_whenRationaleIsBlank(String rationale) {
-        assertThatThrownBy(() -> new ClassificationRationale(rationale))
+        assertThatThrownBy(() -> new Rationale(rationale))
             .isInstanceOf(InvalidClassificationRationaleException.class)
             .hasMessage("classification rationale must not be blank");
     }
 
     @Test
     void throwsInvalidClassificationRationale_whenRationaleIsNull() {
-        assertThatThrownBy(() -> new ClassificationRationale(null))
+        assertThatThrownBy(() -> new Rationale(null))
             .isInstanceOf(InvalidClassificationRationaleException.class)
             .hasMessage("classification rationale must not be blank");
     }

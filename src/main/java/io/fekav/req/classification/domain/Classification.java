@@ -2,14 +2,14 @@ package io.fekav.req.classification.domain;
 
 import java.util.Objects;
 
-public record RequirementClassification(
-    RequirementConceptType conceptType,
+public record Classification(
+    RequirementType conceptType,
     RequirementProperty property,
     ConfidenceScore confidenceScore,
-    ClassificationRationale rationale
+    Rationale rationale
 ) {
 
-    public RequirementClassification {
+    public Classification {
         Objects.requireNonNull(conceptType, "conceptType must not be null");
         Objects.requireNonNull(property, "property must not be null");
         Objects.requireNonNull(confidenceScore, "confidenceScore must not be null");

@@ -14,8 +14,8 @@ import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidationException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
 import io.fekav.req.classification.domain.ConfidenceScore;
-import io.fekav.req.classification.domain.RequirementClassification;
-import io.fekav.req.classification.domain.RequirementConceptType;
+import io.fekav.req.classification.domain.Classification;
+import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.classification.domain.RequirementProperty;
 
 class RequirementClassificationOutputTest {
@@ -70,9 +70,9 @@ class RequirementClassificationOutputTest {
             "The sentence uses must and gives a measurable response-time constraint."
         );
 
-        RequirementClassification classification = output.toRequirementClassification();
+        Classification classification = output.toRequirementClassification();
 
-        assertThat(classification.conceptType()).isEqualTo(RequirementConceptType.REQUIREMENT);
+        assertThat(classification.conceptType()).isEqualTo(RequirementType.REQUIREMENT);
         assertThat(classification.property()).isEqualTo(RequirementProperty.QUALITY);
         assertThat(classification.confidenceScore()).isEqualTo(new ConfidenceScore(0.93));
         assertThat(classification.rationale().text())

@@ -13,10 +13,10 @@ import org.mockito.ArgumentCaptor;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventPublisher;
-import io.fekav.req.classification.domain.ClassificationRationale;
+import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.ConfidenceScore;
-import io.fekav.req.classification.domain.RequirementClassification;
-import io.fekav.req.classification.domain.RequirementConceptType;
+import io.fekav.req.classification.domain.Classification;
+import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.model.RawText;
@@ -24,8 +24,8 @@ import io.fekav.req.shared.model.RawText;
 class ClassifyRequirementCommandHandlerTest {
 
     private final EventPublisher eventPublisher = mock(EventPublisher.class);
-    private final RequirementClassificationService requirementClassificationService =
-        mock(RequirementClassificationService.class);
+    private final ClassificationService requirementClassificationService =
+        mock(ClassificationService.class);
     private final ClassifyRequirementCommandHandler handler = new ClassifyRequirementCommandHandler(
         eventPublisher,
         requirementClassificationService
@@ -34,8 +34,8 @@ class ClassifyRequirementCommandHandlerTest {
     @Test
     void returnsRequirementClassificationAndPublishesEvent_whenClassificationSucceeds() {
         String rawText = "The checkout page must load within 2 seconds on a 4G connection.";
-        RequirementClassification classification = requirementClassification(
-            RequirementConceptType.REQUIREMENT,
+        Classification classification = requirementClassification(
+            RequirementType.REQUIREMENT,
             RequirementProperty.QUALITY,
             0.93,
             "The sentence uses must and gives a measurable response-time constraint."
@@ -43,7 +43,7 @@ class ClassifyRequirementCommandHandlerTest {
         when(requirementClassificationService.classifyRequirement(new RawText(rawText)))
             .thenReturn(classification);
 
-        RequirementClassification result = handler.handle(new ClassifyRequirementCommand(rawText));
+        Classification result = handler.handle(new ClassifyRequirementCommand(rawText));
 
         assertThat(result).isEqualTo(classification);
         verify(requirementClassificationService).classifyRequirement(new RawText(rawText));
@@ -62,8 +62,8 @@ class ClassifyRequirementCommandHandlerTest {
     @Test
     void preservesLowConfidenceClassification() {
         String rawText = "Make checkout better for returning customers.";
-        RequirementClassification classification = requirementClassification(
-            RequirementConceptType.GOAL,
+        Classification classification = requirementClassification(
+            RequirementType.GOAL,
             RequirementProperty.FUNCTIONAL,
             0.42,
             "The wording is ambiguous, so this is a forced best-fit classification."
@@ -71,7 +71,7 @@ class ClassifyRequirementCommandHandlerTest {
         when(requirementClassificationService.classifyRequirement(new RawText(rawText)))
             .thenReturn(classification);
 
-        RequirementClassification result = handler.handle(new ClassifyRequirementCommand(rawText));
+        Classification result = handler.handle(new ClassifyRequirementCommand(rawText));
 
         assertThat(result.confidenceScore()).isEqualTo(new ConfidenceScore(0.42));
     }
@@ -83,17 +83,17 @@ class ClassifyRequirementCommandHandlerTest {
             .hasMessage("Classification command has no raw text");
     }
 
-    private RequirementClassification requirementClassification(
-        RequirementConceptType conceptType,
+    private Classification requirementClassification(
+        RequirementType conceptType,
         RequirementProperty property,
         double confidenceScore,
         String rationale
     ) {
-        return new RequirementClassification(
+        return new Classification(
             conceptType,
             property,
             new ConfidenceScore(confidenceScore),
-            new ClassificationRationale(rationale)
+            new Rationale(rationale)
         );
     }
 

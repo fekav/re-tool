@@ -1,6 +1,6 @@
 package io.fekav.req.classification.domain;
 
-public enum RequirementConceptType {
+public enum RequirementType {
     GOAL,
     NEED,
     REQUIREMENT

@@ -17,19 +17,19 @@
 
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
-| RequirementRecord | Requirement node; raw requirement | `INTAKE_REQUIREMENT` | Durable representation of a raw requirement text with source provenance and ingestion metadata. |
-| RequirementClassification | Requirement type assignment | `CLASSIFY_REQUIREMENT` | Assignment of raw requirement text to a supported KG concept type and property, with confidence score and rationale. |
-| RequirementClassificationService | Classification capability | `CLASSIFY_REQUIREMENT` | Application capability that classifies RawRequirementText into a RequirementClassification. |
-| ClassifyRequirementCommand | Classify requirement instruction | `CLASSIFY_REQUIREMENT` | Command requesting classification of RawRequirementText. |
-| RequirementClassified | Requirement classified event | `CLASSIFY_REQUIREMENT` | Domain event raised after a Requirement receives a RequirementClassification. |
-| TermMentionSet | Candidate terms; extracted terms | `EXTRACT_REQUIREMENT_SYNTAX` | Extracted subject, object, action, condition, and constraint mentions linked to source text spans. |
+| RawText | Requirement text; raw requirement | `INTAKE_REQUIREMENT` | Durable representation of a raw text.|
+| Classification | RequirementClassification | `CLASSIFY_REQUIREMENT` | Assignment of raw text to a supported KG concept type and property, with confidence score and rationale. |
+| ClassificationService | RequirementClassificationServive | `CLASSIFY_REQUIREMENT` | Application capability that classifies RawText. |
+| ClassifyRequirementCommand | Classify requirement instruction | `CLASSIFY_REQUIREMENT` | Command requesting classification of RawText. |
+| RawTextClassified | RequirementClassifiedEvent | `CLASSIFY_REQUIREMENT` | Domain event raised after a RawText has been classified. |
+| RequirementSyntax | Candidate terms; extracted terms | `EXTRACT_REQUIREMENT_SYNTAX` | Extracted subject, object, action, condition, and constraint mentions linked to source text spans. |
 | CandidateConceptMatchSet | Candidate concepts; retrieval results | `RETRIEVE_CANDIDATE_CONCEPTS` | Ranked KG concepts that may match extracted term mentions, including match scores and evidence. |
 | TermConceptMappingSet | Mapping candidates | `CREATE_MAPPING_CANDIDATES` | Candidate mappings between extracted term mentions and KG concepts, with status and rationale. |
 | ConceptCreationPolicy | Creation policy; mapping policy | `EVALUATE_CONCEPT_POLICY` | Configured rules that decide whether no-match or ambiguous terms are auto-created, proposed, reviewed, blocked, or rejected. |
 | MappingDecisionSet | Mapping decisions | `EVALUATE_CONCEPT_POLICY`; `REQUEST_HUMAN_REVIEW` | Final or pending decisions for term-to-concept mappings and concept proposals. |
 | ConceptProposalSet | New concept proposals | `EVALUATE_CONCEPT_POLICY`; `REQUEST_HUMAN_REVIEW` | Proposed new KG concepts generated when extracted terms do not sufficiently match existing concepts. |
 | PersistenceVerificationReport | Verification report | `VERIFY_QUERYABILITY` | Report proving the persisted requirement can be queried by required identifiers, provenance, terms, mappings, and review states. |
-| Raw Requirement Text | Source text; RawRequirementText | `INTAKE_REQUIREMENT` | Original textual software requirement preserved for provenance and auditability. |
+| Raw Requirement Text | Source text; RawText | `INTAKE_REQUIREMENT` | Original textual software requirement preserved for provenance and auditability. |
 | Provenance | Source metadata; traceability | `INTAKE_REQUIREMENT`; `PERSIST_GRAPH_CHANGES` | Metadata linking KG facts back to the raw requirement source, submitter, and ingestion event. |
 | RequirementSyntaxOutput | Requirement syntax DTO | `EXTRACT_REQUIREMENT_SYNTAX`; `docs/json-contracts.md` | Boundary DTO representing structured model output before it is validated and mapped to RequirementSyntax. |
 | StructuredOutputContract | DTO validation contract | `docs/json-contracts.md` | App-owned description of required DTO fields used by the handwritten structured-output validator. |
@@ -43,9 +43,9 @@
 |---|---|---|---|
 | Requirement | Software requirement | `CLASSIFY_REQUIREMENT`; Required Artifacts | KG concept representing a binding system or product obligation. |
 | RequirementSyntax | Extracted requirement syntax | `EXTRACT_REQUIREMENT_SYNTAX` | Domain value describing the required subject, action, and object, with optional condition and constraint extracted from raw requirement text. |
-| RequirementSyntaxExtraction | Syntax extraction capability | `EXTRACT_REQUIREMENT_SYNTAX` | Application capability that extracts RequirementSyntax from RawRequirementText. |
+| RequirementSyntaxExtraction | Syntax extraction capability | `EXTRACT_REQUIREMENT_SYNTAX` | Application capability that extracts RequirementSyntax from RawText. |
 | MissingRequirementSyntaxElement | Missing required syntax role | `EXTRACT_REQUIREMENT_SYNTAX` | Domain rule violation raised when RequirementSyntax lacks required subject, action, or object. |
-| InvalidRawRequirementText | Invalid source text | `INTAKE_REQUIREMENT` | Domain rule violation raised when RawRequirementText is absent or blank. |
+| InvalidRawText | Invalid source text | `INTAKE_REQUIREMENT` | Domain rule violation raised when RawText is absent or blank. |
 | Goal | Objective | `CLASSIFY_REQUIREMENT`; Open Questions | KG concept representing a desired outcome or stakeholder objective. |
 | Need | Stakeholder need; capability gap | `CLASSIFY_REQUIREMENT`; Open Questions | KG concept representing what a stakeholder needs before it is expressed as a binding system obligation. |
 | RequirementConceptType | Classification type | `CLASSIFY_REQUIREMENT` | Closed set of supported KG concept types for v1 classification: `GOAL`, `NEED`, and `REQUIREMENT`. |

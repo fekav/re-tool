@@ -20,9 +20,10 @@ import io.fekav.platform.llm.Prompt;
 import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidationException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
-import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
 import io.fekav.req.shared.model.RawText;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntaxType;
+import io.fekav.req.syntaxextraction.infrastructure.LlmRequirementSyntaxExtraction;
 
 class LlmRequirementSyntaxExtractionTest {
 

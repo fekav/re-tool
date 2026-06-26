@@ -1,11 +1,11 @@
 package io.fekav.req.classification.application;
 
 import io.fekav.platform.cqrs.Command;
-import io.fekav.req.classification.domain.RequirementClassification;
+import io.fekav.req.classification.domain.Classification;
 
 public record ClassifyRequirementCommand(
     String rawText
-) implements Command<RequirementClassification> {
+) implements Command<Classification> {
 
     public ClassifyRequirementCommand {
         if (rawText == null || rawText.isBlank()) {

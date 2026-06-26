@@ -1,4 +1,4 @@
-package io.fekav.req.entityextraction.domain;
+package io.fekav.req.syntaxextraction.domain;
 
 /**
  * 

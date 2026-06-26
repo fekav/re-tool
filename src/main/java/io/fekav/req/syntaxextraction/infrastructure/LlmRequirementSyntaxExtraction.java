@@ -1,4 +1,4 @@
-package io.fekav.req.entityextraction.infrastructure;
+package io.fekav.req.syntaxextraction.infrastructure;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,9 +13,9 @@ import io.fekav.platform.llm.Prompt;
 import io.fekav.platform.llm.PromptFactory;
 import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
-import io.fekav.req.entityextraction.application.RequirementSyntaxExtraction;
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.shared.model.RawText;
+import io.fekav.req.syntaxextraction.application.RequirementSyntaxExtraction;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

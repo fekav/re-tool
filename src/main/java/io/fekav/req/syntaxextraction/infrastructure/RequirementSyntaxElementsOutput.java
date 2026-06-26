@@ -1,4 +1,4 @@
-package io.fekav.req.entityextraction.infrastructure;
+package io.fekav.req.syntaxextraction.infrastructure;
 
 public record RequirementSyntaxElementsOutput(
     String SUBJECT,

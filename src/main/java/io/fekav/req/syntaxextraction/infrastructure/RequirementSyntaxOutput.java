@@ -1,11 +1,11 @@
-package io.fekav.req.entityextraction.infrastructure;
+package io.fekav.req.syntaxextraction.infrastructure;
 
 import java.util.EnumMap;
 import java.util.function.Function;
 
 import io.fekav.platform.structuredoutput.StructuredOutputContract;
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
-import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntaxType;
 
 public record RequirementSyntaxOutput(
     RequirementSyntaxElementsOutput syntaxElements

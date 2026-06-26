@@ -1,7 +1,7 @@
-package io.fekav.req.entityextraction.application;
+package io.fekav.req.syntaxextraction.application;
 
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.shared.model.RawText;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
 
 public interface RequirementSyntaxExtraction {
 

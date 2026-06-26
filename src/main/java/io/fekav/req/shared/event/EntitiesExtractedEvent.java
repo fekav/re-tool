@@ -4,8 +4,8 @@ import java.time.Instant;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventId;
-import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.shared.model.RequirementId;
+import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
 
 /**
  * Domain event
