@@ -19,7 +19,7 @@ import io.fekav.req.classification.domain.RequirementClassification;
 import io.fekav.req.classification.domain.RequirementConceptType;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 
 class ClassifyRequirementCommandHandlerTest {
 
@@ -40,13 +40,13 @@ class ClassifyRequirementCommandHandlerTest {
             0.93,
             "The sentence uses must and gives a measurable response-time constraint."
         );
-        when(requirementClassificationService.classifyRequirement(new RawRequirementText(rawText)))
+        when(requirementClassificationService.classifyRequirement(new RawText(rawText)))
             .thenReturn(classification);
 
         RequirementClassification result = handler.handle(new ClassifyRequirementCommand(rawText));
 
         assertThat(result).isEqualTo(classification);
-        verify(requirementClassificationService).classifyRequirement(new RawRequirementText(rawText));
+        verify(requirementClassificationService).classifyRequirement(new RawText(rawText));
 
         ArgumentCaptor<List<DomainEvent>> domainEvents = eventCaptor();
         verify(eventPublisher).publishAll(domainEvents.capture());
@@ -68,7 +68,7 @@ class ClassifyRequirementCommandHandlerTest {
             0.42,
             "The wording is ambiguous, so this is a forced best-fit classification."
         );
-        when(requirementClassificationService.classifyRequirement(new RawRequirementText(rawText)))
+        when(requirementClassificationService.classifyRequirement(new RawText(rawText)))
             .thenReturn(classification);
 
         RequirementClassification result = handler.handle(new ClassifyRequirementCommand(rawText));

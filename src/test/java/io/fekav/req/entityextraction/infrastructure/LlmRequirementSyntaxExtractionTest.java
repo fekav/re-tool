@@ -22,7 +22,7 @@ import io.fekav.platform.structuredoutput.StructuredOutputValidationException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
 import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 
 class LlmRequirementSyntaxExtractionTest {
 
@@ -47,7 +47,7 @@ class LlmRequirementSyntaxExtractionTest {
             ))));
 
         RequirementSyntax requirementSyntax =
-            extraction.extractRequirementSyntax(new RawRequirementText(requirementText));
+            extraction.extractRequirementSyntax(new RawText(requirementText));
 
         assertThat(requirementSyntax.syntaxElements())
             .containsEntry(RequirementSyntaxType.SUBJECT, "reporting dashboard")
@@ -76,7 +76,7 @@ class LlmRequirementSyntaxExtractionTest {
             ))));
 
         RequirementSyntax requirementSyntax = extraction.extractRequirementSyntax(
-            new RawRequirementText("The reporting dashboard shall export monthly usage metrics.")
+            new RawText("The reporting dashboard shall export monthly usage metrics.")
         );
 
         assertThat(requirementSyntax.syntaxElements())
@@ -93,7 +93,7 @@ class LlmRequirementSyntaxExtractionTest {
             .thenReturn("{");
 
         assertThatThrownBy(() ->
-            extraction.extractRequirementSyntax(new RawRequirementText("The system shall export reports."))
+            extraction.extractRequirementSyntax(new RawText("The system shall export reports."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("llm response is not valid JSON");
@@ -105,7 +105,7 @@ class LlmRequirementSyntaxExtractionTest {
             .thenReturn("{\"done\":true}");
 
         assertThatThrownBy(() ->
-            extraction.extractRequirementSyntax(new RawRequirementText("The system shall export reports."))
+            extraction.extractRequirementSyntax(new RawText("The system shall export reports."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("llm response does not contain model output");
@@ -120,7 +120,7 @@ class LlmRequirementSyntaxExtractionTest {
             ))));
 
         assertThatThrownBy(() ->
-            extraction.extractRequirementSyntax(new RawRequirementText("The dashboard shall export metrics."))
+            extraction.extractRequirementSyntax(new RawText("The dashboard shall export metrics."))
         )
             .isInstanceOf(StructuredOutputValidationException.class)
             .hasMessage("RequirementSyntaxOutput missing required fields: syntaxElements.ACTION");

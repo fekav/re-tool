@@ -1,8 +1,8 @@
 package io.fekav.req.shared.model;
 
-public record RawRequirementText(String text) {
+public record RawText(String text) {
 
-    public RawRequirementText {
+    public RawText {
         if (text == null || text.isBlank()) {
             throw new InvalidRawRequirementTextException();
         }

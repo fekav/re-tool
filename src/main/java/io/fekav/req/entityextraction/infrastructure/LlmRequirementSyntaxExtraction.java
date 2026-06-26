@@ -15,7 +15,7 @@ import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
 import io.fekav.req.entityextraction.application.RequirementSyntaxExtraction;
 import io.fekav.req.entityextraction.domain.RequirementSyntax;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -46,7 +46,7 @@ public class LlmRequirementSyntaxExtraction implements RequirementSyntaxExtracti
     }
 
     @Override
-    public RequirementSyntax extractRequirementSyntax(RawRequirementText rawRequirementText) {
+    public RequirementSyntax extractRequirementSyntax(RawText rawRequirementText) {
         Objects.requireNonNull(rawRequirementText, "rawRequirementText must not be null");
 
         String llmResponse = llmClientPort.generate(
@@ -111,7 +111,7 @@ public class LlmRequirementSyntaxExtraction implements RequirementSyntaxExtracti
         }
     }
 
-    private Prompt buildPrompt(RawRequirementText rawRequirementText) {
+    private Prompt buildPrompt(RawText rawRequirementText) {
         return PromptFactory.fromTemplate("""
         Extract the following syntax elements from the requirement:
 

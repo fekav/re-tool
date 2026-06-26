@@ -3,7 +3,7 @@ package io.fekav.req.classification.application;
 import io.fekav.platform.cqrs.CommandHandler;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.classification.domain.RequirementClassification;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 import io.fekav.req.shared.model.Requirement;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -28,7 +28,7 @@ public class ClassifyRequirementCommandHandler
     @Override
     @Transactional
     public RequirementClassification handle(ClassifyRequirementCommand command) {
-        RawRequirementText rawRequirementText = new RawRequirementText(command.rawText());
+        RawText rawRequirementText = new RawText(command.rawText());
         Requirement requirement = Requirement.create(rawRequirementText);
 
         RequirementClassification requirementClassification =

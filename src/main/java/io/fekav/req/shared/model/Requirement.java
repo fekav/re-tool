@@ -26,10 +26,10 @@ public class Requirement {
     }    
 
     public static Requirement create(String rawText) {
-        return create(new RawRequirementText(rawText));
+        return create(new RawText(rawText));
     }
 
-    public static Requirement create(RawRequirementText rawRequirementText) {
+    public static Requirement create(RawText rawRequirementText) {
         return new Requirement(RequirementId.create(), rawRequirementText.text());
     }
 

@@ -4,7 +4,7 @@ import io.fekav.platform.cqrs.CommandHandler;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.shared.model.Requirement;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -32,7 +32,7 @@ public class ExtractEntitiesCommandHandler
     @Override
     @Transactional
     public RequirementSyntax handle(ExtractEntitiesCommand command) {
-        RawRequirementText rawRequirementText = new RawRequirementText(command.rawText());
+        RawText rawRequirementText = new RawText(command.rawText());
         Requirement requirement = Requirement.create(rawRequirementText);
 
         RequirementSyntax requirementSyntax =

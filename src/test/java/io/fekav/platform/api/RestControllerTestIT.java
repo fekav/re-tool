@@ -25,7 +25,7 @@ import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.entityextraction.application.RequirementSyntaxExtraction;
 import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -62,7 +62,7 @@ class RestControllerTestIT {
         String condition
     ) throws Exception {
         // Given
-        when(requirementSyntaxExtraction.extractRequirementSyntax(new RawRequirementText(requirementText)))
+        when(requirementSyntaxExtraction.extractRequirementSyntax(new RawText(requirementText)))
             .thenReturn(requirementSyntax(subject, action, targetObject, constraint, condition));
 
         // When
@@ -103,7 +103,7 @@ class RestControllerTestIT {
             new ConfidenceScore(confidenceScore),
             new ClassificationRationale(rationale)
         );
-        when(requirementClassificationService.classifyRequirement(new RawRequirementText(requirementText)))
+        when(requirementClassificationService.classifyRequirement(new RawText(requirementText)))
             .thenReturn(classification);
 
         RequirementClassification result =

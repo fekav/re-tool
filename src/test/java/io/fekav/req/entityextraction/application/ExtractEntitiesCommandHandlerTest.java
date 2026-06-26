@@ -16,7 +16,7 @@ import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.entityextraction.domain.RequirementSyntax;
 import io.fekav.req.entityextraction.domain.RequirementSyntaxType;
 import io.fekav.req.shared.event.EntitiesExtractedEvent;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 
 class ExtractEntitiesCommandHandlerTest {
 
@@ -36,13 +36,13 @@ class ExtractEntitiesCommandHandlerTest {
             RequirementSyntaxType.ACTION, "shall export",
             RequirementSyntaxType.OBJECT, "monthly usage metrics"
         ));
-        when(requirementSyntaxExtraction.extractRequirementSyntax(new RawRequirementText(rawText)))
+        when(requirementSyntaxExtraction.extractRequirementSyntax(new RawText(rawText)))
             .thenReturn(requirementSyntax);
 
         RequirementSyntax result = handler.handle(new ExtractEntitiesCommand(rawText));
 
         assertThat(result).isEqualTo(requirementSyntax);
-        verify(requirementSyntaxExtraction).extractRequirementSyntax(new RawRequirementText(rawText));
+        verify(requirementSyntaxExtraction).extractRequirementSyntax(new RawText(rawText));
 
         ArgumentCaptor<List<DomainEvent>> domainEvents = eventCaptor();
         verify(eventPublisher).publishAll(domainEvents.capture());

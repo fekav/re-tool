@@ -9,14 +9,14 @@ class RawRequirementTextTest {
 
     @Test
     void storesTrimmedText_whenTextHasSurroundingWhitespace() {
-        RawRequirementText rawRequirementText = new RawRequirementText("  The system shall export reports.  ");
+        RawText rawRequirementText = new RawText("  The system shall export reports.  ");
 
         assertThat(rawRequirementText.text()).isEqualTo("The system shall export reports.");
     }
 
     @Test
     void throwsInvalidRawRequirementText_whenTextIsBlank() {
-        assertThatThrownBy(() -> new RawRequirementText("   "))
+        assertThatThrownBy(() -> new RawText("   "))
             .isInstanceOf(InvalidRawRequirementTextException.class)
             .hasMessage("raw requirement text must not be blank");
     }

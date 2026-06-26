@@ -15,7 +15,7 @@ import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
 import io.fekav.req.classification.application.RequirementClassificationService;
 import io.fekav.req.classification.domain.RequirementClassification;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -46,7 +46,7 @@ public class LlmRequirementClassificationService implements RequirementClassific
     }
 
     @Override
-    public RequirementClassification classifyRequirement(RawRequirementText rawRequirementText) {
+    public RequirementClassification classifyRequirement(RawText rawRequirementText) {
         Objects.requireNonNull(rawRequirementText, "rawRequirementText must not be null");
 
         String llmResponse = llmClientPort.generate(
@@ -112,7 +112,7 @@ public class LlmRequirementClassificationService implements RequirementClassific
         }
     }
 
-    private Prompt buildPrompt(RawRequirementText rawRequirementText) {
+    private Prompt buildPrompt(RawText rawRequirementText) {
         return PromptFactory.fromTemplate("""
         Classify the following raw requirement text.
 

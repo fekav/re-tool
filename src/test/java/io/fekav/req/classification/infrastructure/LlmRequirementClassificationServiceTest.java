@@ -29,7 +29,7 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.RequirementClassification;
 import io.fekav.req.classification.domain.RequirementConceptType;
 import io.fekav.req.classification.domain.RequirementProperty;
-import io.fekav.req.shared.model.RawRequirementText;
+import io.fekav.req.shared.model.RawText;
 
 class LlmRequirementClassificationServiceTest {
 
@@ -54,7 +54,7 @@ class LlmRequirementClassificationServiceTest {
             )));
 
         RequirementClassification classification =
-            classificationService.classifyRequirement(new RawRequirementText(requirementText));
+            classificationService.classifyRequirement(new RawText(requirementText));
 
         assertThat(classification.conceptType()).isEqualTo(RequirementConceptType.REQUIREMENT);
         assertThat(classification.property()).isEqualTo(RequirementProperty.QUALITY);
@@ -93,8 +93,8 @@ class LlmRequirementClassificationServiceTest {
                 ));
             });
 
-        classificationService.classifyRequirement(new RawRequirementText("Reduce checkout abandonment."));
-        classificationService.classifyRequirement(new RawRequirementText("Reduce failed onboarding."));
+        classificationService.classifyRequirement(new RawText("Reduce checkout abandonment."));
+        classificationService.classifyRequirement(new RawText("Reduce failed onboarding."));
 
         assertThat(formats).hasSize(2);
         assertThat(formats.get(0)).isNotSameAs(formats.get(1));
@@ -111,7 +111,7 @@ class LlmRequirementClassificationServiceTest {
                 "The sentence uses must and gives a measurable response-time constraint."
             )));
 
-        classificationService.classifyRequirement(new RawRequirementText("The checkout page must load quickly."));
+        classificationService.classifyRequirement(new RawText("The checkout page must load quickly."));
 
         ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
         verify(llmClientPort).generate(prompt.capture(), any(JsonNode.class));
@@ -145,7 +145,7 @@ class LlmRequirementClassificationServiceTest {
                 "The text states a desired outcome."
             )));
 
-        classificationService.classifyRequirement(new RawRequirementText("Reduce checkout abandonment."));
+        classificationService.classifyRequirement(new RawText("Reduce checkout abandonment."));
 
         ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
         verify(llmClientPort).generate(prompt.capture(), any(JsonNode.class));
@@ -160,7 +160,7 @@ class LlmRequirementClassificationServiceTest {
             .thenReturn("{");
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("The system shall export reports."))
+            classificationService.classifyRequirement(new RawText("The system shall export reports."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("llm response is not valid JSON");
@@ -172,7 +172,7 @@ class LlmRequirementClassificationServiceTest {
             .thenReturn("{\"done\":true}");
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("The system shall export reports."))
+            classificationService.classifyRequirement(new RawText("The system shall export reports."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("llm response does not contain model output");
@@ -184,7 +184,7 @@ class LlmRequirementClassificationServiceTest {
             .thenReturn(llmResponse("{"));
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("The system shall export reports."))
+            classificationService.classifyRequirement(new RawText("The system shall export reports."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("model output is not valid JSON");
@@ -203,7 +203,7 @@ class LlmRequirementClassificationServiceTest {
             ))));
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("The system shall export reports."))
+            classificationService.classifyRequirement(new RawText("The system shall export reports."))
         )
             .isInstanceOf(StructuredOutputValidationException.class)
             .hasMessage("RequirementClassificationOutput missing required fields: classification.property");
@@ -220,7 +220,7 @@ class LlmRequirementClassificationServiceTest {
             )));
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("Improve checkout response time."))
+            classificationService.classifyRequirement(new RawText("Improve checkout response time."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("unsupported requirement concept type: OUTCOME");
@@ -237,7 +237,7 @@ class LlmRequirementClassificationServiceTest {
             )));
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("The page must load within 2 seconds."))
+            classificationService.classifyRequirement(new RawText("The page must load within 2 seconds."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("unsupported requirement property: PERFORMANCE");
@@ -254,7 +254,7 @@ class LlmRequirementClassificationServiceTest {
             )));
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("The page must load within 2 seconds."))
+            classificationService.classifyRequirement(new RawText("The page must load within 2 seconds."))
         )
             .isInstanceOf(InvalidStructuredOutputException.class)
             .hasMessage("classification confidence score is invalid");
@@ -266,7 +266,7 @@ class LlmRequirementClassificationServiceTest {
             .thenReturn(llmResponse(modelOutput("REQUIREMENT", "QUALITY", 0.93, " ")));
 
         assertThatThrownBy(() ->
-            classificationService.classifyRequirement(new RawRequirementText("The page must load within 2 seconds."))
+            classificationService.classifyRequirement(new RawText("The page must load within 2 seconds."))
         )
             .isInstanceOf(StructuredOutputValidationException.class)
             .hasMessage("RequirementClassificationOutput missing required fields: classification.rationale");
