@@ -24,11 +24,10 @@
 | RequirementClassifiedEvent | Classification event | `CLASSIFY_REQUIREMENT` | Domain event raised after a Requirement has been classified. |
 | Action | Candidate action; extracted action | `EXTRACT_REQUIREMENT_SYNTAX` | Semantic extraction result owned by a Requirement: subject, action text, target object, and optional condition and constraint qualifiers. |
 | CandidateConceptMatchSet | Candidate concepts; retrieval results | `RETRIEVE_CANDIDATE_CONCEPTS` | Ranked KG concepts that may match extracted term mentions, including match scores and evidence. |
-| TermConceptMappingSet | Mapping candidates | `CREATE_MAPPING_CANDIDATES` | Candidate mappings between extracted term mentions and KG concepts, with status and rationale. |
-| ConceptCreationPolicy | Creation policy; mapping policy | `EVALUATE_CONCEPT_POLICY` | Configured rules that decide whether no-match or ambiguous terms are auto-created, proposed, reviewed, blocked, or rejected. |
-| MappingDecisionSet | Mapping decisions | `EVALUATE_CONCEPT_POLICY`; `REQUEST_HUMAN_REVIEW` | Final or pending decisions for term-to-concept mappings and concept proposals. |
-| ConceptProposalSet | New concept proposals | `EVALUATE_CONCEPT_POLICY`; `REQUEST_HUMAN_REVIEW` | Proposed new KG concepts generated when extracted terms do not sufficiently match existing concepts. |
-| PersistenceVerificationReport | Verification report | `VERIFY_QUERYABILITY` | Report proving the persisted requirement can be queried by required identifiers, provenance, terms, mappings, and review states. |
+| TermConceptMappingSet | Mapping candidates | `CREATE_MATCHING_CANDIDATES` | Candidate mappings between extracted term mentions and KG concepts, with status and rationale. |
+| ConceptCreationPolicy | Creation policy; matching policy | `CREATE_MATCHING_CANDIDATES` | Configured rules that decide whether no-match or ambiguous terms are auto-created, proposed, reviewed, blocked, or rejected. |
+| MappingDecisionSet | Mapping decisions | `CREATE_MATCHING_CANDIDATES`; `REQUEST_HUMAN_REVIEW` | Final or pending decisions for term-to-concept mappings and concept proposals. |
+| ConceptProposalSet | New concept proposals | `CREATE_MATCHING_CANDIDATES`; `REQUEST_HUMAN_REVIEW` | Proposed new KG concepts generated when extracted terms do not sufficiently match existing concepts. |
 | Raw Requirement Text | Source text; RawText | `INTAKE_REQUIREMENT` | Original textual software requirement preserved for provenance and auditability. |
 | Provenance | Source metadata; traceability | `INTAKE_REQUIREMENT`; `PERSIST_GRAPH_CHANGES` | Metadata linking KG facts back to the raw requirement source, submitter, and ingestion event. |
 | SyntaxExtractionOutput | Requirement syntax DTO | `EXTRACT_REQUIREMENT_SYNTAX`; `docs/json-contracts.md` | Boundary DTO representing structured model output before it is validated and mapped to the Action domain model. |
@@ -72,13 +71,10 @@
 | CLASSIFY_REQUIREMENT | Classify | State Table | State that assigns an initial KG type and property to the requirement. |
 | EXTRACT_REQUIREMENT_SYNTAX | Extract syntax | State Table | State that extracts candidate terms from requirement syntax. |
 | RETRIEVE_CANDIDATE_CONCEPTS | Retrieve matches | State Table | State that searches the KG for concepts matching extracted terms. |
-| CREATE_MAPPING_CANDIDATES | Create mappings | State Table | State that converts retrieval results into explicit mapping candidates. |
-| REQUEST_POLICY_DECISION | Policy selection | State Table | State that obtains the governing concept creation policy when it is not already configured. |
-| EVALUATE_CONCEPT_POLICY | Evaluate policy | State Table | State that applies the concept creation policy to mappings and no-match terms. |
+| CREATE_MATCHING_CANDIDATES | Create matchings | State Table | State that converts retrieval results into policy-governed term-to-concept matchings or review items. |
 | REQUEST_HUMAN_REVIEW | Human review | State Table | State that collects required review decisions for ambiguous mappings and concept proposals. |
 | PERSIST_GRAPH_CHANGES | Persist graph | State Table | State that writes requirement, provenance, terms, mappings, and approved concepts to the KG. |
-| VERIFY_QUERYABILITY | Verify queryability | State Table | State that confirms the requirement can be queried from the KG. |
-| DONE | Complete | State Table | Terminal state for successful persistence and verification. |
+| DONE | Complete | State Table | Terminal state for successful KG persistence. |
 | ABORTED | Failed; stopped | State Table | Terminal state for unsafe or impossible continuation. |
 
 ## Decisions
@@ -89,3 +85,17 @@
 | PROPOSE_ONLY | Proposal only | Human Decision Points | Policy option that creates concept proposals without immediately creating KG concepts. |
 | REQUIRE_APPROVAL | Manual approval | Human Decision Points | Policy option requiring a human decision before concept creation or certain mappings. |
 | BLOCK | Stop | Human Decision Points | Policy option that prevents persistence or concept creation for unresolved cases. |
+
+## Policies
+
+| Term | Aliases | Used In | Description |
+|---|---|---|---|
+| RAW_TEXT_POLICY | Raw text validation | State Table policy column | Requires non-blank RawText and recorded provenance before derived artifacts are created. |
+| CLASSIFICATION_POLICY | Classification output policy | State Table policy column | Treats RequirementType and RequirementProperty as classifier outputs from supported enum sets and treats low confidence as a review signal. |
+| SYNTAX_EXTRACTION_POLICY | Syntax extraction policy | State Table policy column | Requires subject, action text, and target object, while allowing condition and constraint only when expressed by the raw text. |
+| CONCEPT_RETRIEVAL_POLICY | Retrieval scope policy | State Table policy column | Defines which requirement and syntax elements are searched against the KG and treats no-match results as evidence. |
+| MATCHING_POLICY | Matching decision policy | State Table policy column | Defines threshold boundaries for exact, probable, ambiguous, and no-match matching outcomes and resolves them into approve, reject, propose, create, review, or block decisions. |
+| HUMAN_REVIEW_POLICY | Review routing policy | State Table policy column | Defines reviewer ownership, allowed response shape, and due condition for policy-directed review items. |
+| GRAPH_PERSISTENCE_POLICY | Graph write policy | State Table policy column | Requires idempotent graph writes, policy-approved concept creation, and explicit permission to persist pending review states. |
+| COMPLETION_POLICY | Workflow completion policy | State Table policy column | Requires a committed KG transaction with persisted identifiers before the workflow can reach DONE. |
+| STOP_POLICY | Workflow stop policy | State Table policy column | Stops the workflow for missing required input, unavailable dependency, invalid policy or reviewer response, or violated invariant. |
