@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.req.classification.domain.Classification;
-import io.fekav.req.shared.event.EntitiesExtractedEvent;
+import io.fekav.req.shared.event.SyntaxExtractedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.syntaxextraction.domain.Action;
 
@@ -42,7 +42,7 @@ public class Requirement {
         this.status = RequirementStatus.EXTRACTED;
         
         domainEvents.add(
-            EntitiesExtractedEvent.create(this.id, action)
+            SyntaxExtractedEvent.create(this.id, action)
         );
     }
 

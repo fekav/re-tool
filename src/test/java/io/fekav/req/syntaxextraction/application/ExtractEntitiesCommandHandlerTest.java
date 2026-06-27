@@ -13,7 +13,7 @@ import org.mockito.ArgumentCaptor;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventPublisher;
-import io.fekav.req.shared.event.EntitiesExtractedEvent;
+import io.fekav.req.shared.event.SyntaxExtractedEvent;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.RawText;
 import io.fekav.req.syntaxextraction.domain.Action;
@@ -51,8 +51,8 @@ class ExtractEntitiesCommandHandlerTest {
         assertThat(domainEvents.getValue())
             .singleElement()
             .satisfies(domainEvent -> {
-                assertThat(domainEvent).isInstanceOf(EntitiesExtractedEvent.class);
-                EntitiesExtractedEvent event = (EntitiesExtractedEvent) domainEvent;
+                assertThat(domainEvent).isInstanceOf(SyntaxExtractedEvent.class);
+                SyntaxExtractedEvent event = (SyntaxExtractedEvent) domainEvent;
                 assertThat(event.action()).isEqualTo(action);
             });
     }

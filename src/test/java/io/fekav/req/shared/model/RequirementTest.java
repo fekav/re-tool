@@ -12,7 +12,7 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
-import io.fekav.req.shared.event.EntitiesExtractedEvent;
+import io.fekav.req.shared.event.SyntaxExtractedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.syntaxextraction.domain.Action;
 import io.fekav.req.syntaxextraction.domain.Subject;
@@ -31,8 +31,8 @@ class RequirementTest {
         assertThat(requirement.domainEvents())
             .singleElement()
             .satisfies(domainEvent -> {
-                assertThat(domainEvent).isInstanceOf(EntitiesExtractedEvent.class);
-                EntitiesExtractedEvent event = (EntitiesExtractedEvent) domainEvent;
+                assertThat(domainEvent).isInstanceOf(SyntaxExtractedEvent.class);
+                SyntaxExtractedEvent event = (SyntaxExtractedEvent) domainEvent;
                 assertThat(event.requirementId()).isEqualTo(requirement.getId());
                 assertThat(event.action()).isEqualTo(action);
             });

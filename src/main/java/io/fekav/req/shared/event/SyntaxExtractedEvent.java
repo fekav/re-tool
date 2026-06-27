@@ -10,7 +10,7 @@ import io.fekav.req.syntaxextraction.domain.Action;
 /**
  * Domain event
  */
-public record EntitiesExtractedEvent(
+public record SyntaxExtractedEvent(
 
         EventId eventId,
 
@@ -22,9 +22,9 @@ public record EntitiesExtractedEvent(
 
 ) implements DomainEvent {
     
-    public static EntitiesExtractedEvent create(
+    public static SyntaxExtractedEvent create(
             ElementId id,
             Action action) {
-        return new EntitiesExtractedEvent(EventId.create(), Instant.now(), id, action);
+        return new SyntaxExtractedEvent(EventId.create(), Instant.now(), id, action);
     }
 }
