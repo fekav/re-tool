@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.fekav.platform.llm.LlmClientPort;
 import io.fekav.platform.llm.Prompt;
+import io.fekav.platform.observability.Observability;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -40,6 +41,12 @@ public class OllamaClientAdapter implements LlmClientPort {
     @ConfigProperty(name = "llm.model", defaultValue = "granite4.1:8b")
     String llmModel;
 
+    @ConfigProperty(name = "observability.log.llm-prompt", defaultValue = "true")
+    boolean logLlmPrompt;
+
+    @ConfigProperty(name = "observability.log.llm-response", defaultValue = "true")
+    boolean logLlmResponse;
+
     private final ObjectMapper objectMapper;
 
     // HttpClient is no cdi bean, cant be injected without producing a bean
@@ -61,22 +68,86 @@ public class OllamaClientAdapter implements LlmClientPort {
         }
         Objects.requireNonNull(prompt, "prompt must not be null");
         Objects.requireNonNull(format, "format must not be null");
-        log.info("format: " + format);
-        
+        long startNanos = System.nanoTime();
+        String endpoint = llmBaseUrl + "generate";
 
         try {
             String payload = buildRequestPayload(prompt, format);
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(llmBaseUrl + "generate"))
+
+            log.info(
+                Observability.event("llm.generate.start") + " " +
+                    Observability.kv("provider", "ollama") + " " +
+                    Observability.kv("model", llmModel) + " " +
+                    Observability.kv("endpoint", endpoint) + " " +
+                    Observability.kv("stream", stream) + " " +
+                    Observability.kv("prompt_chars", Observability.lengthOf(prompt.promptText())) + " " +
+                    Observability.kv("system_prompt_chars", Observability.lengthOf(prompt.systemPrompt()))
+            );
+
+            if (logLlmPrompt) {
+                log.info(
+                    Observability.block(
+                        "llm.prompt",
+                        Observability.kv("provider", "ollama") + " " +
+                            Observability.kv("model", llmModel),
+                        Observability.section("system_prompt", prompt.systemPrompt()),
+                        Observability.section("prompt", prompt.promptText()),
+                        Observability.section("format", format)
+                    )
+                );
+                log.info(
+                    Observability.block(
+                        "llm.request.raw",
+                        Observability.kv("provider", "ollama") + " " +
+                            Observability.kv("model", llmModel),
+                        Observability.section("payload", prettyJson(payload))
+                    )
+                );
+            }
+
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(payload))
                     .build();
 
-            log.info("Send http request: " + request + "\n with payload: " + payload);
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            log.info("Received response:\n" + response + " with body:\n" + response.body());
+
+            if (logLlmResponse) {
+                log.info(
+                    Observability.block(
+                        "llm.response.raw",
+                        Observability.kv("provider", "ollama") + " " +
+                            Observability.kv("model", llmModel) + " " +
+                            Observability.kv("http_status", response.statusCode()),
+                        Observability.section("body", prettyJson(response.body()))
+                    )
+                );
+            }
+
+            log.info(
+                Observability.event("llm.generate.end") + " " +
+                    Observability.kv("provider", "ollama") + " " +
+                    Observability.kv("model", llmModel) + " " +
+                    Observability.kv("http_status", response.statusCode()) + " " +
+                    Observability.kv("response_chars", Observability.lengthOf(response.body())) + " " +
+                    Observability.kv("status", "ok") + " " +
+                    Observability.kv("duration_ms", Observability.durationMs(startNanos))
+            );
+
             return response.body();
 
         } catch (Exception e) {
+            log.error(
+                Observability.event("llm.generate.end") + " " +
+                    Observability.kv("provider", "ollama") + " " +
+                    Observability.kv("model", llmModel) + " " +
+                    Observability.kv("endpoint", endpoint) + " " +
+                    Observability.kv("status", "error") + " " +
+                    Observability.kv("duration_ms", Observability.durationMs(startNanos)) + " " +
+                    Observability.kv("error_type", e.getClass().getSimpleName()) + " " +
+                    Observability.kv("error_message", e.getMessage()),
+                e
+            );
             throw new IllegalStateException("llm request failed", e);
         }
     }
@@ -97,6 +168,14 @@ public class OllamaClientAdapter implements LlmClientPort {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("llm request payload serialization failed", e);
+        }
+    }
+
+    private String prettyJson(String json) {
+        try {
+            return objectMapper.readTree(json).toPrettyString();
+        } catch (JsonProcessingException e) {
+            return json;
         }
     }
 }

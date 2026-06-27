@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fekav.platform.llm.LlmClientPort;
 import io.fekav.platform.llm.Prompt;
 import io.fekav.platform.llm.PromptFactory;
+import io.fekav.platform.observability.Observability;
 import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
 import io.fekav.req.classification.application.ClassificationService;
@@ -18,9 +19,13 @@ import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.shared.model.RawText;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class LlmRequirementClassificationService implements ClassificationService {
+
+    private static final Logger log = Logger.getLogger(LlmRequirementClassificationService.class);
 
     private static final String REQUIREMENT_CLASSIFICATION_FORMAT =
         "/contracts/ai/v1/requirement-classification.schema.json";
@@ -29,6 +34,9 @@ public class LlmRequirementClassificationService implements ClassificationServic
     private final ObjectMapper objectMapper;
     private final StructuredOutputValidator structuredOutputValidator;
     private final JsonNode requirementClassificationFormat;
+
+    @ConfigProperty(name = "observability.log.llm-response", defaultValue = "true")
+    boolean logLlmResponse;
 
     @Inject
     public LlmRequirementClassificationService(
@@ -53,8 +61,20 @@ public class LlmRequirementClassificationService implements ClassificationServic
             buildPrompt(rawRequirementText),
             requirementClassificationFormat.deepCopy()
         );
+        JsonNode modelOutput = modelOutputFrom(llmResponse);
+
+        if (logLlmResponse) {
+            log.info(
+                Observability.block(
+                    "llm.response.model_output",
+                    Observability.kv("service", "requirement-classification"),
+                    Observability.section("model_output", modelOutput)
+                )
+            );
+        }
+
         RequirementClassificationOutput requirementClassificationOutput =
-            readRequirementClassificationOutput(modelOutputFrom(llmResponse));
+            readRequirementClassificationOutput(modelOutput);
 
         structuredOutputValidator.validate(
             RequirementClassificationOutput.contract(),

@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fekav.platform.llm.LlmClientPort;
 import io.fekav.platform.llm.Prompt;
 import io.fekav.platform.llm.PromptFactory;
+import io.fekav.platform.observability.Observability;
 import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
 import io.fekav.req.shared.model.RawText;
@@ -18,9 +19,13 @@ import io.fekav.req.syntaxextraction.application.SyntaxExtraction;
 import io.fekav.req.syntaxextraction.domain.Action;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class LlmSyntaxExtraction implements SyntaxExtraction {
+
+    private static final Logger log = Logger.getLogger(LlmSyntaxExtraction.class);
 
     private static final String SYNTAX_FORMAT =
         "/contracts/ai/v1/requirement-syntax.schema.json";
@@ -29,6 +34,9 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
     private final ObjectMapper objectMapper;
     private final StructuredOutputValidator structuredOutputValidator;
     private final JsonNode syntaxFormat;
+
+    @ConfigProperty(name = "observability.log.llm-response", defaultValue = "true")
+    boolean logLlmResponse;
 
     @Inject
     public LlmSyntaxExtraction(
@@ -53,9 +61,19 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
             buildPrompt(rawRequirementText),
             syntaxFormat.deepCopy()
         );
-        SyntaxExtractionOutput syntaxExtractionOutput = readSyntaxExtractionOutput(
-            modelOutputFrom(llmResponse)
-        );
+        JsonNode modelOutput = modelOutputFrom(llmResponse);
+
+        if (logLlmResponse) {
+            log.info(
+                Observability.block(
+                    "llm.response.model_output",
+                    Observability.kv("service", "syntax-extraction"),
+                    Observability.section("model_output", modelOutput)
+                )
+            );
+        }
+
+        SyntaxExtractionOutput syntaxExtractionOutput = readSyntaxExtractionOutput(modelOutput);
 
         structuredOutputValidator.validate(
             SyntaxExtractionOutput.contract(),

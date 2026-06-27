@@ -3,7 +3,6 @@
 ## Core Rules
 
 - If a task matches a skill, ask for confirmation before you invoke it
-- Never implement directly if a skill applies
 - Always follow the skill instructions exactly (do not partially apply them)
 
 ### Intent → Skill Mapping

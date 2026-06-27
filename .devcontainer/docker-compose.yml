@@ -40,7 +40,7 @@ services:
       - devnet
 
   neo4j:
-    image: neo4j:5-community
+    image: neo4j:5-communitygg
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/devpassword
