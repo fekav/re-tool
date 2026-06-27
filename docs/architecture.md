@@ -26,7 +26,7 @@ src/main/java/io/fekav
     │   ├── domain                  // classification values and evidence
     │   └── infrastructure          // LLM-backed adapter and output DTOs
     │
-    └── entityextraction
+    └── syntaxextraction
         ├── application             // command handler and application ports
         ├── domain                  // domain values and domain rule exceptions
         └── infrastructure          // LLM-backed adapter and output DTOs
@@ -53,7 +53,7 @@ the returned `RequirementSyntax`, publishes domain events, and returns the
 domain result.
 
 The current port implementation is `LlmRequirementSyntaxExtraction` in the
-`entityextraction.infrastructure` package. It talks to the provider-neutral
+`syntaxextraction.infrastructure` package. It talks to the provider-neutral
 `LlmClientPort`, sends the app-owned JSON Schema as the structured-output
 format, parses the provider wrapper, validates the model output DTO, and maps
 the DTO to the domain type.

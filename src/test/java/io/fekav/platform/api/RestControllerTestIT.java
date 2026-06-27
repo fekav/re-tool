@@ -68,7 +68,7 @@ class RestControllerTestIT {
         // When
         RequirementSyntax result =
             given()
-                .contentType(ContentType.JSON)
+                .contentType(ContentType.JSON)  
                 .accept(ContentType.JSON)
                 .body(commandRequest(requirementText))
             .when()
@@ -176,7 +176,7 @@ class RestControllerTestIT {
     private String commandRequest(String requirementText) throws Exception {
         return objectMapper.writeValueAsString(Map.of(
             "command",
-            "ExtractEntitiesCommand",
+            "ExtractSyntaxCommand",
             "payload",
             Map.of("rawText", requirementText)
         ));

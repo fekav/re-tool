@@ -14,14 +14,14 @@ import jakarta.transaction.Transactional;
  * 
  */
 @ApplicationScoped
-public class ExtractEntitiesCommandHandler
-        implements CommandHandler<RequirementSyntax, ExtractEntitiesCommand> {
+public class ExtractSyntaxCommandHandler
+        implements CommandHandler<RequirementSyntax, ExtractSyntaxCommand> {
 
     private final EventPublisher eventPublisher;
     private final RequirementSyntaxExtraction requirementSyntaxExtraction;
 
     @Inject
-    public ExtractEntitiesCommandHandler(
+    public ExtractSyntaxCommandHandler(
         EventPublisher eventPublisher,
         RequirementSyntaxExtraction requirementSyntaxExtraction
     ) {
@@ -31,7 +31,7 @@ public class ExtractEntitiesCommandHandler
 
     @Override
     @Transactional
-    public RequirementSyntax handle(ExtractEntitiesCommand command) {
+    public RequirementSyntax handle(ExtractSyntaxCommand command) {
         RawText rawRequirementText = new RawText(command.rawText());
         Requirement requirement = Requirement.create(rawRequirementText);
 
@@ -45,8 +45,8 @@ public class ExtractEntitiesCommandHandler
     }
 
     @Override
-    public Class<ExtractEntitiesCommand> commandType() {
-        return ExtractEntitiesCommand.class;
+    public Class<ExtractSyntaxCommand> commandType() {
+        return ExtractSyntaxCommand.class;
     }
 
 }

@@ -1,4 +1,4 @@
-package io.fekav.req.entityextraction.application;
+package io.fekav.req.syntaxextraction.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -15,9 +15,6 @@ import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.shared.event.EntitiesExtractedEvent;
 import io.fekav.req.shared.model.RawText;
-import io.fekav.req.syntaxextraction.application.ExtractEntitiesCommand;
-import io.fekav.req.syntaxextraction.application.ExtractEntitiesCommandHandler;
-import io.fekav.req.syntaxextraction.application.RequirementSyntaxExtraction;
 import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
 import io.fekav.req.syntaxextraction.domain.RequirementSyntaxType;
 
@@ -26,7 +23,7 @@ class ExtractEntitiesCommandHandlerTest {
     private final EventPublisher eventPublisher = mock(EventPublisher.class);
     private final RequirementSyntaxExtraction requirementSyntaxExtraction =
         mock(RequirementSyntaxExtraction.class);
-    private final ExtractEntitiesCommandHandler handler = new ExtractEntitiesCommandHandler(
+    private final ExtractSyntaxCommandHandler handler = new ExtractSyntaxCommandHandler(
         eventPublisher,
         requirementSyntaxExtraction
     );
@@ -42,7 +39,7 @@ class ExtractEntitiesCommandHandlerTest {
         when(requirementSyntaxExtraction.extractRequirementSyntax(new RawText(rawText)))
             .thenReturn(requirementSyntax);
 
-        RequirementSyntax result = handler.handle(new ExtractEntitiesCommand(rawText));
+        RequirementSyntax result = handler.handle(new ExtractSyntaxCommand(rawText));
 
         assertThat(result).isEqualTo(requirementSyntax);
         verify(requirementSyntaxExtraction).extractRequirementSyntax(new RawText(rawText));

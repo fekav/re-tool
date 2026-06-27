@@ -19,11 +19,11 @@ Write a failing test before writing the code that makes it pass. For bug fixes, 
 
 **When NOT to use:** Pure configuration changes, documentation updates, or static content changes that have no behavioral impact.
 
-**Related:** For browser-based changes, combine TDD with runtime verification using Chrome DevTools MCP — see the Browser Testing section below.
+**Related:** Use `java-junit-testing` skill for writing tests. This skill describes the TDD cycle, not how to write good tests.
 
 ## The TDD Cycle
 
-```
+``` 
     RED                GREEN              REFACTOR
  Write a test    Write minimal code    Clean up the
  that fails  ──→  to make it pass  ──→  implementation  ──→  (repeat)
@@ -172,7 +172,7 @@ Is it a critical user flow that must work end-to-end?
 ```
 ## Writing Tests with `junit-junit-testing`
 
-- See the `java-junit-testing` skill for writing good tests.
+
 
 ## Common Rationalizations
 

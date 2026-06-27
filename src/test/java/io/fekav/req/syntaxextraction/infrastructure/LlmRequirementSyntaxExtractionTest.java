@@ -1,4 +1,4 @@
-package io.fekav.req.entityextraction.infrastructure;
+package io.fekav.req.syntaxextraction.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
