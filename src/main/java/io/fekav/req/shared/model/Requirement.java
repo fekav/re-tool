@@ -8,18 +8,18 @@ import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.shared.event.EntitiesExtractedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
-import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.syntaxextraction.domain.Action;
 
 // Domain Model / Aggregat-Root
 public class Requirement {
-    private final RequirementId id;
+    private final ElementId id;
     private final String rawText;
     private RequirementStatus status;
-    private RequirementSyntax extractionResult;
+    private Action action;
     private Classification classificationResult;
     private final List<DomainEvent> domainEvents = new ArrayList<>();
     
-    private Requirement(RequirementId id, String rawText) {
+    private Requirement(ElementId id, String rawText) {
         this.id = id;
         this.rawText = rawText;
         this.status = RequirementStatus.PENDING;
@@ -30,22 +30,19 @@ public class Requirement {
     }
 
     public static Requirement create(RawText rawRequirementText) {
-        return new Requirement(RequirementId.create(), rawRequirementText.text());
+        return new Requirement(ElementId.create(), rawRequirementText.text());
     }
 
     public String getRawText() {
         return rawText;
     }
 
-    public void applyExtraction(RequirementSyntax result) {
-        if (result.syntaxElements().isEmpty()) {
-            throw new IllegalArgumentException("requirement entity extraction object is empty");
-        }
-        this.extractionResult = result;
+    public void applyExtraction(Action action) {
+        this.action = Objects.requireNonNull(action, "action must not be null");
         this.status = RequirementStatus.EXTRACTED;
         
         domainEvents.add(
-            EntitiesExtractedEvent.create(this.id, result)
+            EntitiesExtractedEvent.create(this.id, action)
         );
     }
 
@@ -65,7 +62,7 @@ public class Requirement {
         return status;
     }
 
-    public RequirementId getId() {
+    public ElementId getId() {
         return id;
     }       
 

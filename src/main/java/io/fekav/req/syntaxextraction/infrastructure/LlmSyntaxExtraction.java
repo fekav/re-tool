@@ -14,24 +14,24 @@ import io.fekav.platform.llm.PromptFactory;
 import io.fekav.platform.structuredoutput.InvalidStructuredOutputException;
 import io.fekav.platform.structuredoutput.StructuredOutputValidator;
 import io.fekav.req.shared.model.RawText;
-import io.fekav.req.syntaxextraction.application.RequirementSyntaxExtraction;
-import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.syntaxextraction.application.SyntaxExtraction;
+import io.fekav.req.syntaxextraction.domain.Action;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
-public class LlmRequirementSyntaxExtraction implements RequirementSyntaxExtraction {
+public class LlmSyntaxExtraction implements SyntaxExtraction {
 
-    private static final String REQUIREMENT_SYNTAX_FORMAT =
+    private static final String SYNTAX_FORMAT =
         "/contracts/ai/v1/requirement-syntax.schema.json";
 
     private final LlmClientPort llmClientPort;
     private final ObjectMapper objectMapper;
     private final StructuredOutputValidator structuredOutputValidator;
-    private final JsonNode requirementSyntaxFormat;
+    private final JsonNode syntaxFormat;
 
     @Inject
-    public LlmRequirementSyntaxExtraction(
+    public LlmSyntaxExtraction(
         LlmClientPort llmClientPort,
         ObjectMapper objectMapper,
         StructuredOutputValidator structuredOutputValidator
@@ -42,31 +42,31 @@ public class LlmRequirementSyntaxExtraction implements RequirementSyntaxExtracti
             structuredOutputValidator,
             "structuredOutputValidator must not be null"
         );
-        this.requirementSyntaxFormat = readRequirementSyntaxFormat();
+        this.syntaxFormat = readSyntaxFormat();
     }
 
     @Override
-    public RequirementSyntax extractRequirementSyntax(RawText rawRequirementText) {
+    public Action extractSyntax(RawText rawRequirementText) {
         Objects.requireNonNull(rawRequirementText, "rawRequirementText must not be null");
 
         String llmResponse = llmClientPort.generate(
             buildPrompt(rawRequirementText),
-            requirementSyntaxFormat.deepCopy()
+            syntaxFormat.deepCopy()
         );
-        RequirementSyntaxOutput requirementSyntaxOutput = readRequirementSyntaxOutput(
+        SyntaxExtractionOutput syntaxExtractionOutput = readSyntaxExtractionOutput(
             modelOutputFrom(llmResponse)
         );
 
         structuredOutputValidator.validate(
-            RequirementSyntaxOutput.contract(),
-            requirementSyntaxOutput
+            SyntaxExtractionOutput.contract(),
+            syntaxExtractionOutput
         );
 
-        return requirementSyntaxOutput.toRequirementSyntax();
+        return syntaxExtractionOutput.toAction();
     }
 
-    private JsonNode readRequirementSyntaxFormat() {
-        try (InputStream input = LlmRequirementSyntaxExtraction.class.getResourceAsStream(REQUIREMENT_SYNTAX_FORMAT)) {
+    private JsonNode readSyntaxFormat() {
+        try (InputStream input = LlmSyntaxExtraction.class.getResourceAsStream(SYNTAX_FORMAT)) {
             if (input == null) {
                 throw new InvalidStructuredOutputException("requirement syntax format contract is missing");
             }
@@ -88,12 +88,12 @@ public class LlmRequirementSyntaxExtraction implements RequirementSyntaxExtracti
         return readJson(response.asText(), "model output is not valid JSON");
     }
 
-    private RequirementSyntaxOutput readRequirementSyntaxOutput(JsonNode modelOutput) {
+    private SyntaxExtractionOutput readSyntaxExtractionOutput(JsonNode modelOutput) {
         try {
-            return objectMapper.treeToValue(modelOutput, RequirementSyntaxOutput.class);
+            return objectMapper.treeToValue(modelOutput, SyntaxExtractionOutput.class);
         } catch (JsonProcessingException e) {
             throw new InvalidStructuredOutputException(
-                "model output does not match RequirementSyntaxOutput",
+                "model output does not match SyntaxExtractionOutput",
                 e
             );
         }

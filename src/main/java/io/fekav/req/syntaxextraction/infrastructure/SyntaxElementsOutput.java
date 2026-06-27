@@ -1,6 +1,6 @@
 package io.fekav.req.syntaxextraction.infrastructure;
 
-public record RequirementSyntaxElementsOutput(
+public record SyntaxElementsOutput(
     String SUBJECT,
     String ACTION,
     String OBJECT,

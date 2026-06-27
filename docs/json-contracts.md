@@ -62,11 +62,11 @@ Domain model:
     owned by the domain core; semantic invariants after translation
 ```
 
-Example: `RequirementSyntaxOutput` is the Java binding for the
-requirement-syntax structured-output contract. Its `StructuredOutputContract`
+Example: `SyntaxExtractionOutput` is the Java binding for the requirement syntax
+structured-output contract. Its `StructuredOutputContract`
 describes required and optional fields for the handwritten validator. After
-validation, it maps to `RequirementSyntax`, which is the domain type and not the
-LLM output contract.
+validation, it maps to `Action`, which is the domain model and not the LLM
+output contract.
 
 ## Module Placement
 

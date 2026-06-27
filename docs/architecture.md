@@ -47,27 +47,35 @@ shapes, or raw JSON types.
 
 ## Requirement Syntax Extraction
 
-`ExtractEntitiesCommandHandler` is the use-case orchestrator. It creates the
-requirement, calls the `RequirementSyntaxExtraction` application port, applies
-the returned `RequirementSyntax`, publishes domain events, and returns the
-domain result.
+`ExtractSyntaxCommandHandler` is the use-case orchestrator. It creates the
+requirement, calls the `SyntaxExtraction` application port, applies the
+returned `Action`, publishes domain events, and returns an
+`ExtractSyntaxResponse` that preserves the public `syntaxElements` response
+shape.
 
-The current port implementation is `LlmRequirementSyntaxExtraction` in the
+The current port implementation is `LlmSyntaxExtraction` in the
 `syntaxextraction.infrastructure` package. It talks to the provider-neutral
 `LlmClientPort`, sends the app-owned JSON Schema as the structured-output
 format, parses the provider wrapper, validates the model output DTO, and maps
-the DTO to the domain type.
+the DTO to the semantic domain model:
+
+```text
+Subject -> Action -> TargetObject
+```
+
+Conditions and constraints qualify the action.
 
 ```text
 REST/API
-  -> ExtractEntitiesCommandHandler
-  -> RequirementSyntaxExtraction port
-  -> LlmRequirementSyntaxExtraction
+  -> ExtractSyntaxCommandHandler
+  -> SyntaxExtraction port
+  -> LlmSyntaxExtraction
   -> LlmClientPort
   -> structured-output DTO validation
-  -> RequirementSyntax domain type
+  -> Action domain model
   -> Requirement aggregate
   -> domain events
+  -> ExtractSyntaxResponse
 ```
 
 ## Requirement Classification
@@ -108,8 +116,8 @@ JSON Schema resource
     src/main/resources/contracts/ai/v1/requirement-classification.schema.json
 
 Java DTO binding
-    RequirementSyntaxOutput
-    RequirementSyntaxElementsOutput
+    SyntaxExtractionOutput
+    SyntaxElementsOutput
     RequirementClassificationOutput
     RequirementClassificationFieldsOutput
 
@@ -118,12 +126,12 @@ Executable validation
     StructuredOutputValidator
 
 Domain result
-    RequirementSyntax
+    Action
     RequirementClassification
 ```
 
-The DTOs describe the external model-output shape. The domain type describes the
-validated business concept. New LLM-backed features should follow the same
+The DTOs describe the external model-output shape. The domain model describes
+the validated business concept. New LLM-backed features should follow the same
 boundary: schema and DTOs at the infrastructure edge, reusable validation in
 `platform.structuredoutput`, and domain types inside the owning slice.
 

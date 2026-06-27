@@ -4,8 +4,8 @@ import java.time.Instant;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventId;
-import io.fekav.req.shared.model.RequirementId;
-import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
+import io.fekav.req.shared.model.ElementId;
+import io.fekav.req.syntaxextraction.domain.Action;
 
 /**
  * Domain event
@@ -16,15 +16,15 @@ public record EntitiesExtractedEvent(
 
         Instant occurredAt,
 
-        RequirementId requirementId,
+        ElementId requirementId,
 
-        RequirementSyntax syntaxElements
+        Action action
 
 ) implements DomainEvent {
     
     public static EntitiesExtractedEvent create(
-            RequirementId id,
-            RequirementSyntax  syntaxElements) {
-        return new EntitiesExtractedEvent(EventId.create(), Instant.now(), id, syntaxElements);
+            ElementId id,
+            Action action) {
+        return new EntitiesExtractedEvent(EventId.create(), Instant.now(), id, action);
     }
 }

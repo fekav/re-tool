@@ -6,6 +6,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,10 +23,15 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.classification.domain.RequirementProperty;
+import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.RawText;
-import io.fekav.req.syntaxextraction.application.RequirementSyntaxExtraction;
-import io.fekav.req.syntaxextraction.domain.RequirementSyntax;
-import io.fekav.req.syntaxextraction.domain.RequirementSyntaxType;
+import io.fekav.req.syntaxextraction.application.ExtractSyntaxResponse;
+import io.fekav.req.syntaxextraction.application.SyntaxExtraction;
+import io.fekav.req.syntaxextraction.domain.Action;
+import io.fekav.req.syntaxextraction.domain.Condition;
+import io.fekav.req.syntaxextraction.domain.Constraint;
+import io.fekav.req.syntaxextraction.domain.Subject;
+import io.fekav.req.syntaxextraction.domain.TargetObject;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -37,7 +43,7 @@ import io.restassured.http.ContentType;
 class RestControllerTestIT {
 
     @InjectMock
-    RequirementSyntaxExtraction requirementSyntaxExtraction;
+    SyntaxExtraction syntaxExtraction;
 
     @InjectMock
     ClassificationService requirementClassificationService;
@@ -47,7 +53,7 @@ class RestControllerTestIT {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        reset(requirementSyntaxExtraction);
+        reset(syntaxExtraction);
         reset(requirementClassificationService);
     }
 
@@ -62,11 +68,11 @@ class RestControllerTestIT {
         String condition
     ) throws Exception {
         // Given
-        when(requirementSyntaxExtraction.extractRequirementSyntax(new RawText(requirementText)))
-            .thenReturn(requirementSyntax(subject, action, targetObject, constraint, condition));
+        when(syntaxExtraction.extractSyntax(new RawText(requirementText)))
+            .thenReturn(action(subject, action, targetObject, constraint, condition));
 
         // When
-        RequirementSyntax result =
+        ExtractSyntaxResponse result =
             given()
                 .contentType(ContentType.JSON)  
                 .accept(ContentType.JSON)
@@ -77,15 +83,14 @@ class RestControllerTestIT {
                 .statusCode(201)
                 .contentType(ContentType.JSON)
                 .extract()
-                .as(RequirementSyntax.class);
+                .as(ExtractSyntaxResponse.class);
 
         // Then
-        assertThat(result.syntaxElements())
-            .containsEntry(RequirementSyntaxType.SUBJECT, subject)
-            .containsEntry(RequirementSyntaxType.ACTION, action)
-            .containsEntry(RequirementSyntaxType.OBJECT, targetObject)
-            .containsEntry(RequirementSyntaxType.CONSTRAINT, constraint)
-            .containsEntry(RequirementSyntaxType.CONDITION, condition);
+        assertThat(result.syntaxElements().SUBJECT()).isEqualTo(subject);
+        assertThat(result.syntaxElements().ACTION()).isEqualTo(action);
+        assertThat(result.syntaxElements().OBJECT()).isEqualTo(targetObject);
+        assertThat(result.syntaxElements().CONSTRAINT()).isEqualTo(constraint);
+        assertThat(result.syntaxElements().CONDITION()).isEqualTo(condition);
     }
 
     @ParameterizedTest(name = "{index}: {0}")
@@ -191,25 +196,28 @@ class RestControllerTestIT {
         ));
     }
 
-    private RequirementSyntax requirementSyntax(
+    private Action action(
         String subject,
         String action,
         String targetObject,
         String constraint,
         String condition
     ) {
-        return new RequirementSyntax(Map.of(
-            RequirementSyntaxType.SUBJECT,
-            subject,
-            RequirementSyntaxType.ACTION,
+        Set<Condition> conditions = condition.isBlank()
+            ? Set.of()
+            : Set.of(new Condition(condition));
+        Set<Constraint> constraints = constraint.isBlank()
+            ? Set.of()
+            : Set.of(new Constraint(constraint));
+
+        return new Action(
+            ElementId.create(),
             action,
-            RequirementSyntaxType.OBJECT,
-            targetObject,
-            RequirementSyntaxType.CONSTRAINT,
-            constraint,
-            RequirementSyntaxType.CONDITION,
-            condition
-        ));
+            new Subject(ElementId.create(), subject),
+            new TargetObject(ElementId.create(), targetObject),
+            conditions,
+            constraints
+        );
     }
 
 }
