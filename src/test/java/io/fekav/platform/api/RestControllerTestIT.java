@@ -89,8 +89,8 @@ class RestControllerTestIT {
         assertThat(result.syntaxElements().SUBJECT()).isEqualTo(subject);
         assertThat(result.syntaxElements().ACTION()).isEqualTo(action);
         assertThat(result.syntaxElements().OBJECT()).isEqualTo(targetObject);
-        assertThat(result.syntaxElements().CONSTRAINT()).isEqualTo(constraint);
-        assertThat(result.syntaxElements().CONDITION()).isEqualTo(condition);
+        assertThat(result.syntaxElements().CONSTRAINT()).isEqualTo(responseSet(constraint));
+        assertThat(result.syntaxElements().CONDITION()).isEqualTo(responseSet(condition));
     }
 
     @ParameterizedTest(name = "{index}: {0}")
@@ -194,6 +194,12 @@ class RestControllerTestIT {
             "payload",
             Map.of("rawText", requirementText)
         ));
+    }
+
+    private Set<String> responseSet(String value) {
+        return value.isBlank()
+            ? Set.of()
+            : Set.of(value);
     }
 
     private Action action(

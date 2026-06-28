@@ -42,8 +42,8 @@ class ExtractEntitiesCommandHandlerTest {
         assertThat(result.syntaxElements().SUBJECT()).isEqualTo("reporting dashboard");
         assertThat(result.syntaxElements().ACTION()).isEqualTo("shall export");
         assertThat(result.syntaxElements().OBJECT()).isEqualTo("monthly usage metrics");
-        assertThat(result.syntaxElements().CONSTRAINT()).isEqualTo("");
-        assertThat(result.syntaxElements().CONDITION()).isEqualTo("");
+        assertThat(result.syntaxElements().CONSTRAINT()).isEmpty();
+        assertThat(result.syntaxElements().CONDITION()).isEmpty();
         verify(syntaxExtraction).extractSyntax(new RawText(rawText));
 
         ArgumentCaptor<List<DomainEvent>> domainEvents = eventCaptor();

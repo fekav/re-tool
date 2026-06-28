@@ -4,6 +4,7 @@
 
 - If a task matches a skill, ask for confirmation before you invoke it
 - Always follow the skill instructions exactly (do not partially apply them)
+- When `test-driven-development` involves writing, modifying, or reviewing Java tests, invoke and follow `java-junit-testing` before changing those tests
 
 ### Intent → Skill Mapping
 

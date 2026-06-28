@@ -1,7 +1,6 @@
 package io.fekav.req.syntaxextraction.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Set;
 
@@ -36,38 +35,33 @@ class ExtractSyntaxResponseTest {
             .isEqualTo("shall export");
         assertThat(json.path("syntaxElements").path("OBJECT").asText())
             .isEqualTo("monthly usage metrics");
-        assertThat(json.path("syntaxElements").path("CONDITION").asText())
-            .isEqualTo("on request");
-        assertThat(json.path("syntaxElements").path("CONSTRAINT").asText())
-            .isEqualTo("as CSV");
+        assertThat(json.path("syntaxElements").path("CONDITION"))
+            .extracting(JsonNode::asText)
+            .containsExactly("on request");
+        assertThat(json.path("syntaxElements").path("CONSTRAINT"))
+            .extracting(JsonNode::asText)
+            .containsExactly("as CSV");
     }
 
     @Test
-    void serializesMissingOptionalValuesAsEmptyStrings() {
+    void serializesMissingOptionalValuesAsEmptySets() {
         ExtractSyntaxResponse response = ExtractSyntaxResponse.from(action(Set.of(), Set.of()));
 
-        assertThat(response.syntaxElements().CONDITION()).isEqualTo("");
-        assertThat(response.syntaxElements().CONSTRAINT()).isEqualTo("");
+        assertThat(response.syntaxElements().CONDITION()).isEmpty();
+        assertThat(response.syntaxElements().CONSTRAINT()).isEmpty();
     }
 
     @Test
-    void rejectsMultipleConditionsForSingleFieldResponse() {
-        assertThatThrownBy(() -> ExtractSyntaxResponse.from(action(
+    void returnsMultipleConditionsAndConstraints() {
+        ExtractSyntaxResponse response = ExtractSyntaxResponse.from(action(
             Set.of(new Condition("on request"), new Condition("after approval")),
-            Set.of()
-        )))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("syntaxElements.CONDITION cannot represent multiple values");
-    }
-
-    @Test
-    void rejectsMultipleConstraintsForSingleFieldResponse() {
-        assertThatThrownBy(() -> ExtractSyntaxResponse.from(action(
-            Set.of(),
             Set.of(new Constraint("as CSV"), new Constraint("within 24 hours"))
-        )))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("syntaxElements.CONSTRAINT cannot represent multiple values");
+        ));
+
+        assertThat(response.syntaxElements().CONDITION())
+            .containsExactlyInAnyOrder("on request", "after approval");
+        assertThat(response.syntaxElements().CONSTRAINT())
+            .containsExactlyInAnyOrder("as CSV", "within 24 hours");
     }
 
     private Action action(Set<Condition> conditions, Set<Constraint> constraints) {

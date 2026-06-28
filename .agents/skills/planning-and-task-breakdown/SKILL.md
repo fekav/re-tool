@@ -185,6 +185,16 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 - [Question needing human input]
 ```
 
+## Language Style
+
+When a plan updates or clarifies existing behavior, use positive replacement language:
+
+- State the intended responsibility, behavior, or boundary directly.
+- Replace outdated or ambiguous statements with the target behavior.
+- Prefer "State X produces retrieval evidence" over "State X should not make matching decisions."
+
+This makes plans easier for implementation agents to execute because the desired system behavior is explicit.
+
 ## Parallelization Opportunities
 
 When multiple agents or sessions are available:

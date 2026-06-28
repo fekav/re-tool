@@ -5,8 +5,8 @@ import java.util.Objects;
 public record Classification(
     RequirementType conceptType,
     RequirementProperty property,
-    ConfidenceScore confidenceScore,
-    Rationale rationale
+    ConfidenceScore confidenceScore,    // TODO als read-model in application modellieren
+    Rationale rationale                 //  
 ) {
 
     public Classification {

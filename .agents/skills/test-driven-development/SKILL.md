@@ -19,7 +19,7 @@ Write a failing test before writing the code that makes it pass. For bug fixes, 
 
 **When NOT to use:** Pure configuration changes, documentation updates, or static content changes that have no behavioral impact.
 
-**Related:** Use `java-junit-testing` skill for writing tests. This skill describes the TDD cycle, not how to write good tests.
+**Required for Java tests:** When this TDD cycle involves writing, modifying, or reviewing Java tests, invoke and follow the `java-junit-testing` skill before changing those tests. This skill controls the TDD workflow; `java-junit-testing` controls Java/JUnit test design and implementation.
 
 ## The TDD Cycle
 
@@ -170,9 +170,13 @@ Does it cross a boundary (API, database, file system)?
 Is it a critical user flow that must work end-to-end?
   → E2E test (large) — limit these to critical paths
 ```
-## Writing Tests with `junit-junit-testing`
+## Writing Java Tests
 
+For Java test work, apply the TDD cycle in this skill and the Java/JUnit guidance from `java-junit-testing` together:
 
+- Use this skill to decide the RED, GREEN, and REFACTOR sequence.
+- Use `java-junit-testing` to design, name, structure, and implement the JUnit tests.
+- Treat a Java test written without applying `java-junit-testing` as incomplete skill usage.
 
 ## Common Rationalizations
 

@@ -1,6 +1,6 @@
 package io.fekav.req.syntaxextraction.application;
 
-import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.fekav.req.syntaxextraction.domain.Action;
 import io.fekav.req.syntaxextraction.domain.Condition;
@@ -15,27 +15,12 @@ public record ExtractSyntaxResponse(
             action.subject().text(),
             action.actionText(),
             action.targetObject().text(),
-            singleOrEmpty("syntaxElements.CONSTRAINT", action.constraints()),
-            singleOrEmpty("syntaxElements.CONDITION", action.conditions())
+            action.constraints().stream()
+                .map(Constraint::text)
+                .collect(Collectors.toUnmodifiableSet()),
+            action.conditions().stream()
+                .map(Condition::text)
+                .collect(Collectors.toUnmodifiableSet())
         ));
-    }
-
-    private static String singleOrEmpty(String fieldName, Set<?> values) {
-        if (values.isEmpty()) {
-            return "";
-        }
-        if (values.size() > 1) {
-            throw new IllegalArgumentException(fieldName + " cannot represent multiple values");
-        }
-
-        Object value = values.iterator().next();
-        if (value instanceof Condition condition) {
-            return condition.text();
-        }
-        if (value instanceof Constraint constraint) {
-            return constraint.text();
-        }
-
-        throw new IllegalArgumentException(fieldName + " contains unsupported value");
     }
 }
