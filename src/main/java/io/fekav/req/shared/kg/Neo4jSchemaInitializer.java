@@ -1,4 +1,4 @@
-package io.fekav.req.kg;
+package io.fekav.req.shared.kg;
 
 import io.quarkus.runtime.StartupEvent;
   import jakarta.enterprise.context.ApplicationScoped;

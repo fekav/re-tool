@@ -36,35 +36,37 @@ Write a failing test before writing the code that makes it pass. For bug fixes, 
 
 Write the test first. It must fail. A test that passes immediately proves nothing.
 
-```typescript
-// RED: This test fails because createTask doesn't exist yet
-describe('TaskService', () => {
-  it('creates a task with title and default status', async () => {
-    const task = await taskService.createTask({ title: 'Buy groceries' });
+```java
+@Test
+void shouldApplyDiscount_whenCustomerIsLoyaltyMember() {
+    // Arrange
+    Customer customer = CustomerTestData.loyaltyMember();
+    Order order = new Order(customer, List.of(new LineItem("SKU-1", 100.0)));
 
-    expect(task.id).toBeDefined();
-    expect(task.title).toBe('Buy groceries');
-    expect(task.status).toBe('pending');
-    expect(task.createdAt).toBeInstanceOf(Date);
-  });
-});
+    // Act
+    PricedOrder result = pricingService.price(order);
+
+    // Assert
+    assertThat(result.total()).isEqualTo(90.0);
+}
 ```
 
 ### Step 2: GREEN — Make It Pass
 
 Write the minimum code to make the test pass. Don't over-engineer:
 
-```typescript
-// GREEN: Minimal implementation
-export async function createTask(input: { title: string }): Promise<Task> {
-  const task = {
-    id: generateId(),
-    title: input.title,
-    status: 'pending' as const,
-    createdAt: new Date(),
-  };
-  await db.tasks.insert(task);
-  return task;
+```java
+public PricedOrder price(Order order) {
+    double total = order.lineItems()
+        .stream()
+        .mapToDouble(LineItem::price)
+        .sum();
+
+    if (order.customer().isLoyaltyMember()) {
+        total = total * 0.9;
+    }
+
+    return new PricedOrder(order.id(), total);
 }
 ```
 
@@ -104,27 +106,30 @@ Bug report arrives
 
 **Example:**
 
-```typescript
-// Bug: "Completing a task doesn't update the completedAt timestamp"
+```java
+@Test
+void setsCompletedAt_whenTaskIsCompleted() {
+    // Arrange
+    Task task = taskService.createTask(new CreateTaskCommand("Test"));
 
-// Step 1: Write the reproduction test (it should FAIL)
-it('sets completedAt when task is completed', async () => {
-  const task = await taskService.createTask({ title: 'Test' });
-  const completed = await taskService.completeTask(task.id);
+    // Act
+    Task completed = taskService.completeTask(task.id());
 
-  expect(completed.status).toBe('completed');
-  expect(completed.completedAt).toBeInstanceOf(Date);  // This fails → bug confirmed
-});
-
-// Step 2: Fix the bug
-export async function completeTask(id: string): Promise<Task> {
-  return db.tasks.update(id, {
-    status: 'completed',
-    completedAt: new Date(),  // This was missing
-  });
+    // Assert
+    assertThat(completed.status()).isEqualTo(TaskStatus.COMPLETED);
+    assertThat(completed.completedAt()).isEqualTo(fixedInstant);
 }
+```
 
-// Step 3: Test passes → bug fixed, regression guarded
+```java
+public Task completeTask(TaskId id) {
+    Task task = taskRepository.getById(id);
+    Task completed = task.complete(clock.instant());
+
+    taskRepository.save(completed);
+
+    return completed;
+}
 ```
 
 ## The Test Pyramid
@@ -177,6 +182,8 @@ For Java test work, apply the TDD cycle in this skill and the Java/JUnit guidanc
 - Use this skill to decide the RED, GREEN, and REFACTOR sequence.
 - Use `java-junit-testing` to design, name, structure, and implement the JUnit tests.
 - Treat a Java test written without applying `java-junit-testing` as incomplete skill usage.
+- Structure every Java test with the project's chosen Arrange-Act-Assert vocabulary. If the existing suite uses `// Given`, `// When`, `// Then`, use that consistently in each new or modified test.
+- Do not mix language examples or framework idioms. When working in Java, use JUnit/AssertJ/Mockito/Quarkus patterns from `java-junit-testing`, not TypeScript, Jest, Spring, or ad hoc pseudocode.
 
 ## Common Rationalizations
 
@@ -203,13 +210,17 @@ For Java test work, apply the TDD cycle in this skill and the Java/JUnit guidanc
 
 ## Verification
 
-After completing any implementation:
+Before considering the implementation complete, verify the work and the test discipline:
 
-- [ ] Every new behavior has a corresponding test
-- [ ] All tests pass: `npm test`
-- [ ] Bug fixes include a reproduction test that failed before the fix
-- [ ] Test names describe the behavior being verified
-- [ ] No tests were skipped or disabled
-- [ ] Coverage hasn't decreased (if tracked)
+- [ ] The RED step was real: the new or changed test failed before the production change, or the failure was explained if compilation could not proceed because the production type did not exist yet.
+- [ ] Every new or changed behavior has a focused test at the right level of the test pyramid.
+- [ ] Bug fixes include a reproduction test that failed for the reported bug before the fix.
+- [ ] Test names describe observable behavior, not implementation details.
+- [ ] Tests follow the relevant test-writing skill completely. For Java, `java-junit-testing` has been invoked and the tests use JUnit/AssertJ/Mockito/Quarkus patterns as appropriate.
+- [ ] Every new or modified Java test is explicitly structured as Arrange-Act-Assert or the repository's equivalent `// Given`, `// When`, `// Then` style.
+- [ ] Tests avoid unused stubs, skipped/disabled cases, broad mocks of value objects, framework-behavior assertions, and multiple unrelated behaviors in one test.
+- [ ] The narrow test command for the changed area passes.
+- [ ] The broader project verification command passes, using the repository's actual build tool and documented command.
+- [ ] Coverage has not decreased if the project tracks coverage.
 
 **Note:** Run each test command after a change that could affect the result. After a clean run, don't repeat the same command unless the code has changed since — re-running on unchanged code adds no confidence.

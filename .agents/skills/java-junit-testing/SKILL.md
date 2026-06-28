@@ -52,14 +52,14 @@ If AssertJ is available, always prefer.
 
 See `references/assertions.md` for a full explanation.
 
-## Mocking with Mockito
+## Mocking Rules
 
 A few hard rules that prevent the most common test-quality complaints in code review:
 
 - **Only mock what you don't own** — collaborators that cross a boundary (repositories,
   HTTP clients, clocks, message publishers). Don't mock simple value objects, DTOs, or
   classes with no real behavior — just construct them.
-- **Do not mock when writing end-to-end tests**ö
+- **Do not mock when writing end-to-end tests**
 - **Prefer constructor injection** with `@InjectMocks` over manual `Mockito.mock(...)` wiring or static-mocking tools —
   it's less code and fails fast if the constructor changes.
 - **Never silence `UnnecessaryStubbingException` with `lenient()`** as a first move — it's
@@ -67,7 +67,7 @@ A few hard rules that prevent the most common test-quality complaints in code re
 
 ## Parameterized and data-driven tests
 
-When a test needs to run the same logic across several inputs, see `references/parameterized-tests.md`
+When a test needs to run the same logic across several inputs, minimum 5 times, see `references/parameterized-tests.md`
 
 ## Cover the edges, not just the happy path
 
@@ -117,5 +117,6 @@ Read `references/quarkus-testing.md` for more information
 - [ ] No unused stubs, no mocking of plain value objects
 - [ ] Tests are independent of each other and of execution order
 - [ ] Assertions are specific (checking actual values/messages, not just "is not null")
+- [ ] Assertions used AssertJ when AssertJ-dependency exists in project
 - [ ] Exception messages are tested
 - [ ] Test code is structured in arrange-act-assert
