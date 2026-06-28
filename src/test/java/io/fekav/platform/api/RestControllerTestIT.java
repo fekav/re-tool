@@ -2,21 +2,34 @@ package io.fekav.platform.api;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.fekav.req.conceptretrieval.application.ConceptRetrievalPolicy;
+import io.fekav.req.conceptretrieval.application.RetrieveCandidateConceptsCommand;
+import io.fekav.req.conceptretrieval.domain.CandidateConcept;
+import io.fekav.req.conceptretrieval.domain.CandidateConceptMatch;
+import io.fekav.req.conceptretrieval.domain.CandidateConceptMatchSet;
+import io.fekav.req.conceptretrieval.domain.RetrievalEvidence;
 import io.fekav.req.classification.application.ClassificationService;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.ConfidenceScore;
@@ -48,6 +61,9 @@ class RestControllerTestIT {
     @InjectMock
     ClassificationService requirementClassificationService;
 
+    @InjectMock
+    ConceptRetrievalPolicy conceptRetrievalPolicy;
+
     ObjectMapper objectMapper;
 
     @BeforeEach
@@ -55,6 +71,7 @@ class RestControllerTestIT {
         objectMapper = new ObjectMapper();
         reset(syntaxExtraction);
         reset(requirementClassificationService);
+        reset(conceptRetrievalPolicy);
     }
 
     @ParameterizedTest(name = "{index}: {0}")
@@ -130,6 +147,106 @@ class RestControllerTestIT {
         assertThat(result.rationale()).isEqualTo(new Rationale(rationale));
     }
 
+    @Test
+    void returnsCandidateConceptMatches_whenRetrieveCandidateConceptsCommandIsPosted()
+        throws Exception {
+        // Given
+        CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(List.of(
+            new CandidateConceptMatch(
+                "SUBJECT",
+                "billing service",
+                List.of(new CandidateConcept(
+                    "sample-syntax-requirement-1-subject",
+                    "billing service",
+                    "SUBJECT"
+                )),
+                List.of(new RetrievalEvidence(
+                    "exactMatch",
+                    "Matched graph candidate 'billing service'",
+                    1.0
+                ))
+            ),
+            new CandidateConceptMatch(
+                "ACTION",
+                "must refund",
+                List.of(),
+                List.of(new RetrievalEvidence(
+                    "exactMatch",
+                    "No graph candidate matched 'must refund'",
+                    null
+                ))
+            )
+        ));
+        when(conceptRetrievalPolicy.retrieveCandidates(anyCollection()))
+            .thenReturn(matchSet);
+
+        // When
+        CandidateConceptMatchSet result =
+            given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(retrieveCandidateConceptsCommandRequest())
+            .when()
+                .post("/c")
+            .then()
+                .statusCode(201)
+                .contentType(ContentType.JSON)
+                .extract()
+                .as(CandidateConceptMatchSet.class);
+
+        // Then
+        assertThat(result.matches()).hasSize(2);
+        assertThat(result.matches().getFirst().syntaxRole()).isEqualTo("SUBJECT");
+        assertThat(result.matches().getFirst().text()).isEqualTo("billing service");
+        assertThat(result.matches().getFirst().candidates())
+            .singleElement()
+            .satisfies(candidate -> {
+                assertThat(candidate.conceptId())
+                    .isEqualTo("sample-syntax-requirement-1-subject");
+                assertThat(candidate.label()).isEqualTo("billing service");
+                assertThat(candidate.conceptType()).isEqualTo("SUBJECT");
+            });
+        assertThat(result.matches().getFirst().evidence())
+            .singleElement()
+            .satisfies(evidence -> {
+                assertThat(evidence.policyName()).isEqualTo("exactMatch");
+                assertThat(evidence.evidenceText())
+                    .isEqualTo("Matched graph candidate 'billing service'");
+                assertThat(evidence.score()).isEqualTo(1.0);
+            });
+        assertThat(result.matches().get(1).syntaxRole()).isEqualTo("ACTION");
+        assertThat(result.matches().get(1).text()).isEqualTo("must refund");
+        assertThat(result.matches().get(1).candidates()).isEmpty();
+        assertThat(result.matches().get(1).evidence())
+            .singleElement()
+            .satisfies(evidence -> {
+                assertThat(evidence.policyName()).isEqualTo("exactMatch");
+                assertThat(evidence.evidenceText())
+                    .isEqualTo("No graph candidate matched 'must refund'");
+                assertThat(evidence.score()).isNull();
+            });
+
+        ArgumentCaptor<Collection<RetrieveCandidateConceptsCommand.SelectedTermInput>>
+                selectedTerms =
+            selectedTermsCaptor();
+        verify(conceptRetrievalPolicy).retrieveCandidates(selectedTerms.capture());
+        assertThat(selectedTerms.getValue())
+            .extracting(
+                RetrieveCandidateConceptsCommand.SelectedTermInput::syntaxRole,
+                RetrieveCandidateConceptsCommand.SelectedTermInput::text
+            )
+            .containsExactly(
+                tuple(
+                    "SUBJECT",
+                    "billing service"
+                ),
+                tuple(
+                    "ACTION",
+                    "must refund"
+                )
+            );
+    }
+
     static Stream<Arguments> requirementTexts() {
         return Stream.of(
             Arguments.of(
@@ -194,6 +311,34 @@ class RestControllerTestIT {
             "payload",
             Map.of("rawText", requirementText)
         ));
+    }
+
+    private String retrieveCandidateConceptsCommandRequest() throws Exception {
+        return objectMapper.writeValueAsString(Map.of(
+            "command",
+            "RetrieveCandidateConceptsCommand",
+            "payload",
+            Map.of("selectedTerms", List.of(
+                Map.of(
+                    "syntaxRole",
+                    "SUBJECT",
+                    "text",
+                    "billing service"
+                ),
+                Map.of(
+                    "syntaxRole",
+                    "ACTION",
+                    "text",
+                    "must refund"
+                )
+            ))
+        ));
+    }
+
+    @SuppressWarnings("unchecked")
+    private ArgumentCaptor<Collection<RetrieveCandidateConceptsCommand.SelectedTermInput>>
+            selectedTermsCaptor() {
+        return ArgumentCaptor.forClass(Collection.class);
     }
 
     private Set<String> responseSet(String value) {
