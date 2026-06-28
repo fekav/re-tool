@@ -48,9 +48,90 @@ exactly one thing that broke.
 
 ## Assertions
 
-If AssertJ is available, always prefer. 
+Use AssertJ assertions when it's available in the project dependencies. Use junit assertions as fallback.
 
-See `references/assertions.md` for a full explanation.
+### Basic equality and truthiness
+
+```java
+assertThat(result).isEqualTo(42);
+assertThat(flag).isTrue();
+assertThat(name).isNotBlank();
+```
+
+### Objects
+
+```java
+assertThat(order)
+    .extracting(Order::status, Order::total)
+    .containsExactly(OrderStatus.PAID, 99.0);
+
+// Field-by-field comparison, ignoring a generated id field
+assertThat(actualOrder)
+    .usingRecursiveComparison()
+    .ignoringFields("id")
+    .isEqualTo(expectedOrder);
+```
+
+`usingRecursiveComparison()` is preferable to overriding `equals()` on a domain class purely
+for test convenience — keep production code free of test-only concerns.
+
+### Collections
+
+```java
+assertThat(items).isEmpty();
+assertThat(items).hasSize(3);
+assertThat(items).containsExactly("a", "b", "c");      // order matters
+assertThat(items).containsExactlyInAnyOrder("b", "a"); // order doesn't matter
+assertThat(items).extracting(Item::sku).contains("SKU-1");
+assertThat(items).allSatisfy(item -> assertThat(item.price()).isPositive());
+```
+
+### Exceptions
+
+```java
+// lets you chain checks on type and message
+assertThatThrownBy(() -> account.withdraw(-10))
+    .isInstanceOf(IllegalArgumentException.class)
+    .hasMessageContaining("negative");
+
+```
+
+Always assert on the exception **type and message** (or a relevant field on a custom
+exception) — "an exception was thrown" alone doesn't prove it was thrown for the right
+reason.
+
+### Floating point
+
+Never use plain `isEqualTo` on doubles/floats unless the value is an exact, deterministic
+result of integer-like arithmetic.
+
+```java
+assertThat(total).isCloseTo(19.99, within(0.001));
+```
+
+### Grouping independent checks (soft assertions / assertAll)
+
+When checking several independent properties of one result, group them so a run reports
+*every* failure instead of stopping at the first:
+
+```java
+SoftAssertions.assertSoftly(softly -> {
+    softly.assertThat(result.total()).isEqualTo(90.0);
+    softly.assertThat(result.currency()).isEqualTo("EUR");
+    softly.assertThat(result.discountApplied()).isTrue();
+});
+```
+
+This is for several checks on **one** outcome — it's not a substitute for splitting a test
+that covers genuinely unrelated behaviors.
+
+### Optionals
+
+```java
+assertThat(repository.findById(1L)).isPresent().contains(expectedCustomer);
+assertThat(repository.findById(999L)).isEmpty();
+```
+
 
 ## Mocking Rules
 
@@ -60,8 +141,7 @@ A few hard rules that prevent the most common test-quality complaints in code re
   HTTP clients, clocks, message publishers). Don't mock simple value objects, DTOs, or
   classes with no real behavior — just construct them.
 - **Do not mock when writing end-to-end tests**
-- **Prefer constructor injection** with `@InjectMocks` over manual `Mockito.mock(...)` wiring or static-mocking tools —
-  it's less code and fails fast if the constructor changes.
+- **Constructor injection** with `@InjectMocks`, never manual `Mockito.mock(...)` wiring or static-mocking tools.
 - **Never silence `UnnecessaryStubbingException` with `lenient()`** as a first move — it's
   Mockito telling you a stub isn't used by this test. Delete the unused stub instead; adding `lenient()` papers over a real signal that the test has drifted from the code.
 
@@ -107,7 +187,131 @@ defaulting to only the success case:
 
 ## If the project uses Quarkus
 
-Read `references/quarkus-testing.md` for more information
+### Picking the right test type
+
+| Annotation | Loads | Use it for |
+|---|---|---|
+| Plain JUnit + Mockito (no Quarkus annotations) | Nothing — pure POJO test | Services and domain logic with no CDI injection to verify. **Prefer this for testing domain logic.** |
+| `@QuarkusComponentTest` | Just the CDI beans you declare, not the full app | Unit-testing one or two beans together with their real or mocked collaborators, without paying for full application startup |
+| `@QuarkusTest` | The full CDI container, in the same JVM as the test (fast — this is the point of Quarkus's testing model) | REST endpoint tests, integration tests against the running application |
+| `@QuarkusIntegrationTest` | The packaged artifact (JAR or native image), started as a separate process | True end-to-end checks against what actually ships; the slowest option — use sparingly and tag accordingly |
+
+### `@QuarkusTest` with REST Assured
+
+REST Assured ships as the default way to exercise HTTP endpoints under `@QuarkusTest`:
+
+```java
+package org.acme.user;
+
+import io.quarkus.test.common.http.TestHTTPEndpoint;
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.common.mapper.TypeRef;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+
+@QuarkusTest
+@TestHTTPEndpoint(UserResource.class)   // this tells RESTAssured to prefix all requests with resource's base URI
+class UserResourceTest {
+
+    @Test
+    void list_returns_all_users() {
+        List<UserDto> users =
+                given()
+                        .accept(ContentType.JSON)
+                .when()
+                        .get()          // relativ zu /users
+                .then()
+                        .statusCode(200)
+                        .contentType(ContentType.JSON)
+                        .extract()
+                        .as(new TypeRef<>() {});
+
+        assertThat(users)
+                .containsExactly(
+                        new UserDto(1L, "Ada"),
+                        new UserDto(2L, "Linus")
+                );
+    }
+
+    @Test
+    void getById_returns_single_user() {
+        UserDto user =
+                given()
+                        .accept(ContentType.JSON)
+                .when()
+                        .get("/{id}", 1) // relativ zu /users
+                .then()
+                        .statusCode(200)
+                        .contentType(ContentType.JSON)
+                        .extract()
+                        .as(UserDto.class);
+
+        assertThat(user)
+                .isEqualTo(new UserDto(1L, "Ada"));
+    }
+
+    @Test
+    void getById_returns_404_for_unknown_user() {
+        given()
+                .accept(ContentType.JSON)
+        .when()
+                .get("/{id}", 999)     // relativ zu /users
+        .then()
+                .statusCode(404);
+    }
+
+    record UserDto(Long id, String name) {
+    }
+}
+```
+
+### Mocking with `@InjectMock` from `io.quarkus.test.InjectMock`
+
+**@Inject**: for testing CDI-Beans. 
+**@InjectMock**: for mocking external dependencies
+
+```java
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+@QuarkusTest
+class PriceServiceTest {
+
+    @Inject
+    PriceService serviceUnderTest;
+
+    @InjectMock
+    TaxClient taxClient;
+
+    @Test
+    void calculatesGrossPrice() {
+        // given
+        when(taxClient.taxRateFor("DE")).thenReturn(0.19);
+
+        // when
+        Money result = serviceUnderTest.calculateGrossPrice(
+            new Money("EUR", 100.00),
+            "DE"
+        );
+
+        // then
+        assertThat(result.currency()).isEqualTo("EUR");
+        assertThat(result.amount()).isEqualTo(119.00);
+        verify(taxClient).taxRateFor("DE");
+    }
+}
+```
 
 ## Verification Checklist
 
