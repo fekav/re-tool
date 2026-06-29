@@ -2,7 +2,7 @@
 
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
-| Requirement KG Persistence | Requirement-to-KG ingestion | `docs/workflows/requirement-kg-persistence.md` | Workflow for persisting textual software requirements into a knowledge graph with provenance, extracted terms, mappings, and policy-governed concept creation. |
+| Requirement KG Persistence | Requirement-to-KG ingestion | `docs/workflows/requirement-kg-persistence.md` | Workflow for persisting textual software requirements into a knowledge graph with provenance, extracted terms, concept-name candidate retrieval, mappings, and policy-governed concept creation. |
 
 ## Roles
 
@@ -23,15 +23,15 @@
 | ClassifyRequirementCommand | Classify requirement instruction | `CLASSIFY_REQUIREMENT` | Command requesting classification of RawText. |
 | RequirementClassifiedEvent | Classification event | `CLASSIFY_REQUIREMENT` | Domain event raised after a Requirement has been classified. |
 | Action | Candidate action; extracted action | `EXTRACT_REQUIREMENT_SYNTAX` | Semantic extraction result owned by a Requirement: subject, action text, target object, and optional condition and constraint qualifiers. |
-| CandidateConceptMatchSet | Candidate concepts; retrieval results | `RETRIEVE_CANDIDATE_CONCEPTS` | Ordered KG concept candidates or no-match evidence for selected term mentions. Every real retrieved candidate has candidate-specific evidence with a required retrieval score. |
-| CandidateConcept | Retrieved concept identity | `RETRIEVE_CANDIDATE_CONCEPTS` | KG concept identity returned by retrieval, containing concept id, label, and optional concept type. |
-| CandidateLookupHit | Raw lookup hit | `RETRIEVE_CANDIDATE_CONCEPTS` | Candidate found by one lookup method before policy aggregation, with lookup method name, evidence text, and lookup rank. |
-| RetrievedCandidateConcept | Weighted retrieved candidate | `RETRIEVE_CANDIDATE_CONCEPTS` | Candidate concept after policy aggregation, carrying candidate-specific retrieval evidence and required retrieval score. |
-| RetrievalEvidence | Candidate evidence; no-match evidence | `RETRIEVE_CANDIDATE_CONCEPTS` | Evidence produced by retrieval. Candidate-specific evidence records applied lookup methods and required score; term-level evidence records retrieval attempts and no-match results. |
+| CandidateConceptMatchSet | Candidate concepts; retrieval results | `RETRIEVE_CANDIDATE_CONCEPTS` | Retrieval result containing one `CandidateConceptMatch` per selected term. Each match has zero or more retrieved candidates; an empty candidate list is the current lookup-miss representation. |
+| CandidateConcept | Retrieved concept identity | `RETRIEVE_CANDIDATE_CONCEPTS` | KG concept identity returned by retrieval, containing candidate key, label, and optional concept type. |
+| CandidateConceptMatch | Term retrieval result | `RETRIEVE_CANDIDATE_CONCEPTS` | Pairing of one `SelectedTerm` with zero or more `RetrievedCandidateConcept` values. |
+| RetrievedCandidateConcept | Retrieved candidate | `RETRIEVE_CANDIDATE_CONCEPTS` | Candidate concept after retrieval policy processing, carrying non-empty candidate-specific retrieval evidence. |
+| RetrievalEvidence | Candidate evidence | `RETRIEVE_CANDIDATE_CONCEPTS` | Evidence produced for a retrieved candidate. Current concept-name retrieval records `policyName`, evidence text, and score `1.0`. |
 | TermConceptMappingSet | Mapping candidates | `CREATE_MATCHING_CANDIDATES` | Candidate mappings between extracted term mentions and KG concepts, with status and rationale. |
-| ConceptCreationPolicy | Creation policy; matching policy | `CREATE_MATCHING_CANDIDATES` | Configured rules that decide whether no-match or ambiguous terms are auto-created, proposed, reviewed, blocked, or rejected. |
+| ConceptCreationPolicy | Creation policy; matching policy | `CREATE_MATCHING_CANDIDATES` | Configured rules that decide whether lookup misses or ambiguous terms are auto-created, proposed, reviewed, blocked, or rejected. |
 | MappingDecisionSet | Mapping decisions | `CREATE_MATCHING_CANDIDATES`; `REQUEST_HUMAN_REVIEW` | Final or pending decisions for term-to-concept mappings and concept proposals. |
-| ConceptProposalSet | New concept proposals | `CREATE_MATCHING_CANDIDATES`; `REQUEST_HUMAN_REVIEW` | Proposed new KG concepts generated when extracted terms do not sufficiently match existing concepts. |
+| ConceptProposalSet | New concept proposals | `CREATE_MATCHING_CANDIDATES`; `REQUEST_HUMAN_REVIEW` | Proposed new KG concepts generated when selected terms have empty candidate lists or do not sufficiently match existing concepts. |
 | Raw Requirement Text | Source text; RawText | `INTAKE_REQUIREMENT` | Original textual software requirement preserved for provenance and auditability. |
 | Provenance | Source metadata; traceability | `INTAKE_REQUIREMENT`; `PERSIST_GRAPH_CHANGES` | Metadata linking KG facts back to the raw requirement source, submitter, and ingestion event. |
 | SyntaxExtractionOutput | Requirement syntax DTO | `EXTRACT_REQUIREMENT_SYNTAX`; `docs/json-contracts.md` | Boundary DTO representing structured model output before it is validated and mapped to the Action domain model. |
@@ -40,7 +40,7 @@
 | StructuredOutputValidationException | Structured output validation failure | `docs/json-contracts.md` | Failure raised when model output DTOs do not satisfy their StructuredOutputContract. |
 | InvalidStructuredOutputException | Invalid model output | `docs/json-contracts.md` | Failure raised when model output cannot be parsed, validated, or mapped into an application-owned DTO. |
 | SelectedTerm | Selected syntax term | `RETRIEVE_CANDIDATE_CONCEPTS` | Syntax role and text value selected for concept retrieval. Command callers provide no ids. |
-| RetrievalScore | Candidate retrieval score | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Required numeric score for a retrieved candidate, equal to the sum of applied lookup method weights. Score `1.0` is the maximum and is reserved for exact label hits in v1. |
+| RetrievalScore | Candidate retrieval score | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Numeric score on retrieval evidence. Current concept-name retrieval assigns score `1.0` to label, text, alias, and aliases matches. |
 
 ## Domain Terms
 
@@ -63,11 +63,11 @@
 | Quality | Quality property | `CLASSIFY_REQUIREMENT` | Property for quality attributes and constraints such as performance, security, availability, usability, reliability, or compliance. |
 | SystemComponent | Backend component; service; module | `RETRIEVE_CANDIDATE_CONCEPTS`; Human Decision Points | KG concept representing an implementation-facing system part. |
 | UIComponent | User interface component; screen element | `RETRIEVE_CANDIDATE_CONCEPTS`; Human Decision Points | KG concept representing a visible or interactive user interface part. |
-| ConceptRetrievalService | Retrieval domain service | `RETRIEVE_CANDIDATE_CONCEPTS` | Domain service that applies the active ConceptRetrievalPolicy to selected terms and returns a CandidateConceptMatchSet. |
-| ConceptCandidateLookup | Lookup method port | `RETRIEVE_CANDIDATE_CONCEPTS` | Application port for one candidate lookup method. It exposes a lookup method name, lookup weight, and deterministic lookup hits. |
-| CandidateLookupScope | Lookup scope | `RETRIEVE_CANDIDATE_CONCEPTS` | Context passed to lookup methods, such as syntax role and allowed concept-type hints, without owning retrieval order or mapping decisions. |
-| exactLabel | Exact label lookup | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Lookup method that searches graph concepts whose label or text exactly equals the selected term text. V1 weight is `1.0`. |
-| alias | Alias lookup | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Lookup method that searches graph alias values for the selected term text after exact label lookup misses. V1 weight is `0.7`. |
+| ConceptRetrievalService | Retrieval domain service | `RETRIEVE_CANDIDATE_CONCEPTS` | Domain service that applies the active `ConceptRetrievalPolicy` to selected terms and returns a `CandidateConceptMatchSet`. It rejects empty selected-term requests and policies that return a match for a different selected term. |
+| ConceptRetrievalPolicy | Retrieval policy port | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Domain policy interface that retrieves candidates for one `SelectedTerm` and returns a `CandidateConceptMatch`. |
+| CandidateLookup | Concept-name lookup port | `RETRIEVE_CANDIDATE_CONCEPTS` | Domain port used by `ConceptNameRetrievalPolicy` to find KG candidate concepts for one selected term. It does not assign matching outcomes or concept creation decisions. |
+| Neo4jConceptNameLookup | Neo4j concept-name lookup | `RETRIEVE_CANDIDATE_CONCEPTS` | Neo4j adapter for `CandidateLookup`. It matches selected term text against graph `label`, `text`, `alias`, and `aliases`, applies the syntax-role predicate, and orders by candidate label then candidate key. |
+| conceptName | Concept-name evidence policy name | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Retrieval evidence policy name emitted for concept-name matches. |
 | Subject | Actor; grammatical subject | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying who or what performs or owns an action. |
 | TargetObject | Object; target | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying what an action affects. |
 | Action | Behavior; verb | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying required behavior or operation and owning its subject, target object, conditions, and constraints. |
@@ -81,7 +81,7 @@
 | INTAKE_REQUIREMENT | Intake | State Table | Start state that captures raw requirement text and provenance. |
 | CLASSIFY_REQUIREMENT | Classify | State Table | State that assigns an initial KG type and property to the requirement. |
 | EXTRACT_REQUIREMENT_SYNTAX | Extract syntax | State Table | State that extracts candidate terms from requirement syntax. |
-| RETRIEVE_CANDIDATE_CONCEPTS | Retrieve matches | State Table | State that searches the KG for ordered weighted concept candidates or explicit no-match evidence for extracted terms. |
+| RETRIEVE_CANDIDATE_CONCEPTS | Retrieve matches | State Table | State that searches the KG for concept-name candidate concepts for selected syntax terms. |
 | CREATE_MATCHING_CANDIDATES | Create matchings | State Table | State that converts retrieval results into policy-governed term-to-concept matchings or review items. |
 | REQUEST_HUMAN_REVIEW | Human review | State Table | State that collects required review decisions for ambiguous mappings and concept proposals. |
 | PERSIST_GRAPH_CHANGES | Persist graph | State Table | State that writes requirement, provenance, terms, mappings, and approved concepts to the KG. |
@@ -104,9 +104,9 @@
 | RAW_TEXT_POLICY | Raw text validation | State Table policy column | Requires non-blank RawText and recorded provenance before derived artifacts are created. |
 | CLASSIFICATION_POLICY | Classification output policy | State Table policy column | Treats RequirementType and RequirementProperty as classifier outputs from supported enum sets and treats low confidence as a review signal. |
 | SYNTAX_EXTRACTION_POLICY | Syntax extraction policy | State Table policy column | Requires subject, action text, and target object, while allowing condition and constraint only when expressed by the raw text. |
-| CONCEPT_RETRIEVAL_POLICY | Retrieval ordering policy | State Table policy column | Domain policy that defines lookup method order, lookup weights, score aggregation, stop conditions, and no-match evidence for candidate retrieval. |
-| OrderedWeightedConceptRetrievalPolicy | Ordered weighted retrieval | `CONCEPT_RETRIEVAL_POLICY`; `RETRIEVE_CANDIDATE_CONCEPTS` | V1 retrieval policy that runs lookup methods by descending weight, gives `exactLabel` weight `1.0`, gives `alias` weight `0.7`, stops on exact label hits, and keeps non-exact combinations below score `1.0`. |
-| MATCHING_POLICY | Matching decision policy | State Table policy column | Defines threshold boundaries for exact, probable, ambiguous, and no-match matching outcomes and resolves them into approve, reject, propose, create, review, or block decisions. |
+| CONCEPT_RETRIEVAL_POLICY | Retrieval policy | State Table policy column | Domain policy that defines how selected terms become candidate concept matches. Current implementation is `ConceptNameRetrievalPolicy`. |
+| ConceptNameRetrievalPolicy | Concept-name retrieval policy | `CONCEPT_RETRIEVAL_POLICY`; `RETRIEVE_CANDIDATE_CONCEPTS` | Current retrieval policy that calls `CandidateLookup` once per selected term, de-duplicates duplicate candidate keys keeping the first occurrence, and treats graph labels, text values, aliases, and alias lists as equivalent concept-name matches with `conceptName` evidence and score `1.0`. |
+| MATCHING_POLICY | Matching decision policy | State Table policy column | Defines threshold boundaries for exact, probable, ambiguous, and lookup-miss matching outcomes and resolves them into approve, reject, propose, create, review, or block decisions. |
 | HUMAN_REVIEW_POLICY | Review routing policy | State Table policy column | Defines reviewer ownership, allowed response shape, and due condition for policy-directed review items. |
 | GRAPH_PERSISTENCE_POLICY | Graph write policy | State Table policy column | Requires idempotent graph writes, policy-approved concept creation, and explicit permission to persist pending review states. |
 | COMPLETION_POLICY | Workflow completion policy | State Table policy column | Requires a committed KG transaction with persisted identifiers before the workflow can reach DONE. |
