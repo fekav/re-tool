@@ -22,14 +22,16 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.fekav.req.conceptretrieval.application.ConceptRetrievalPolicy;
-import io.fekav.req.conceptretrieval.application.RetrieveCandidateConceptsCommand;
 import io.fekav.req.conceptretrieval.domain.CandidateConcept;
 import io.fekav.req.conceptretrieval.domain.CandidateConceptMatch;
 import io.fekav.req.conceptretrieval.domain.CandidateConceptMatchSet;
+import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
+import io.fekav.req.conceptretrieval.domain.RetrievedCandidateConcept;
 import io.fekav.req.conceptretrieval.domain.RetrievalEvidence;
+import io.fekav.req.conceptretrieval.domain.SelectedTerm;
 import io.fekav.req.classification.application.ClassificationService;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.ConfidenceScore;
@@ -62,7 +64,7 @@ class RestControllerTestIT {
     ClassificationService requirementClassificationService;
 
     @InjectMock
-    ConceptRetrievalPolicy conceptRetrievalPolicy;
+    ConceptRetrievalService conceptRetrievalService;
 
     ObjectMapper objectMapper;
 
@@ -71,7 +73,7 @@ class RestControllerTestIT {
         objectMapper = new ObjectMapper();
         reset(syntaxExtraction);
         reset(requirementClassificationService);
-        reset(conceptRetrievalPolicy);
+        reset(conceptRetrievalService);
     }
 
     @ParameterizedTest(name = "{index}: {0}")
@@ -151,37 +153,49 @@ class RestControllerTestIT {
     void returnsCandidateConceptMatches_whenRetrieveCandidateConceptsCommandIsPosted()
         throws Exception {
         // Given
+        RetrievalEvidence exactEvidence = new RetrievalEvidence(
+            "orderedWeighted",
+            "Matched exact label 'billing service'",
+            1.0
+        );
+        RetrievalEvidence aliasEvidence = new RetrievalEvidence(
+            "orderedWeighted",
+            "Matched alias 'must refund'",
+            0.7
+        );
         CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(List.of(
             new CandidateConceptMatch(
-                "SUBJECT",
-                "billing service",
-                List.of(new CandidateConcept(
-                    "sample-syntax-requirement-1-subject",
-                    "billing service",
-                    "SUBJECT"
-                )),
-                List.of(new RetrievalEvidence(
-                    "exactMatch",
-                    "Matched graph candidate 'billing service'",
-                    1.0
+                new SelectedTerm("SUBJECT", "billing service"),
+                List.of(new RetrievedCandidateConcept(
+                    new CandidateConcept(
+                        "sample-syntax-requirement-1-subject",
+                        "billing service",
+                        "SyntaxElement"
+                    ),
+                    List.of(exactEvidence)
                 ))
             ),
             new CandidateConceptMatch(
-                "ACTION",
-                "must refund",
-                List.of(),
-                List.of(new RetrievalEvidence(
-                    "exactMatch",
-                    "No graph candidate matched 'must refund'",
-                    null
+                new SelectedTerm("ACTION", "must refund"),
+                List.of(new RetrievedCandidateConcept(
+                    new CandidateConcept(
+                        "sample-action-refund",
+                        "Refund Service",
+                        "SystemComponent"
+                    ),
+                    List.of(aliasEvidence)
                 ))
+            ),
+            new CandidateConceptMatch(
+                new SelectedTerm("OBJECT", "unknown workflow"),
+                List.of()
             )
         ));
-        when(conceptRetrievalPolicy.retrieveCandidates(anyCollection()))
+        when(conceptRetrievalService.retrieveCandidates(anyCollection()))
             .thenReturn(matchSet);
 
         // When
-        CandidateConceptMatchSet result =
+        String responseBody =
             given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
@@ -192,48 +206,68 @@ class RestControllerTestIT {
                 .statusCode(201)
                 .contentType(ContentType.JSON)
                 .extract()
-                .as(CandidateConceptMatchSet.class);
+                .asString();
+        CandidateConceptMatchSet result =
+            objectMapper.readValue(responseBody, CandidateConceptMatchSet.class);
+        JsonNode responseJson = objectMapper.readTree(responseBody);
 
         // Then
-        assertThat(result.matches()).hasSize(2);
-        assertThat(result.matches().getFirst().syntaxRole()).isEqualTo("SUBJECT");
-        assertThat(result.matches().getFirst().text()).isEqualTo("billing service");
+        assertThat(result.matches()).hasSize(3);
+        assertThat(result.matches().getFirst().selectedTerm().syntaxRole()).isEqualTo("SUBJECT");
+        assertThat(result.matches().getFirst().selectedTerm().text()).isEqualTo("billing service");
+        assertThat(responseJson.at("/matches/0/evidence").isMissingNode()).isTrue();
+        assertThat(responseJson.at("/matches/0/candidates/0/candidate/candidateKey").asText())
+            .isEqualTo("sample-syntax-requirement-1-subject");
+        assertThat(responseJson.at("/matches/0/candidates/0/candidate/conceptId").isMissingNode())
+            .isTrue();
+        assertThat(responseJson.at("/matches/0/candidates/0/evidence/0/lookupRanks").isMissingNode())
+            .isTrue();
+        assertThat(responseJson.at("/matches/0/candidates/0/evidence/0/appliedLookupMethods")
+            .isMissingNode()).isTrue();
         assertThat(result.matches().getFirst().candidates())
             .singleElement()
-            .satisfies(candidate -> {
-                assertThat(candidate.conceptId())
+            .satisfies(retrievedCandidate -> {
+                assertThat(retrievedCandidate.candidate().candidateKey())
                     .isEqualTo("sample-syntax-requirement-1-subject");
-                assertThat(candidate.label()).isEqualTo("billing service");
-                assertThat(candidate.conceptType()).isEqualTo("SUBJECT");
+                assertThat(retrievedCandidate.candidate().label()).isEqualTo("billing service");
+                assertThat(retrievedCandidate.candidate().conceptType()).isEqualTo("SyntaxElement");
+                assertThat(retrievedCandidate.evidence())
+                    .singleElement()
+                    .satisfies(evidence -> {
+                        assertThat(evidence.policyName()).isEqualTo("orderedWeighted");
+                        assertThat(evidence.score()).isEqualTo(1.0);
+                    });
             });
-        assertThat(result.matches().getFirst().evidence())
+        assertThat(result.matches().get(1).selectedTerm().syntaxRole()).isEqualTo("ACTION");
+        assertThat(result.matches().get(1).selectedTerm().text()).isEqualTo("must refund");
+        assertThat(responseJson.at("/matches/1/evidence").isMissingNode()).isTrue();
+        assertThat(responseJson.at("/matches/1/candidates/0/candidate/candidateKey").asText())
+            .isEqualTo("sample-action-refund");
+        assertThat(responseJson.at("/matches/1/candidates/0/candidate/conceptId").isMissingNode())
+            .isTrue();
+        assertThat(responseJson.at("/matches/1/candidates/0/evidence/0/lookupRanks").isMissingNode())
+            .isTrue();
+        assertThat(responseJson.at("/matches/1/candidates/0/evidence/0/appliedLookupMethods")
+            .isMissingNode()).isTrue();
+        assertThat(result.matches().get(1).candidates())
             .singleElement()
-            .satisfies(evidence -> {
-                assertThat(evidence.policyName()).isEqualTo("exactMatch");
-                assertThat(evidence.evidenceText())
-                    .isEqualTo("Matched graph candidate 'billing service'");
-                assertThat(evidence.score()).isEqualTo(1.0);
+            .satisfies(retrievedCandidate -> {
+                assertThat(retrievedCandidate.candidate().candidateKey())
+                    .isEqualTo("sample-action-refund");
+                assertThat(retrievedCandidate.evidence().getFirst().score()).isEqualTo(0.7);
             });
-        assertThat(result.matches().get(1).syntaxRole()).isEqualTo("ACTION");
-        assertThat(result.matches().get(1).text()).isEqualTo("must refund");
-        assertThat(result.matches().get(1).candidates()).isEmpty();
-        assertThat(result.matches().get(1).evidence())
-            .singleElement()
-            .satisfies(evidence -> {
-                assertThat(evidence.policyName()).isEqualTo("exactMatch");
-                assertThat(evidence.evidenceText())
-                    .isEqualTo("No graph candidate matched 'must refund'");
-                assertThat(evidence.score()).isNull();
-            });
+        assertThat(result.matches().get(2).selectedTerm().syntaxRole()).isEqualTo("OBJECT");
+        assertThat(result.matches().get(2).selectedTerm().text()).isEqualTo("unknown workflow");
+        assertThat(result.matches().get(2).candidates()).isEmpty();
+        assertThat(responseJson.at("/matches/2/evidence").isMissingNode()).isTrue();
 
-        ArgumentCaptor<Collection<RetrieveCandidateConceptsCommand.SelectedTermInput>>
-                selectedTerms =
+        ArgumentCaptor<Collection<SelectedTerm>> selectedTerms =
             selectedTermsCaptor();
-        verify(conceptRetrievalPolicy).retrieveCandidates(selectedTerms.capture());
+        verify(conceptRetrievalService).retrieveCandidates(selectedTerms.capture());
         assertThat(selectedTerms.getValue())
             .extracting(
-                RetrieveCandidateConceptsCommand.SelectedTermInput::syntaxRole,
-                RetrieveCandidateConceptsCommand.SelectedTermInput::text
+                SelectedTerm::syntaxRole,
+                SelectedTerm::text
             )
             .containsExactly(
                 tuple(
@@ -243,6 +277,10 @@ class RestControllerTestIT {
                 tuple(
                     "ACTION",
                     "must refund"
+                ),
+                tuple(
+                    "OBJECT",
+                    "unknown workflow"
                 )
             );
     }
@@ -330,13 +368,19 @@ class RestControllerTestIT {
                     "ACTION",
                     "text",
                     "must refund"
+                ),
+                Map.of(
+                    "syntaxRole",
+                    "OBJECT",
+                    "text",
+                    "unknown workflow"
                 )
             ))
         ));
     }
 
     @SuppressWarnings("unchecked")
-    private ArgumentCaptor<Collection<RetrieveCandidateConceptsCommand.SelectedTermInput>>
+    private ArgumentCaptor<Collection<SelectedTerm>>
             selectedTermsCaptor() {
         return ArgumentCaptor.forClass(Collection.class);
     }
