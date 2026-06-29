@@ -11,12 +11,12 @@ public class ConceptNameRetrievalPolicy implements ConceptRetrievalPolicy {
     public static final String POLICY_NAME = "conceptName";
     public static final double SCORE = 1.0;
 
-    private final ConceptNameLookup conceptNameLookup;
+    private final CandidateLookup candidateLookup;
 
-    public ConceptNameRetrievalPolicy(ConceptNameLookup conceptNameLookup) {
-        this.conceptNameLookup = Objects.requireNonNull(
-            conceptNameLookup,
-            "conceptNameLookup must not be null"
+    public ConceptNameRetrievalPolicy(CandidateLookup candidateLookup) {
+        this.candidateLookup = Objects.requireNonNull(
+            candidateLookup,
+            "candidateLookup must not be null"
         );
     }
 
@@ -25,7 +25,7 @@ public class ConceptNameRetrievalPolicy implements ConceptRetrievalPolicy {
         Objects.requireNonNull(selectedTerm, "selectedTerm must not be null");
 
         List<CandidateConcept> candidates = deduplicatedCandidates(
-            conceptNameLookup.findCandidates(selectedTerm)
+            candidateLookup.findCandidates(selectedTerm)
         );
         List<RetrievedCandidateConcept> retrievedCandidates = candidates
             .stream()

@@ -9,13 +9,13 @@ import org.neo4j.driver.Session;
 import org.neo4j.driver.Value;
 
 import io.fekav.req.conceptretrieval.domain.CandidateConcept;
-import io.fekav.req.conceptretrieval.domain.ConceptNameLookup;
+import io.fekav.req.conceptretrieval.domain.CandidateLookup;
 import io.fekav.req.conceptretrieval.domain.SelectedTerm;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
-public class Neo4jConceptNameLookup implements ConceptNameLookup {
+public class Neo4jConceptNameLookup implements CandidateLookup {
 
     private static final String QUERY = """
         MATCH (candidate)

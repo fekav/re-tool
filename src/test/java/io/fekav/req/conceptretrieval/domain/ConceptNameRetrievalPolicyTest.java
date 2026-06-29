@@ -133,14 +133,14 @@ class ConceptNameRetrievalPolicyTest {
         // When / Then
         assertThatThrownBy(() -> new ConceptNameRetrievalPolicy(null))
             .isInstanceOf(NullPointerException.class)
-            .hasMessage("conceptNameLookup must not be null");
+            .hasMessage("candidateLookup must not be null");
     }
 
     private CandidateConcept candidate(String candidateKey, String label) {
         return new CandidateConcept(candidateKey, label, "SystemComponent");
     }
 
-    private ConceptNameLookup lookup(
+    private CandidateLookup lookup(
         List<SelectedTerm> lookupTerms,
         Function<SelectedTerm, List<CandidateConcept>> candidates
     ) {
