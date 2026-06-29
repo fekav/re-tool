@@ -29,12 +29,10 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
-import io.fekav.req.conceptretrieval.application.CandidateLookupScope;
-import io.fekav.req.conceptretrieval.domain.CandidateLookupHit;
 import io.fekav.req.conceptretrieval.domain.SelectedTerm;
 
 @ExtendWith(MockitoExtension.class)
-class Neo4jExactLabelCandidateLookupTest {
+class Neo4jConceptNameLookupTest {
 
     @Mock
     Driver driver;
@@ -49,7 +47,7 @@ class Neo4jExactLabelCandidateLookupTest {
     Result result;
 
     @InjectMocks
-    Neo4jExactLabelCandidateLookup lookup;
+    Neo4jConceptNameLookup lookup;
 
     @BeforeEach
     void setUp() {
@@ -62,63 +60,56 @@ class Neo4jExactLabelCandidateLookupTest {
     }
 
     @Test
-    void returnsExactLabelHitsInDeterministicGraphOrder() {
+    void returnsConceptNameCandidatesInDeterministicGraphOrder() {
         // Given
         when(result.stream()).thenReturn(Stream.of(
             record("concept-1", "Billing API", "SystemComponent"),
-            record("concept-2", "Billing Service", "SystemComponent")
+            record("concept-2", "Billing Service", null)
         ));
 
         // When
-        var hits = lookup.findCandidates(
-            new SelectedTerm("SUBJECT", "billing service"),
-            new CandidateLookupScope("SUBJECT", java.util.Set.of("SystemComponent"))
-        );
+        var candidates = lookup.findCandidates(new SelectedTerm("SUBJECT", "billing service"));
 
         // Then
-        assertThat(lookup.lookupMethodName()).isEqualTo("exactLabel");
-        assertThat(lookup.lookupWeight()).isEqualTo(1.0);
-        assertThat(hits)
+        assertThat(candidates)
             .extracting(
-                hit -> hit.candidate().candidateKey(),
-                hit -> hit.candidate().label(),
-                CandidateLookupHit::lookupMethodName
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.conceptType()
             )
             .containsExactly(
-                tuple("concept-1", "Billing API", "exactLabel"),
-                tuple("concept-2", "Billing Service", "exactLabel")
-            );
-        assertThat(hits)
-            .allSatisfy(hit ->
-                assertThat(hit.evidenceText()).contains("exact label")
+                tuple("concept-1", "Billing API", "SystemComponent"),
+                tuple("concept-2", "Billing Service", null)
             );
 
         ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
         verify(transaction).run(query.capture(), parameters.capture());
         assertThat(singleLine(query.getValue()))
-            .contains("candidate.label = $text OR candidate.text = $text")
-            .contains("ORDER BY candidateLabel ASC, candidateKey ASC");
+            .contains("candidate.label = $text")
+            .contains("candidate.text = $text")
+            .contains("candidate.alias = $text")
+            .contains("$text IN coalesce(candidate.aliases, [])")
+            .contains("candidate.role IS NULL OR candidate.role = $syntaxRole")
+            .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
+            .doesNotContain("$allowedConceptTypes");
         assertThat(parameters.getValue())
             .containsEntry("text", "billing service")
             .containsEntry("syntaxRole", "SUBJECT")
-            .containsEntry("allowedConceptTypes", java.util.Set.of("SystemComponent"));
+            .containsOnlyKeys("text", "syntaxRole");
         verify(session).close();
     }
 
     @Test
-    void returnsEmptyList_whenGraphHasNoExactLabelHits() {
+    void returnsEmptyList_whenGraphHasNoConceptNameHits() {
         // Given
         when(result.stream()).thenReturn(Stream.empty());
 
         // When
-        var hits = lookup.findCandidates(
-            new SelectedTerm("ACTION", "must refund"),
-            CandidateLookupScope.forSelectedTerm(new SelectedTerm("ACTION", "must refund"))
-        );
+        var candidates = lookup.findCandidates(new SelectedTerm("ACTION", "must refund"));
 
         // Then
-        assertThat(hits).isEmpty();
+        assertThat(candidates).isEmpty();
     }
 
     private Record record(String candidateKey, String label, String conceptType) {
@@ -136,6 +127,7 @@ class Neo4jExactLabelCandidateLookupTest {
         return statement.replaceAll("\\s+", " ").trim();
     }
 
+    @SuppressWarnings("unchecked")
     private ArgumentCaptor<Map<String, Object>> parametersCaptor() {
         return ArgumentCaptor.forClass(Map.class);
     }

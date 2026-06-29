@@ -16,8 +16,8 @@ class CandidateConceptMatchSetTest {
     void trimsDomainStrings_whenValuesAreCreated() {
         // Given
         RetrievalEvidence evidence = new RetrievalEvidence(
-            " orderedWeighted ",
-            " matched exact label ",
+            " conceptName ",
+            " matched concept name ",
             1.0
         );
 
@@ -43,9 +43,9 @@ class CandidateConceptMatchSetTest {
         assertThat(retrievedCandidate.candidate())
             .isEqualTo(new CandidateConcept("concept-1", "Billing Service", "SystemComponent"));
         assertThat(retrievedCandidate.evidence().getFirst().policyName())
-            .isEqualTo("orderedWeighted");
+            .isEqualTo("conceptName");
         assertThat(retrievedCandidate.evidence().getFirst().evidenceText())
-            .isEqualTo("matched exact label");
+            .isEqualTo("matched concept name");
     }
 
     @ParameterizedTest
@@ -80,21 +80,6 @@ class CandidateConceptMatchSetTest {
         assertThatThrownBy(() -> new CandidateConcept("concept-1", " ", null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("candidate concept label must not be blank");
-    }
-
-    @Test
-    void rejectsLookupHit_whenEvidenceTextIsBlank() {
-        // Given
-        CandidateConcept candidate = new CandidateConcept("concept-1", "billing service", null);
-
-        // When / Then
-        assertThatThrownBy(() -> new CandidateLookupHit(
-            candidate,
-            "exactLabel",
-            " "
-        ))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("candidate lookup hit evidence text must not be blank");
     }
 
     @Test

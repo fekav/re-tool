@@ -153,15 +153,15 @@ class RestControllerTestIT {
     void returnsCandidateConceptMatches_whenRetrieveCandidateConceptsCommandIsPosted()
         throws Exception {
         // Given
-        RetrievalEvidence exactEvidence = new RetrievalEvidence(
-            "orderedWeighted",
-            "Matched exact label 'billing service'",
+        RetrievalEvidence subjectEvidence = new RetrievalEvidence(
+            "conceptName",
+            "Matched concept name 'billing service' to graph candidate 'billing service'",
             1.0
         );
-        RetrievalEvidence aliasEvidence = new RetrievalEvidence(
-            "orderedWeighted",
-            "Matched alias 'must refund'",
-            0.7
+        RetrievalEvidence actionEvidence = new RetrievalEvidence(
+            "conceptName",
+            "Matched concept name 'must refund' to graph candidate 'Refund Service'",
+            1.0
         );
         CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(List.of(
             new CandidateConceptMatch(
@@ -172,7 +172,7 @@ class RestControllerTestIT {
                         "billing service",
                         "SyntaxElement"
                     ),
-                    List.of(exactEvidence)
+                    List.of(subjectEvidence)
                 ))
             ),
             new CandidateConceptMatch(
@@ -183,7 +183,7 @@ class RestControllerTestIT {
                         "Refund Service",
                         "SystemComponent"
                     ),
-                    List.of(aliasEvidence)
+                    List.of(actionEvidence)
                 ))
             ),
             new CandidateConceptMatch(
@@ -234,7 +234,12 @@ class RestControllerTestIT {
                 assertThat(retrievedCandidate.evidence())
                     .singleElement()
                     .satisfies(evidence -> {
-                        assertThat(evidence.policyName()).isEqualTo("orderedWeighted");
+                        assertThat(evidence.policyName()).isEqualTo("conceptName");
+                        assertThat(evidence.evidenceText())
+                            .isEqualTo(
+                                "Matched concept name 'billing service' to graph candidate " +
+                                    "'billing service'"
+                            );
                         assertThat(evidence.score()).isEqualTo(1.0);
                     });
             });
@@ -254,7 +259,14 @@ class RestControllerTestIT {
             .satisfies(retrievedCandidate -> {
                 assertThat(retrievedCandidate.candidate().candidateKey())
                     .isEqualTo("sample-action-refund");
-                assertThat(retrievedCandidate.evidence().getFirst().score()).isEqualTo(0.7);
+                assertThat(retrievedCandidate.evidence().getFirst().policyName())
+                    .isEqualTo("conceptName");
+                assertThat(retrievedCandidate.evidence().getFirst().evidenceText())
+                    .isEqualTo(
+                        "Matched concept name 'must refund' to graph candidate " +
+                            "'Refund Service'"
+                    );
+                assertThat(retrievedCandidate.evidence().getFirst().score()).isEqualTo(1.0);
             });
         assertThat(result.matches().get(2).selectedTerm().syntaxRole()).isEqualTo("OBJECT");
         assertThat(result.matches().get(2).selectedTerm().text()).isEqualTo("unknown workflow");
