@@ -140,17 +140,7 @@ meaningful.
 ## App-Side Semantic Validation
 
 Before `PERSIST_GRAPH_CHANGES`, the Java domain/application layer must validate
-the write set against the ontology vocabulary:
-
-- `Requirement.type` must match an existing `RequirementType.code`.
-- `Requirement.property` must match an existing `RequirementProperty.code`.
-- Every `SyntaxElement.role` must match an existing `SyntaxRole.code`.
-- Every requirement relation must be allowed by an
-  `AllowedRequirementRelation` triple matching source type, relation type, and
-  target type.
-- A `CandidateConceptMatchSet` is retrieval evidence only; creating or mapping
-  concepts still requires `ConceptCreationPolicy`, `TermConceptMappingSet`, and
-  `MappingDecisionSet`.
+the write set against the ontology vocabulary.
 
 This split gives the graph meaningful structure without depending on a reasoner:
 Neo4j rejects structurally invalid writes, and the app rejects meaningless domain
