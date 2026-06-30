@@ -10,7 +10,7 @@ layer validates semantic rules that Neo4j constraints cannot express.
 
 There is no generic `:Concept` label in the graph model. Retrieval and
 persistence must target explicit project vocabulary such as `RequirementType`,
-`RequirementProperty`, `SyntaxRole`, and later configured domain concept labels
+`RequirementProperty`, `RequirementElement`, and later configured domain concept labels
 such as `SystemComponent` or `UIComponent`.
 
 ## Ontology Vocabulary
@@ -21,7 +21,7 @@ The first ontology is intentionally small:
 |---|---|---|---|
 | Requirement type | `(:RequirementType {code, label})` | `GOAL`, `NEED`, `REQUIREMENT` | Classifies the intent and commitment level of a `Requirement`. |
 | Requirement property | `(:RequirementProperty {code, label})` | `FUNCTIONAL`, `QUALITY` | Defines allowed values for the cross-cutting requirement property. |
-| Syntax role | `(:SyntaxRole {code, label})` | `SUBJECT`, `ACTION`, `OBJECT`, `CONDITION`, `CONSTRAINT` | Defines allowed roles for extracted `SyntaxElement` values. |
+| Requirement element | `(:RequirementElement {code, label})` | `SUBJECT`, `ACTION`, `OBJECT`, `CONDITION`, `CONSTRAINT` | Defines allowed requirement element values for extracted requirement text parts. |
 | Requirement relation type | `(:RequirementRelationType {code, label})` | `REFINES`, `SATISFIES`, `CONFLICTS_WITH`, `DEPENDS_ON` | Defines allowed relation names between requirements. |
 | Allowed requirement relation | `(:AllowedRequirementRelation {sourceTypeCode, relationTypeCode, targetTypeCode})` | curated triples | Defines which requirement relation combinations are meaningful. |
 
@@ -47,7 +47,7 @@ workflow progresses.
 })
 
 (:Requirement)-[:HAS_PROVENANCE]->(:Provenance)
-(:Requirement)-[:HAS_SYNTAX_ELEMENT]->(:SyntaxElement {id, role, text})
+(:Requirement)-[:HAS_SYNTAX_ELEMENT]->(:SyntaxElement {id, requirementElement, text})
 (:SyntaxElement)-[:MAPS_TO]->(configured domain concept node)
 (:Requirement)-[:REFINES|SATISFIES|CONFLICTS_WITH|DEPENDS_ON]->(:Requirement)
 ```
@@ -85,11 +85,11 @@ FOR (p:RequirementProperty) REQUIRE p.code IS UNIQUE;
 CREATE CONSTRAINT requirement_property_label IF NOT EXISTS
 FOR (p:RequirementProperty) REQUIRE p.label IS UNIQUE;
 
-CREATE CONSTRAINT syntax_role_code IF NOT EXISTS
-FOR (r:SyntaxRole) REQUIRE r.code IS UNIQUE;
+CREATE CONSTRAINT requirement_element_code IF NOT EXISTS
+FOR (e:RequirementElement) REQUIRE e.code IS UNIQUE;
 
-CREATE CONSTRAINT syntax_role_label IF NOT EXISTS
-FOR (r:SyntaxRole) REQUIRE r.label IS UNIQUE;
+CREATE CONSTRAINT requirement_element_label IF NOT EXISTS
+FOR (e:RequirementElement) REQUIRE e.label IS UNIQUE;
 
 CREATE CONSTRAINT requirement_relation_type_code IF NOT EXISTS
 FOR (t:RequirementRelationType) REQUIRE t.code IS UNIQUE;

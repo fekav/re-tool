@@ -39,11 +39,11 @@ class ExtractEntitiesCommandHandlerTest {
 
         ExtractSyntaxResponse result = handler.handle(new ExtractSyntaxCommand(rawText));
 
-        assertThat(result.syntaxElements().SUBJECT()).isEqualTo("reporting dashboard");
-        assertThat(result.syntaxElements().ACTION()).isEqualTo("shall export");
-        assertThat(result.syntaxElements().OBJECT()).isEqualTo("monthly usage metrics");
-        assertThat(result.syntaxElements().CONSTRAINT()).isEmpty();
-        assertThat(result.syntaxElements().CONDITION()).isEmpty();
+        assertThat(result.requirementElements().SUBJECT()).isEqualTo("reporting dashboard");
+        assertThat(result.requirementElements().ACTION()).isEqualTo("shall export");
+        assertThat(result.requirementElements().OBJECT()).isEqualTo("monthly usage metrics");
+        assertThat(result.requirementElements().CONSTRAINT()).isEmpty();
+        assertThat(result.requirementElements().CONDITION()).isEmpty();
         verify(syntaxExtraction).extractSyntax(new RawText(rawText));
 
         ArgumentCaptor<List<DomainEvent>> domainEvents = eventCaptor();

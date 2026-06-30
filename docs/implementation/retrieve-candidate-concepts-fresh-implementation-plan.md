@@ -3,7 +3,7 @@
 ## Overview
 
 Implement `RETRIEVE_CANDIDATE_CONCEPTS` as a domain-driven retrieval slice. The
-slice accepts selected syntax terms from extracted requirements and returns a
+slice accepts selected requirement element terms from extracted requirements and returns a
 `CandidateConceptMatchSet` with ordered KG candidate concepts or explicit
 no-match evidence for each selected term.
 
@@ -66,8 +66,8 @@ For each selected term:
 7. If no lookup method returns candidates, return an empty candidate list with
    no-match evidence describing the attempted lookup methods.
 
-The policy may apply syntax-role-aware lookup scope. V1 uses the selected term
-syntax role as lookup context and lets lookup adapters restrict candidate labels
+The policy may apply requirement-element-aware lookup scope. V1 uses the selected term
+requirement element as lookup context and lets lookup adapters restrict candidate labels
 or alias searches where the KG supports it.
 
 ### Future Concrete Policies
@@ -81,11 +81,11 @@ changing the workflow:
   label and alias lookup, but skip embedding search.
 - `ExploratoryConceptRetrievalPolicy`: use exact label, alias, graph traversal,
   and embedding lookup to maximize review candidates.
-- `RoleAwareConceptRetrievalPolicy`: vary lookup order by syntax role.
+- `RoleAwareConceptRetrievalPolicy`: vary lookup order by requirement element.
 
 ## Domain Model
 
-- `SelectedTerm`: syntax role and text. Command callers provide no ids.
+- `SelectedTerm`: requirement element and text. Command callers provide no ids.
 - `CandidateConcept`: KG concept id, label, and optional concept type.
 - `CandidateLookupHit`: one raw lookup hit from one lookup method, containing
   candidate concept, lookup method name, evidence text, and lookup rank.
@@ -121,7 +121,7 @@ Workflow contract
 concepts, retrieved candidates, retrieval evidence, and match sets.
 
 **Acceptance criteria:**
-- [ ] `SelectedTerm` requires non-blank syntax role and text.
+- [ ] `SelectedTerm` requires a present requirement element and non-blank text.
 - [ ] `CandidateConcept` requires non-blank concept id and label, with optional
   concept type.
 - [ ] `RetrievedCandidateConcept` requires a candidate and non-empty
@@ -160,7 +160,7 @@ weight, and returns candidates in deterministic lookup order.
 - [ ] `ConceptCandidateLookup` exposes a positive lookup weight.
 - [ ] `exactLabel` lookup has weight `1.0`.
 - [ ] `alias` lookup has weight `0.7`.
-- [ ] `CandidateLookupScope` carries syntax-role context and allowed concept
+- [ ] `CandidateLookupScope` carries requirement-element context and allowed concept
   type hints when available.
 - [ ] Lookup methods return `CandidateLookupHit` values without final retrieval
   scores.
@@ -263,7 +263,7 @@ domain values, delegate to the service, and return a domain result.
 
 **Acceptance criteria:**
 - [ ] `RetrieveCandidateConceptsCommand` carries selected term inputs with
-  syntax role and text only.
+  requirement element and text only.
 - [ ] The command rejects null, empty, or blank selected term inputs.
 - [ ] `RetrieveCandidateConceptsCommandHandler` is an `@ApplicationScoped`
   `CommandHandler`.
@@ -321,7 +321,7 @@ candidate alias values when the active retrieval policy invokes it.
 - [ ] The adapter implements `ConceptCandidateLookup`.
 - [ ] The lookup method name is `alias`.
 - [ ] It searches a graph alias property for the selected term text.
-- [ ] It uses syntax role from `CandidateLookupScope` when the KG node shape
+- [ ] It uses requirement element from `CandidateLookupScope` when the KG node shape
   supports role filtering.
 - [ ] Returned hits name `alias` as lookup method.
 - [ ] Returned hits include evidence text and deterministic lookup rank.
@@ -414,7 +414,7 @@ and the available lookup methods.
 | Future lower-weight adapters match the same candidate | Candidate score is the sum of matched lookup weights and remains below `1.0`. |
 | Non-exact lookup weights can sum to `1.0` or more | Policy construction or configuration validation fails. |
 | Duplicate selected terms | Domain or command validation rejects the request. |
-| Blank syntax role or text | Command/domain validation rejects the request. |
+| Missing requirement element or blank text | Command/domain validation rejects the request. |
 | Lookup adapter returns hit without evidence text | Domain validation rejects the lookup hit. |
 
 ## Risks and Mitigations

@@ -30,6 +30,7 @@ import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.CandidateConceptMatchSet;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
@@ -41,11 +42,11 @@ import io.quarkus.test.junit.QuarkusTest;
 class RetrieveCandidateConceptsCommandRestControllerTestIT {
 
     private static final SelectedTerm SUBJECT_TERM =
-        new SelectedTerm("SUBJECT", "billing service");
+        new SelectedTerm(RequirementElement.SUBJECT, "billing service");
     private static final SelectedTerm ACTION_TERM =
-        new SelectedTerm("ACTION", "must refund");
+        new SelectedTerm(RequirementElement.ACTION, "must refund");
     private static final SelectedTerm OBJECT_TERM =
-        new SelectedTerm("OBJECT", "unknown workflow");
+        new SelectedTerm(RequirementElement.OBJECT, "unknown workflow");
     private static final CandidateConcept SUBJECT_CANDIDATE =
         new CandidateConcept(
             "sample-syntax-requirement-1-subject",
@@ -194,11 +195,11 @@ class RetrieveCandidateConceptsCommandRestControllerTestIT {
             selectedTermsCaptor();
         verify(conceptRetrievalService).retrieveCandidates(selectedTerms.capture());
         assertThat(selectedTerms.getValue())
-            .extracting(SelectedTerm::syntaxRole, SelectedTerm::text)
+            .extracting(SelectedTerm::requirementElement, SelectedTerm::text)
             .containsExactly(
-                tuple(SUBJECT_TERM.syntaxRole(), SUBJECT_TERM.text()),
-                tuple(ACTION_TERM.syntaxRole(), ACTION_TERM.text()),
-                tuple(OBJECT_TERM.syntaxRole(), OBJECT_TERM.text())
+                tuple(SUBJECT_TERM.requirementElement(), SUBJECT_TERM.text()),
+                tuple(ACTION_TERM.requirementElement(), ACTION_TERM.text()),
+                tuple(OBJECT_TERM.requirementElement(), OBJECT_TERM.text())
             );
     }
 
@@ -257,10 +258,10 @@ class RetrieveCandidateConceptsCommandRestControllerTestIT {
         return result.matches().get(1).candidates().getFirst();
     }
 
-    private Map<String, String> selectedTermPayload(SelectedTerm selectedTerm) {
+    private Map<String, Object> selectedTermPayload(SelectedTerm selectedTerm) {
         return Map.of(
-            "syntaxRole",
-            selectedTerm.syntaxRole(),
+            "requirementElement",
+            selectedTerm.requirementElement(),
             "text",
             selectedTerm.text()
         );

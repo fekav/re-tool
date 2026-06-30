@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptMatchDecisionSetTest {
@@ -23,7 +24,7 @@ class ConceptMatchDecisionSetTest {
         // When
         ConceptMatchDecisionSet decisionSet = new ConceptMatchDecisionSet(List.of(
             new ConceptMatchDecision(
-                new SelectedTerm(" SUBJECT ", " billing service "),
+                new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
                 ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
                 List.of(candidate),
                 List.of(),
@@ -34,7 +35,7 @@ class ConceptMatchDecisionSetTest {
         // Then
         ConceptMatchDecision decision = decisionSet.decisions().getFirst();
         assertThat(decision.selectedTerm())
-            .isEqualTo(new SelectedTerm("SUBJECT", "billing service"));
+            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
         assertThat(decision.rationale()).isEqualTo("unique exact candidate");
     }
 
@@ -43,10 +44,10 @@ class ConceptMatchDecisionSetTest {
         // Given
         List<ConceptMatchDecision> decisions = new ArrayList<>();
         decisions.add(new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal("billing service", "SUBJECT")),
+            List.of(new NewConceptProposal("billing service", RequirementElement.SUBJECT)),
             "No existing candidates found"
         ));
 
@@ -59,7 +60,7 @@ class ConceptMatchDecisionSetTest {
             .singleElement()
             .satisfies(decision ->
                 assertThat(decision.selectedTerm())
-                    .isEqualTo(new SelectedTerm("SUBJECT", "billing service"))
+                    .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"))
             );
         assertThatThrownBy(() -> decisionSet.decisions().clear())
             .isInstanceOf(UnsupportedOperationException.class);
@@ -85,10 +86,10 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecisionSet_whenSelectedTermAppearsMoreThanOnce() {
         // Given
         ConceptMatchDecision firstDecision = autoCreateDecision(
-            new SelectedTerm("SUBJECT", "billing service")
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service")
         );
         ConceptMatchDecision secondDecision = autoCreateDecision(
-            new SelectedTerm("SUBJECT", "billing service")
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service")
         );
 
         // When / Then
@@ -104,10 +105,10 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenRationaleIsBlank() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal("billing service", "SUBJECT")),
+            List.of(new NewConceptProposal("billing service", RequirementElement.SUBJECT)),
             " "
         ))
             .isInstanceOf(IllegalArgumentException.class)
@@ -118,7 +119,7 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenCandidatesContainNull() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
             candidateListWithNull(),
             List.of(),
@@ -132,7 +133,7 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenNewConceptsContainNull() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             newConceptListWithNull(),
@@ -146,7 +147,7 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenAutoMapHasNoCandidate() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
             List.of(),
             List.of(),
@@ -160,7 +161,7 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenProposeExistingHasMultipleCandidates() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.PROPOSE_EXISTING,
             List.of(
                 candidate("concept-1", 0.8),
@@ -177,7 +178,7 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenReviewRequiredHasSingleCandidate() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.REVIEW_REQUIRED,
             List.of(candidate("concept-1", 1.0)),
             List.of(),
@@ -191,10 +192,10 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenAutoCreateHasCandidate() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(candidate("concept-1", 1.0)),
-            List.of(new NewConceptProposal("billing service", "SUBJECT")),
+            List.of(new NewConceptProposal("billing service", RequirementElement.SUBJECT)),
             "No existing candidates found"
         ))
             .isInstanceOf(IllegalArgumentException.class)
@@ -205,7 +206,7 @@ class ConceptMatchDecisionSetTest {
     void rejectsDecision_whenAutoCreateHasNoNewConcept() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             List.of(),
@@ -218,22 +219,30 @@ class ConceptMatchDecisionSetTest {
     @Test
     void rejectsNewConceptProposal_whenLabelIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new NewConceptProposal(" ", "SUBJECT"))
+        assertThatThrownBy(() -> new NewConceptProposal(" ", RequirementElement.SUBJECT))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("new concept proposal label must not be blank");
     }
 
     @Test
-    void trimsNewConceptProposalStrings_whenCreated() {
+    void rejectsNewConceptProposal_whenRequirementElementIsNull() {
+        // Given / When / Then
+        assertThatThrownBy(() -> new NewConceptProposal("billing service", null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("new concept proposal requirement element must not be null");
+    }
+
+    @Test
+    void trimsNewConceptProposalLabel_whenCreated() {
         // When
         NewConceptProposal proposal = new NewConceptProposal(
             " billing service ",
-            " SystemComponent "
+            RequirementElement.SUBJECT
         );
 
         // Then
         assertThat(proposal.label()).isEqualTo("billing service");
-        assertThat(proposal.conceptType()).isEqualTo("SystemComponent");
+        assertThat(proposal.requirementElement()).isEqualTo(RequirementElement.SUBJECT);
     }
 
     private ConceptMatchDecision autoCreateDecision(SelectedTerm selectedTerm) {
@@ -241,7 +250,7 @@ class ConceptMatchDecisionSetTest {
             selectedTerm,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal(selectedTerm.text(), selectedTerm.syntaxRole())),
+            List.of(new NewConceptProposal(selectedTerm.text(), selectedTerm.requirementElement())),
             "No existing candidates found"
         );
     }

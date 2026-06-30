@@ -12,11 +12,12 @@ import org.junit.jupiter.api.Test;
 
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptNameRetrievalPolicyTest {
 
-    private final SelectedTerm selectedTerm = new SelectedTerm("SUBJECT", "billing service");
+    private final SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
 
     @Test
     void returnsNameCandidatesWithFullScore_whenLookupMatches() {

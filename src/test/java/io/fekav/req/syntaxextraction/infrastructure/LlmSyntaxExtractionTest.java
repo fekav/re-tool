@@ -145,14 +145,14 @@ class LlmSyntaxExtractionTest {
             extraction.extractSyntax(new RawText("The dashboard shall export metrics."))
         )
             .isInstanceOf(StructuredOutputValidationException.class)
-            .hasMessage("SyntaxExtractionOutput missing required fields: syntaxElements.ACTION");
+            .hasMessage("SyntaxExtractionOutput missing required fields: requirementElements.ACTION");
     }
 
     private String llmResponse(String modelOutput) throws Exception {
         return objectMapper.writeValueAsString(Map.of("response", modelOutput));
     }
 
-    private String modelOutput(Map<String, String> syntaxElements) throws Exception {
-        return objectMapper.writeValueAsString(Map.of("syntaxElements", syntaxElements));
+    private String modelOutput(Map<String, String> requirementElements) throws Exception {
+        return objectMapper.writeValueAsString(Map.of("requirementElements", requirementElements));
     }
 }

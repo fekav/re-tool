@@ -21,7 +21,7 @@ class ExtractSyntaxResponseTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void serializesCompatibleSyntaxElementsShape() throws Exception {
+    void serializesCompatibleRequirementElementsShape() throws Exception {
         ExtractSyntaxResponse response = ExtractSyntaxResponse.from(action(
             Set.of(new Condition("on request")),
             Set.of(new Constraint("as CSV"))
@@ -29,16 +29,16 @@ class ExtractSyntaxResponseTest {
 
         JsonNode json = objectMapper.valueToTree(response);
 
-        assertThat(json.path("syntaxElements").path("SUBJECT").asText())
+        assertThat(json.path("requirementElements").path("SUBJECT").asText())
             .isEqualTo("reporting dashboard");
-        assertThat(json.path("syntaxElements").path("ACTION").asText())
+        assertThat(json.path("requirementElements").path("ACTION").asText())
             .isEqualTo("shall export");
-        assertThat(json.path("syntaxElements").path("OBJECT").asText())
+        assertThat(json.path("requirementElements").path("OBJECT").asText())
             .isEqualTo("monthly usage metrics");
-        assertThat(json.path("syntaxElements").path("CONDITION"))
+        assertThat(json.path("requirementElements").path("CONDITION"))
             .extracting(JsonNode::asText)
             .containsExactly("on request");
-        assertThat(json.path("syntaxElements").path("CONSTRAINT"))
+        assertThat(json.path("requirementElements").path("CONSTRAINT"))
             .extracting(JsonNode::asText)
             .containsExactly("as CSV");
     }
@@ -47,8 +47,8 @@ class ExtractSyntaxResponseTest {
     void serializesMissingOptionalValuesAsEmptySets() {
         ExtractSyntaxResponse response = ExtractSyntaxResponse.from(action(Set.of(), Set.of()));
 
-        assertThat(response.syntaxElements().CONDITION()).isEmpty();
-        assertThat(response.syntaxElements().CONSTRAINT()).isEmpty();
+        assertThat(response.requirementElements().CONDITION()).isEmpty();
+        assertThat(response.requirementElements().CONSTRAINT()).isEmpty();
     }
 
     @Test
@@ -58,9 +58,9 @@ class ExtractSyntaxResponseTest {
             Set.of(new Constraint("as CSV"), new Constraint("within 24 hours"))
         ));
 
-        assertThat(response.syntaxElements().CONDITION())
+        assertThat(response.requirementElements().CONDITION())
             .containsExactlyInAnyOrder("on request", "after approval");
-        assertThat(response.syntaxElements().CONSTRAINT())
+        assertThat(response.requirementElements().CONSTRAINT())
             .containsExactlyInAnyOrder("as CSV", "within 24 hours");
     }
 

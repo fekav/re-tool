@@ -50,7 +50,7 @@ shapes, or raw JSON types.
 `ExtractSyntaxCommandHandler` is the use-case orchestrator. It creates the
 requirement, calls the `SyntaxExtraction` application port, applies the
 returned `Action`, publishes domain events, and returns an
-`ExtractSyntaxResponse` that preserves the public `syntaxElements` response
+`ExtractSyntaxResponse` that preserves the public `requirementElements` response
 shape.
 
 The current port implementation is `LlmSyntaxExtraction` in the
@@ -117,7 +117,7 @@ JSON Schema resource
 
 Java DTO binding
     SyntaxExtractionOutput
-    SyntaxElementsOutput
+    RequirementElementsOutput
     RequirementClassificationOutput
     RequirementClassificationFieldsOutput
 

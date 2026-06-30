@@ -2,7 +2,7 @@
 
 ## Objective
 
-Change the internal requirement syntax domain model from a map of syntax roles to
+Change the internal requirement syntax domain model from a map of requirement elements to
 text into a semantic composition. `Requirement` remains the aggregate root and
 owns one `Action`. `Action` owns one `Subject`, one `TargetObject`, its own
 action text, and zero or more `Condition` and `Constraint` value objects.
@@ -79,7 +79,7 @@ The infrastructure boundary still receives the current structured-output DTO:
 
 ```json
 {
-  "syntaxElements": {
+  "requirementElements": {
     "SUBJECT": "reporting dashboard",
     "ACTION": "shall export",
     "OBJECT": "monthly usage metrics",
@@ -103,7 +103,7 @@ The command/API response remains compatible with the current shape:
 
 ```json
 {
-  "syntaxElements": {
+  "requirementElements": {
     "SUBJECT": "reporting dashboard",
     "ACTION": "shall export",
     "OBJECT": "monthly usage metrics",
@@ -201,11 +201,11 @@ shape while the internal model uses `Action`.
 
 Acceptance criteria:
 
-- Command result serializes with `syntaxElements.SUBJECT`.
-- Command result serializes with `syntaxElements.ACTION`.
-- Command result serializes with `syntaxElements.OBJECT`.
-- Command result serializes with `syntaxElements.CONDITION`.
-- Command result serializes with `syntaxElements.CONSTRAINT`.
+- Command result serializes with `requirementElements.SUBJECT`.
+- Command result serializes with `requirementElements.ACTION`.
+- Command result serializes with `requirementElements.OBJECT`.
+- Command result serializes with `requirementElements.CONDITION`.
+- Command result serializes with `requirementElements.CONSTRAINT`.
 - Missing optional values serialize consistently with current API expectations.
 
 Verification:
@@ -250,7 +250,7 @@ Acceptance criteria:
 Verification:
 
 ```bash
-rg "RequirementSyntax|RequirementSyntaxType|syntaxElements\\(" src/main/java
+rg "RequirementSyntax|RequirementSyntaxType|requirementElements\\(" src/main/java
 ./gradlew test
 ```
 
@@ -293,6 +293,6 @@ Also verify manually:
 - The prompt still asks for `SUBJECT`, `ACTION`, `OBJECT`, `CONDITION`, and
   `CONSTRAINT`.
 - The JSON schema still exposes those fields.
-- The REST response still exposes `syntaxElements` with those fields.
+- The REST response still exposes `requirementElements` with those fields.
 - `EventId` is unchanged.
 - `Condition` and `Constraint` have no IDs.

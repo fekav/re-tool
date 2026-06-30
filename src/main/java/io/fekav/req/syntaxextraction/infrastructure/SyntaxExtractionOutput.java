@@ -12,16 +12,16 @@ import io.fekav.req.syntaxextraction.domain.Subject;
 import io.fekav.req.syntaxextraction.domain.TargetObject;
 
 public record SyntaxExtractionOutput(
-    SyntaxElementsOutput syntaxElements
+    RequirementElementsOutput requirementElements
 ) {
 
     static StructuredOutputContract<SyntaxExtractionOutput> contract() {
         return StructuredOutputContract.<SyntaxExtractionOutput>named("SyntaxExtractionOutput")
-            .requiredText("syntaxElements.SUBJECT", SyntaxExtractionOutput::subject)
-            .requiredText("syntaxElements.ACTION", SyntaxExtractionOutput::action)
-            .requiredText("syntaxElements.OBJECT", SyntaxExtractionOutput::object)
-            .optionalText("syntaxElements.CONSTRAINT", SyntaxExtractionOutput::constraint)
-            .optionalText("syntaxElements.CONDITION", SyntaxExtractionOutput::condition)
+            .requiredText("requirementElements.SUBJECT", SyntaxExtractionOutput::subject)
+            .requiredText("requirementElements.ACTION", SyntaxExtractionOutput::action)
+            .requiredText("requirementElements.OBJECT", SyntaxExtractionOutput::object)
+            .optionalText("requirementElements.CONSTRAINT", SyntaxExtractionOutput::constraint)
+            .optionalText("requirementElements.CONDITION", SyntaxExtractionOutput::condition)
             .build();
     }
 
@@ -37,27 +37,31 @@ public record SyntaxExtractionOutput(
     }
 
     private String subject() {
-        return syntaxElement(SyntaxElementsOutput::SUBJECT);
+        return requirementElement(RequirementElementsOutput::SUBJECT);
     }
 
     private String action() {
-        return syntaxElement(SyntaxElementsOutput::ACTION);
+        return requirementElement(RequirementElementsOutput::ACTION);
     }
 
     private String object() {
-        return syntaxElement(SyntaxElementsOutput::OBJECT);
+        return requirementElement(RequirementElementsOutput::OBJECT);
     }
 
     private String constraint() {
-        return syntaxElement(SyntaxElementsOutput::CONSTRAINT);
+        return requirementElement(RequirementElementsOutput::CONSTRAINT);
     }
 
     private String condition() {
-        return syntaxElement(SyntaxElementsOutput::CONDITION);
+        return requirementElement(RequirementElementsOutput::CONDITION);
     }
 
-    private String syntaxElement(Function<SyntaxElementsOutput, String> readSyntaxElement) {
-        return syntaxElements == null ? null : readSyntaxElement.apply(syntaxElements);
+    private String requirementElement(
+        Function<RequirementElementsOutput, String> readRequirementElement
+    ) {
+        return requirementElements == null
+            ? null
+            : readRequirementElement.apply(requirementElements);
     }
 
     private Set<Constraint> constraintSet() {

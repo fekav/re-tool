@@ -56,35 +56,35 @@ class ExtractSyntaxCommandRestControllerTestIT {
     void returnsSubject_whenExtractSyntaxCommandIsPosted() {
         ExtractSyntaxResponse result = executeCommand(requestBody);
 
-        assertThat(result.syntaxElements().SUBJECT()).isEqualTo(SUBJECT);
+        assertThat(result.requirementElements().SUBJECT()).isEqualTo(SUBJECT);
     }
 
     @Test
     void returnsAction_whenExtractSyntaxCommandIsPosted() {
         ExtractSyntaxResponse result = executeCommand(requestBody);
 
-        assertThat(result.syntaxElements().ACTION()).isEqualTo(ACTION);
+        assertThat(result.requirementElements().ACTION()).isEqualTo(ACTION);
     }
 
     @Test
     void returnsObject_whenExtractSyntaxCommandIsPosted() {
         ExtractSyntaxResponse result = executeCommand(requestBody);
 
-        assertThat(result.syntaxElements().OBJECT()).isEqualTo(TARGET_OBJECT);
+        assertThat(result.requirementElements().OBJECT()).isEqualTo(TARGET_OBJECT);
     }
 
     @Test
     void returnsConstraint_whenExtractSyntaxCommandIsPosted() {
         ExtractSyntaxResponse result = executeCommand(requestBody);
 
-        assertThat(result.syntaxElements().CONSTRAINT()).isEqualTo(responseSet(CONSTRAINT));
+        assertThat(result.requirementElements().CONSTRAINT()).isEqualTo(responseSet(CONSTRAINT));
     }
 
     @Test
     void returnsCondition_whenExtractSyntaxCommandIsPosted() {
         ExtractSyntaxResponse result = executeCommand(requestBody);
 
-        assertThat(result.syntaxElements().CONDITION()).isEqualTo(responseSet(CONDITION));
+        assertThat(result.requirementElements().CONDITION()).isEqualTo(responseSet(CONDITION));
     }
 
     @Test
@@ -105,7 +105,7 @@ class ExtractSyntaxCommandRestControllerTestIT {
             extractSyntaxCommandRequest(requirementText)
         );
 
-        assertThat(result.syntaxElements().CONDITION()).isEmpty();
+        assertThat(result.requirementElements().CONDITION()).isEmpty();
     }
 
     private ExtractSyntaxResponse executeCommand(String requestBody) {

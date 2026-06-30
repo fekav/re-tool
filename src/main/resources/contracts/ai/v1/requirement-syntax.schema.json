@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.fekav.io/ai/v1/requirement-syntax.schema.json",
   "type": "object",
-  "required": ["syntaxElements"],
+  "required": ["requirementElements"],
   "additionalProperties": false,
   "properties": {
-    "syntaxElements": {
+    "requirementElements": {
       "type": "object",
       "required": ["SUBJECT", "ACTION", "OBJECT"],
       "additionalProperties": false,

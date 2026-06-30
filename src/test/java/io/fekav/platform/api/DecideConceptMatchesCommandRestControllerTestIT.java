@@ -30,6 +30,7 @@ import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatchSet;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
@@ -41,9 +42,9 @@ import io.quarkus.test.junit.QuarkusTest;
 class DecideConceptMatchesCommandRestControllerTestIT {
 
     private static final SelectedTerm SUBJECT_TERM =
-        new SelectedTerm("SUBJECT", "billing service");
+        new SelectedTerm(RequirementElement.SUBJECT, "billing service");
     private static final SelectedTerm OBJECT_TERM =
-        new SelectedTerm("OBJECT", "unknown workflow");
+        new SelectedTerm(RequirementElement.OBJECT, "unknown workflow");
     private static final CandidateConcept SUBJECT_CANDIDATE =
         new CandidateConcept(
             "sample-subject-billing-service",
@@ -59,7 +60,7 @@ class DecideConceptMatchesCommandRestControllerTestIT {
     private static final String AUTO_MAP_RATIONALE =
         "Unique top candidate reached auto-map threshold 1.0 with score 1.0.";
     private static final NewConceptProposal OBJECT_PROPOSAL =
-        new NewConceptProposal("unknown workflow", "OBJECT");
+        new NewConceptProposal("unknown workflow", RequirementElement.OBJECT);
 
     @InjectMock
     ConceptMatchingService conceptMatchingService;
@@ -172,12 +173,12 @@ class DecideConceptMatchesCommandRestControllerTestIT {
     }
 
     @Test
-    void serializesAutoCreateProposalConceptType_whenDecideConceptMatchesCommandIsPosted()
+    void serializesAutoCreateProposalRequirementElement_whenDecideConceptMatchesCommandIsPosted()
         throws Exception {
         JsonNode responseJson = executeCommandAsJson();
 
-        assertThat(responseJson.at("/decisions/1/newConcepts/0/conceptType").asText())
-            .isEqualTo(OBJECT_PROPOSAL.conceptType());
+        assertThat(responseJson.at("/decisions/1/newConcepts/0/requirementElement").asText())
+            .isEqualTo(OBJECT_PROPOSAL.requirementElement().name());
     }
 
     @Test
@@ -187,12 +188,12 @@ class DecideConceptMatchesCommandRestControllerTestIT {
         CandidateConceptMatchSet matches = capturedMatches();
         assertThat(matches.matches())
             .extracting(
-                match -> match.selectedTerm().syntaxRole(),
+                match -> match.selectedTerm().requirementElement(),
                 match -> match.selectedTerm().text()
             )
             .containsExactly(
-                tuple(SUBJECT_TERM.syntaxRole(), SUBJECT_TERM.text()),
-                tuple(OBJECT_TERM.syntaxRole(), OBJECT_TERM.text())
+                tuple(SUBJECT_TERM.requirementElement(), SUBJECT_TERM.text()),
+                tuple(OBJECT_TERM.requirementElement(), OBJECT_TERM.text())
             );
     }
 
@@ -300,10 +301,10 @@ class DecideConceptMatchesCommandRestControllerTestIT {
         );
     }
 
-    private Map<String, String> selectedTermPayload(SelectedTerm selectedTerm) {
+    private Map<String, Object> selectedTermPayload(SelectedTerm selectedTerm) {
         return Map.of(
-            "syntaxRole",
-            selectedTerm.syntaxRole(),
+            "requirementElement",
+            selectedTerm.requirementElement(),
             "text",
             selectedTerm.text()
         );

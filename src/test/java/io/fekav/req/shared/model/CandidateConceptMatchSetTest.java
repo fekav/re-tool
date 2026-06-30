@@ -24,7 +24,7 @@ class CandidateConceptMatchSetTest {
         // When
         CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(List.of(
             new CandidateConceptMatch(
-                new SelectedTerm(" SUBJECT ", " billing service "),
+                new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
                 List.of(new RetrievedCandidateConcept(
                     new CandidateConcept(
                         " concept-1 ",
@@ -39,7 +39,7 @@ class CandidateConceptMatchSetTest {
         // Then
         CandidateConceptMatch match = matchSet.matches().getFirst();
         RetrievedCandidateConcept retrievedCandidate = match.candidates().getFirst();
-        assertThat(match.selectedTerm()).isEqualTo(new SelectedTerm("SUBJECT", "billing service"));
+        assertThat(match.selectedTerm()).isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
         assertThat(retrievedCandidate.candidate())
             .isEqualTo(new CandidateConcept("concept-1", "Billing Service", "SystemComponent"));
         assertThat(retrievedCandidate.evidence().getFirst().policyName())
@@ -48,20 +48,31 @@ class CandidateConceptMatchSetTest {
             .isEqualTo("matched concept name");
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = { "", " " })
-    void rejectsSelectedTerm_whenSyntaxRoleIsBlank(String syntaxRole) {
+    @Test
+    void supportsExactlyV1RequirementElements() {
+        assertThat(RequirementElement.values())
+            .containsExactly(
+                RequirementElement.SUBJECT,
+                RequirementElement.ACTION,
+                RequirementElement.OBJECT,
+                RequirementElement.CONDITION,
+                RequirementElement.CONSTRAINT
+            );
+    }
+
+    @Test
+    void rejectsSelectedTerm_whenRequirementElementIsNull() {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm(syntaxRole, "billing service"))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("selected term syntax role must not be blank");
+        assertThatThrownBy(() -> new SelectedTerm(null, "billing service"))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("selected term requirement element must not be null");
     }
 
     @ParameterizedTest
     @ValueSource(strings = { "", " " })
     void rejectsSelectedTerm_whenTextIsBlank(String text) {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm("SUBJECT", text))
+        assertThatThrownBy(() -> new SelectedTerm(RequirementElement.SUBJECT, text))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("selected term text must not be blank");
     }
@@ -96,7 +107,7 @@ class CandidateConceptMatchSetTest {
     @Test
     void acceptsCandidateConceptMatch_whenCandidatesAreEmpty() {
         // Given
-        SelectedTerm selectedTerm = new SelectedTerm("SUBJECT", "billing service");
+        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
 
         // When
         CandidateConceptMatch match = new CandidateConceptMatch(
@@ -114,7 +125,7 @@ class CandidateConceptMatchSetTest {
         // Given
         List<CandidateConceptMatch> matches = new ArrayList<>();
         matches.add(new CandidateConceptMatch(
-            new SelectedTerm("SUBJECT", "billing service"),
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             List.of()
         ));
 
@@ -127,7 +138,7 @@ class CandidateConceptMatchSetTest {
             .singleElement()
             .satisfies(match ->
                 assertThat(match.selectedTerm())
-                    .isEqualTo(new SelectedTerm("SUBJECT", "billing service"))
+                    .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"))
             );
         assertThatThrownBy(() -> matchSet.matches().clear())
             .isInstanceOf(UnsupportedOperationException.class);
@@ -136,7 +147,7 @@ class CandidateConceptMatchSetTest {
     @Test
     void rejectsMatchSet_whenSelectedTermAppearsMoreThanOnce() {
         // Given
-        SelectedTerm selectedTerm = new SelectedTerm("SUBJECT", "billing service");
+        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
         CandidateConceptMatch firstMatch = new CandidateConceptMatch(
             selectedTerm,
             List.of()

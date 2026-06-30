@@ -25,11 +25,15 @@ public class Neo4jConceptNameLookup implements CandidateLookup {
             OR candidate.alias = $text
             OR $text IN coalesce(candidate.aliases, [])
         )
-          AND ($syntaxRole IS NULL OR candidate.role IS NULL OR candidate.role = $syntaxRole)
+          AND (
+              $requirementElement IS NULL
+              OR candidate.requirementElement IS NULL
+              OR candidate.requirementElement = $requirementElement
+          )
         WITH candidate,
              toString(coalesce(candidate.label, candidate.text)) AS candidateLabel,
              toString(coalesce(candidate.id, candidate.code, candidate.label, candidate.text)) AS candidateKey,
-             coalesce(candidate.type, candidate.role, head(labels(candidate))) AS conceptType
+             coalesce(candidate.type, head(labels(candidate))) AS conceptType
         RETURN candidateKey, candidateLabel, conceptType
         ORDER BY candidateLabel ASC, candidateKey ASC
         """;
@@ -50,8 +54,8 @@ public class Neo4jConceptNameLookup implements CandidateLookup {
                     Map.of(
                         "text",
                         selectedTerm.text(),
-                        "syntaxRole",
-                        selectedTerm.syntaxRole()
+                        "requirementElement",
+                        selectedTerm.requirementElement().name()
                     )
                 );
                 return result

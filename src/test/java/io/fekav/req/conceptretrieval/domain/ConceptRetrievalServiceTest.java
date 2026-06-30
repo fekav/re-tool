@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptRetrievalServiceTest {
@@ -24,8 +25,8 @@ class ConceptRetrievalServiceTest {
         };
         ConceptRetrievalService service = new ConceptRetrievalService(policy);
         List<SelectedTerm> selectedTerms = List.of(
-            new SelectedTerm("SUBJECT", "billing service"),
-            new SelectedTerm("ACTION", "refund")
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new SelectedTerm(RequirementElement.ACTION, "refund")
         );
 
         // When
@@ -53,12 +54,12 @@ class ConceptRetrievalServiceTest {
     void rejectsRetrievalRequest_whenPolicyDoesNotReturnMatchingTerm() {
         // Given
         ConceptRetrievalService service = new ConceptRetrievalService(
-            selectedTerm -> noMatch(new SelectedTerm("ACTION", "refund"))
+            selectedTerm -> noMatch(new SelectedTerm(RequirementElement.ACTION, "refund"))
         );
 
         // When / Then
         assertThatThrownBy(() -> service.retrieveCandidates(List.of(
-            new SelectedTerm("SUBJECT", "billing service")
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service")
         )))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("retrieval policy returned a match for a different selected term");

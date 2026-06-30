@@ -12,6 +12,7 @@ import io.fekav.req.conceptretrieval.domain.ConceptRetrievalPolicy;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 class RetrieveCandidateConceptsCommandHandlerTest {
@@ -27,12 +28,10 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         RetrieveCandidateConceptsCommandHandler handler =
             new RetrieveCandidateConceptsCommandHandler(new ConceptRetrievalService(policy));
         RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(List.of(
-            new SelectedTerm(
-                " SUBJECT ",
+            new SelectedTerm(RequirementElement.SUBJECT,
                 " billing service "
             ),
-            new SelectedTerm(
-                "ACTION",
+            new SelectedTerm(RequirementElement.ACTION,
                 "must refund"
             )
         ));
@@ -44,8 +43,8 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         assertThat(result.matches()).hasSize(2);
         assertThat(retrievedTerms)
             .containsExactly(
-                new SelectedTerm("SUBJECT", "billing service"),
-                new SelectedTerm("ACTION", "must refund")
+                new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+                new SelectedTerm(RequirementElement.ACTION, "must refund")
             );
     }
 
@@ -60,7 +59,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     @Test
     void rejectsSelectedTerm_whenTextIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm("SUBJECT", " "))
+        assertThatThrownBy(() -> new SelectedTerm(RequirementElement.SUBJECT, " "))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("selected term text must not be blank");
     }
@@ -68,7 +67,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     @Test
     void rejectsCommand_whenSelectedTermIsDuplicated() {
         // Given
-        SelectedTerm selectedTerm = new SelectedTerm("SUBJECT", "billing service");
+        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
 
         // When / Then
         assertThatThrownBy(() -> new RetrieveCandidateConceptsCommand(List.of(

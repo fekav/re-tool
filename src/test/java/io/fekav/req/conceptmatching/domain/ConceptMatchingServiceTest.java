@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptMatchingServiceTest {
@@ -24,8 +25,8 @@ class ConceptMatchingServiceTest {
         };
         ConceptMatchingService service = new ConceptMatchingService(policy);
         CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(List.of(
-            noMatch(new SelectedTerm("SUBJECT", "billing service")),
-            noMatch(new SelectedTerm("ACTION", "must refund"))
+            noMatch(new SelectedTerm(RequirementElement.SUBJECT, "billing service")),
+            noMatch(new SelectedTerm(RequirementElement.ACTION, "must refund"))
         ));
 
         // When
@@ -36,8 +37,8 @@ class ConceptMatchingServiceTest {
         assertThat(result.decisions())
             .extracting(ConceptMatchDecision::selectedTerm)
             .containsExactly(
-                new SelectedTerm("SUBJECT", "billing service"),
-                new SelectedTerm("ACTION", "must refund")
+                new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+                new SelectedTerm(RequirementElement.ACTION, "must refund")
             );
     }
 
@@ -58,10 +59,10 @@ class ConceptMatchingServiceTest {
     void rejectsDecisionRequest_whenPolicyDoesNotReturnMatchingTerm() {
         // Given
         ConceptMatchingService service = new ConceptMatchingService(
-            match -> autoCreateDecision(new SelectedTerm("ACTION", "must refund"))
+            match -> autoCreateDecision(new SelectedTerm(RequirementElement.ACTION, "must refund"))
         );
         CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(List.of(
-            noMatch(new SelectedTerm("SUBJECT", "billing service"))
+            noMatch(new SelectedTerm(RequirementElement.SUBJECT, "billing service"))
         ));
 
         // When / Then
@@ -87,7 +88,7 @@ class ConceptMatchingServiceTest {
             selectedTerm,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal(selectedTerm.text(), selectedTerm.syntaxRole())),
+            List.of(new NewConceptProposal(selectedTerm.text(), selectedTerm.requirementElement())),
             "No existing candidates found"
         );
     }

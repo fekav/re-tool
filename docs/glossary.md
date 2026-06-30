@@ -31,7 +31,7 @@
 | ConceptMatchDecisionSet | Matching decisions | `DECIDE_CONCEPT_MATCHES`; `REQUEST_HUMAN_REVIEW`; `PERSIST_GRAPH_CHANGES` | Decision result containing one `ConceptMatchDecision` per selected term. |
 | ConceptMatchDecision | Selected-term concept decision | `DECIDE_CONCEPT_MATCHES`; `REQUEST_HUMAN_REVIEW`; `PERSIST_GRAPH_CHANGES` | Decision payload with `selectedTerm`, enum `status`, non-null `candidates`, non-null `newConcepts`, and non-blank `rationale`. |
 | ConceptMatchDecisionStatus | Matching decision status | `DECIDE_CONCEPT_MATCHES` | Enum outcome for one selected term: `AUTO_MAP_EXISTING`, `PROPOSE_EXISTING`, `REVIEW_REQUIRED`, or `AUTO_CREATE_NEW`. |
-| NewConceptProposal | New concept proposal | `DECIDE_CONCEPT_MATCHES`; `PERSIST_GRAPH_CHANGES` | Proposed new KG concept with label and concept type. In v1, lookup misses create one proposal from `selectedTerm.text` and `selectedTerm.syntaxRole`. |
+| NewConceptProposal | New concept proposal | `DECIDE_CONCEPT_MATCHES`; `PERSIST_GRAPH_CHANGES` | Proposed new KG concept with label and requirement element. In v1, lookup misses create one proposal from `selectedTerm.text` and `selectedTerm.requirementElement`. |
 | Raw Requirement Text | Source text; RawText | `INTAKE_REQUIREMENT` | Original textual software requirement preserved for provenance and auditability. |
 | Provenance | Source metadata; traceability | `INTAKE_REQUIREMENT`; `PERSIST_GRAPH_CHANGES` | Metadata linking KG facts back to the raw requirement source, submitter, and ingestion event. |
 | SyntaxExtractionOutput | Requirement syntax DTO | `EXTRACT_REQUIREMENT_SYNTAX`; `docs/json-contracts.md` | Boundary DTO representing structured model output before it is validated and mapped to the Action domain model. |
@@ -39,7 +39,7 @@
 | StructuredOutputValidator | Handwritten DTO validator | `docs/json-contracts.md` | Small reusable validator that checks DTOs against StructuredOutputContract instances before mapping to domain types. |
 | StructuredOutputValidationException | Structured output validation failure | `docs/json-contracts.md` | Failure raised when model output DTOs do not satisfy their StructuredOutputContract. |
 | InvalidStructuredOutputException | Invalid model output | `docs/json-contracts.md` | Failure raised when model output cannot be parsed, validated, or mapped into an application-owned DTO. |
-| SelectedTerm | Selected syntax term | `RETRIEVE_CANDIDATE_CONCEPTS` | Syntax role and text value selected for concept retrieval. Command callers provide no ids. |
+| SelectedTerm | Selected requirement element term | `RETRIEVE_CANDIDATE_CONCEPTS` | Requirement element and text value selected for concept retrieval. Command callers provide no ids. |
 | RetrievalScore | Candidate retrieval score | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Numeric score on retrieval evidence. Current concept-name retrieval assigns score `1.0` to label, text, alias, and aliases matches. |
 
 ## Domain Terms
@@ -48,7 +48,7 @@
 |---|---|---|---|
 | Requirement | Software requirement | `CLASSIFY_REQUIREMENT`; Required Artifacts | KG concept representing a binding system or product obligation. |
 | SyntaxExtraction | Syntax extraction capability | `EXTRACT_REQUIREMENT_SYNTAX` | Application capability that extracts the Action domain model from RawText. |
-| ExtractSyntaxResponse | Syntax extraction response | `EXTRACT_REQUIREMENT_SYNTAX` | Application response DTO that preserves the public `syntaxElements` shape while the domain uses Action. |
+| ExtractSyntaxResponse | Syntax extraction response | `EXTRACT_REQUIREMENT_SYNTAX` | Application response DTO that preserves the public `requirementElements` shape while the domain uses Action. |
 | ElementId | Domain element id | `EXTRACT_REQUIREMENT_SYNTAX`; `CLASSIFY_REQUIREMENT` | UUID-backed identifier used by domain entities such as Requirement, Action, Subject, and TargetObject. |
 | InvalidRawRequirementTextException | Invalid source text | `INTAKE_REQUIREMENT` | Domain rule violation raised when RawText is absent or blank. |
 | Goal | Objective | `CLASSIFY_REQUIREMENT`; Open Questions | KG concept representing a desired outcome or stakeholder objective. |
@@ -66,7 +66,7 @@
 | ConceptRetrievalService | Retrieval domain service | `RETRIEVE_CANDIDATE_CONCEPTS` | Domain service that applies the active `ConceptRetrievalPolicy` to selected terms and returns a `CandidateConceptMatchSet`. It rejects empty selected-term requests and policies that return a match for a different selected term. |
 | ConceptRetrievalPolicy | Retrieval policy port | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Domain policy interface that retrieves candidates for one `SelectedTerm` and returns a `CandidateConceptMatch`. |
 | CandidateLookup | Concept-name lookup port | `RETRIEVE_CANDIDATE_CONCEPTS` | Domain port used by `ConceptNameRetrievalPolicy` to find KG candidate concepts for one selected term. It does not assign matching outcomes or concept creation decisions. |
-| Neo4jConceptNameLookup | Neo4j concept-name lookup | `RETRIEVE_CANDIDATE_CONCEPTS` | Neo4j adapter for `CandidateLookup`. It matches selected term text against graph `label`, `text`, `alias`, and `aliases`, applies the syntax-role predicate, and orders by candidate label then candidate key. |
+| Neo4jConceptNameLookup | Neo4j concept-name lookup | `RETRIEVE_CANDIDATE_CONCEPTS` | Neo4j adapter for `CandidateLookup`. It matches selected term text against graph `label`, `text`, `alias`, and `aliases`, applies the requirement-element predicate, and orders by candidate label then candidate key. |
 | conceptName | Concept-name evidence policy name | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Retrieval evidence policy name emitted for concept-name matches. |
 | conceptmatching | Concept matching slice | `DECIDE_CONCEPT_MATCHES` | Slice that consumes `CandidateConceptMatchSet` data and emits a `ConceptMatchDecisionSet` without writing graph changes. |
 | ConceptMatchingService | Matching domain service | `DECIDE_CONCEPT_MATCHES` | Domain service that applies the active `ConceptMatchingPolicy` to each retrieved candidate match and returns one decision per selected term. |
@@ -85,7 +85,7 @@
 | INTAKE_REQUIREMENT | Intake | State Table | Start state that captures raw requirement text and provenance. |
 | CLASSIFY_REQUIREMENT | Classify | State Table | State that assigns an initial KG type and property to the requirement. |
 | EXTRACT_REQUIREMENT_SYNTAX | Extract syntax | State Table | State that extracts candidate terms from requirement syntax. |
-| RETRIEVE_CANDIDATE_CONCEPTS | Retrieve matches | State Table | State that searches the KG for concept-name candidate concepts for selected syntax terms. |
+| RETRIEVE_CANDIDATE_CONCEPTS | Retrieve matches | State Table | State that searches the KG for concept-name candidate concepts for selected requirement element terms. |
 | DECIDE_CONCEPT_MATCHES | Decide concept matches | State Table | State that converts retrieval results into a `ConceptMatchDecisionSet` through the `conceptmatching` slice. |
 | REQUEST_HUMAN_REVIEW | Human review | State Table | State that collects required review decisions for ambiguous or governance-sensitive concept decisions. |
 | PERSIST_GRAPH_CHANGES | Persist graph | State Table | State that writes requirement, provenance, terms, concept decisions, and approved concepts to the KG. |

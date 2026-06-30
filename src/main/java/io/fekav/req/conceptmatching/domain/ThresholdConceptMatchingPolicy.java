@@ -91,7 +91,7 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
             List.of(),
             List.of(new NewConceptProposal(
                 match.selectedTerm().text(),
-                match.selectedTerm().syntaxRole()
+                match.selectedTerm().requirementElement()
             )),
             "No existing candidates found; auto-creating concept from selected term."
         );

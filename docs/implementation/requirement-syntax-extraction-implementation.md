@@ -35,9 +35,9 @@ Focused tests: `./gradlew test --tests '*RequirementSyntax*' --tests '*Structure
 | File | Description |
 | --- | --- |
 | `src/main/java/io/fekav/req/syntaxextraction/application/RequirementSyntaxExtraction.java` | Application port for extracting `RequirementSyntax` from raw requirement text. |
-| `src/main/java/io/fekav/req/syntaxextraction/domain/MissingRequirementSyntaxElementException.java` | Domain exception for missing required syntax elements. |
+| `src/main/java/io/fekav/req/syntaxextraction/domain/MissingRequirementSyntaxElementException.java` | Domain exception for missing required requirement elements. |
 | `src/main/java/io/fekav/req/syntaxextraction/infrastructure/LlmRequirementSyntaxExtraction.java` | LLM-backed adapter that calls the LLM port, parses structured output, validates it, and maps it to the domain type. |
-| `src/main/java/io/fekav/req/syntaxextraction/infrastructure/RequirementSyntaxElementsOutput.java` | Nested DTO matching the structured-output `syntaxElements` object. |
+| `src/main/java/io/fekav/req/syntaxextraction/infrastructure/RequirementRequirementElementsOutput.java` | Nested DTO matching the structured-output `requirementElements` object. |
 | `src/main/java/io/fekav/req/syntaxextraction/infrastructure/RequirementSyntaxOutput.java` | Java binding for the requirement-syntax structured-output contract. |
 | `src/main/java/io/fekav/req/shared/model/InvalidRawRequirementTextException.java` | Shared exception for blank or missing raw requirement text. |
 | `src/main/java/io/fekav/req/shared/model/RawRequirementText.java` | Shared value object for user-provided requirement text. |

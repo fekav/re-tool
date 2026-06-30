@@ -19,6 +19,7 @@ import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 class DecideConceptMatchesCommandHandlerTest {
@@ -35,8 +36,7 @@ class DecideConceptMatchesCommandHandlerTest {
             new DecideConceptMatchesCommandHandler(new ConceptMatchingService(policy));
         DecideConceptMatchesCommand command = new DecideConceptMatchesCommand(List.of(
             matchInput(
-                new SelectedTerm(
-                    " SUBJECT ",
+                new SelectedTerm(RequirementElement.SUBJECT,
                     " billing service "
                 ),
                 List.of(candidateInput(
@@ -49,8 +49,7 @@ class DecideConceptMatchesCommandHandlerTest {
                 ))
             ),
             matchInput(
-                new SelectedTerm(
-                    "ACTION",
+                new SelectedTerm(RequirementElement.ACTION,
                     "must refund"
                 ),
                 List.of()
@@ -65,17 +64,17 @@ class DecideConceptMatchesCommandHandlerTest {
             .extracting(ConceptMatchDecision::selectedTerm, ConceptMatchDecision::status)
             .containsExactly(
                 tuple(
-                    new SelectedTerm("SUBJECT", "billing service"),
+                    new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
                     ConceptMatchDecisionStatus.PROPOSE_EXISTING
                 ),
                 tuple(
-                    new SelectedTerm("ACTION", "must refund"),
+                    new SelectedTerm(RequirementElement.ACTION, "must refund"),
                     ConceptMatchDecisionStatus.AUTO_CREATE_NEW
                 )
             );
         assertThat(handledMatches).hasSize(2);
         assertThat(handledMatches.getFirst().selectedTerm())
-            .isEqualTo(new SelectedTerm("SUBJECT", "billing service"));
+            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
         assertThat(handledMatches.getFirst().candidates())
             .singleElement()
             .satisfies(candidate -> {
@@ -91,7 +90,7 @@ class DecideConceptMatchesCommandHandlerTest {
                     });
             });
         assertThat(handledMatches.get(1).selectedTerm())
-            .isEqualTo(new SelectedTerm("ACTION", "must refund"));
+            .isEqualTo(new SelectedTerm(RequirementElement.ACTION, "must refund"));
         assertThat(handledMatches.get(1).candidates()).isEmpty();
     }
 
@@ -118,7 +117,7 @@ class DecideConceptMatchesCommandHandlerTest {
     @Test
     void rejectsSelectedTerm_whenTextIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm("SUBJECT", " "))
+        assertThatThrownBy(() -> new SelectedTerm(RequirementElement.SUBJECT, " "))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("selected term text must not be blank");
     }
@@ -126,7 +125,7 @@ class DecideConceptMatchesCommandHandlerTest {
     @Test
     void rejectsCommand_whenSelectedTermIsDuplicated() {
         // Given
-        SelectedTerm selectedTerm = new SelectedTerm("SUBJECT", "billing service");
+        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
 
         // When / Then
         assertThatThrownBy(() -> new DecideConceptMatchesCommand(List.of(
@@ -167,7 +166,7 @@ class DecideConceptMatchesCommandHandlerTest {
                 List.of(),
                 List.of(new NewConceptProposal(
                     match.selectedTerm().text(),
-                    match.selectedTerm().syntaxRole()
+                    match.selectedTerm().requirementElement()
                 )),
                 "No existing candidates found"
             );

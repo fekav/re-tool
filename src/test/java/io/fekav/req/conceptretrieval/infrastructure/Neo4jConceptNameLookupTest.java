@@ -29,6 +29,7 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,7 +69,7 @@ class Neo4jConceptNameLookupTest {
         ));
 
         // When
-        var candidates = lookup.findCandidates(new SelectedTerm("SUBJECT", "billing service"));
+        var candidates = lookup.findCandidates(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
 
         // Then
         assertThat(candidates)
@@ -90,13 +91,14 @@ class Neo4jConceptNameLookupTest {
             .contains("candidate.text = $text")
             .contains("candidate.alias = $text")
             .contains("$text IN coalesce(candidate.aliases, [])")
-            .contains("candidate.role IS NULL OR candidate.role = $syntaxRole")
+            .contains("candidate.requirementElement IS NULL")
+            .contains("candidate.requirementElement = $requirementElement")
             .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
             .doesNotContain("$allowedConceptTypes");
         assertThat(parameters.getValue())
             .containsEntry("text", "billing service")
-            .containsEntry("syntaxRole", "SUBJECT")
-            .containsOnlyKeys("text", "syntaxRole");
+            .containsEntry("requirementElement", "SUBJECT")
+            .containsOnlyKeys("text", "requirementElement");
         verify(session).close();
     }
 
@@ -106,7 +108,7 @@ class Neo4jConceptNameLookupTest {
         when(result.stream()).thenReturn(Stream.empty());
 
         // When
-        var candidates = lookup.findCandidates(new SelectedTerm("ACTION", "must refund"));
+        var candidates = lookup.findCandidates(new SelectedTerm(RequirementElement.ACTION, "must refund"));
 
         // Then
         assertThat(candidates).isEmpty();

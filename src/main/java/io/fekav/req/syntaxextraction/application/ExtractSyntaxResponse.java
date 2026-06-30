@@ -6,13 +6,12 @@ import io.fekav.req.syntaxextraction.domain.Action;
 import io.fekav.req.syntaxextraction.domain.Condition;
 import io.fekav.req.syntaxextraction.domain.Constraint;
 
-// TODO dto ohne änderung
 public record ExtractSyntaxResponse(
-    SyntaxElementsResponse syntaxElements
+    RequirementElementsResponse requirementElements
 ) {
 
     public static ExtractSyntaxResponse from(Action action) {
-        return new ExtractSyntaxResponse(new SyntaxElementsResponse(
+        return new ExtractSyntaxResponse(new RequirementElementsResponse(
             action.subject().text(),
             action.actionText(),
             action.targetObject().text(),

@@ -1,9 +1,11 @@
 package io.fekav.req.shared.kg;
 
+import io.fekav.req.shared.model.RequirementElement;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.neo4j.driver.Driver;
@@ -46,12 +48,12 @@ public class Neo4jSchemaInitializer {
         FOR (p:RequirementProperty) REQUIRE p.label IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT syntax_role_code IF NOT EXISTS
-        FOR (r:SyntaxRole) REQUIRE r.code IS UNIQUE
+        CREATE CONSTRAINT requirement_element_code IF NOT EXISTS
+        FOR (e:RequirementElement) REQUIRE e.code IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT syntax_role_label IF NOT EXISTS
-        FOR (r:SyntaxRole) REQUIRE r.label IS UNIQUE
+        CREATE CONSTRAINT requirement_element_label IF NOT EXISTS
+        FOR (e:RequirementElement) REQUIRE e.label IS UNIQUE
         """,
         """
         CREATE CONSTRAINT requirement_relation_type_code IF NOT EXISTS
@@ -95,13 +97,10 @@ public class Neo4jSchemaInitializer {
         Map.of("code", "QUALITY", "label", "Quality")
     );
 
-    private static final List<Map<String, String>> SYNTAX_ROLES = List.of(
-        Map.of("code", "SUBJECT", "label", "Subject"),
-        Map.of("code", "ACTION", "label", "Action"),
-        Map.of("code", "OBJECT", "label", "Object"),
-        Map.of("code", "CONDITION", "label", "Condition"),
-        Map.of("code", "CONSTRAINT", "label", "Constraint")
-    );
+    private static final List<Map<String, String>> REQUIREMENT_ELEMENTS =
+        Arrays.stream(RequirementElement.values())
+            .map(element -> Map.of("code", element.name(), "label", element.label()))
+            .toList();
 
     private static final List<Map<String, String>> REQUIREMENT_RELATION_TYPES = List.of(
         Map.of("code", "REFINES", "label", "Refines"),
@@ -190,7 +189,7 @@ public class Neo4jSchemaInitializer {
             "sample-syntax-requirement-1-subject",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "role",
+            "requirementElement",
             "SUBJECT",
             "text",
             "billing service"
@@ -200,7 +199,7 @@ public class Neo4jSchemaInitializer {
             "sample-syntax-requirement-1-action",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "role",
+            "requirementElement",
             "ACTION",
             "text",
             "log"
@@ -210,7 +209,7 @@ public class Neo4jSchemaInitializer {
             "sample-syntax-requirement-1-object",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "role",
+            "requirementElement",
             "OBJECT",
             "text",
             "failed payment attempts"
@@ -220,7 +219,7 @@ public class Neo4jSchemaInitializer {
             "sample-syntax-requirement-1-constraint",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "role",
+            "requirementElement",
             "CONSTRAINT",
             "text",
             "with reason codes"
@@ -270,11 +269,11 @@ public class Neo4jSchemaInitializer {
 
             tx.run(
                 """
-                UNWIND $roles AS role
-                MERGE (r:SyntaxRole {code: role.code})
-                SET r.label = role.label
+                UNWIND $requirementElements AS requirementElement
+                MERGE (e:RequirementElement {code: requirementElement.code})
+                SET e.label = requirementElement.label
                 """,
-                parameters("roles", SYNTAX_ROLES)
+                parameters("requirementElements", REQUIREMENT_ELEMENTS)
             );
 
             tx.run(
@@ -322,15 +321,15 @@ public class Neo4jSchemaInitializer {
 
             tx.run(
                 """
-                UNWIND $syntaxElements AS element
+                UNWIND $requirementElements AS element
                 MATCH (r:Requirement {id: element.requirementId})
                 MERGE (e:SyntaxElement {id: element.id})
-                SET e.role = element.role,
+                SET e.requirementElement = element.requirementElement,
                     e.text = element.text,
                     e.sample = true
                 MERGE (r)-[:HAS_SYNTAX_ELEMENT]->(e)
                 """,
-                parameters("syntaxElements", SAMPLE_SYNTAX_ELEMENTS)
+                parameters("requirementElements", SAMPLE_SYNTAX_ELEMENTS)
             );
 
             tx.run(

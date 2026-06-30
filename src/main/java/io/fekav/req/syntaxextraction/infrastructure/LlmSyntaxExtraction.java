@@ -131,7 +131,7 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
 
     private Prompt buildPrompt(RawText rawRequirementText) {
         return PromptFactory.fromTemplate("""
-        Extract the following syntax elements from the requirement:
+        Extract the following requirement elements from the requirement:
 
         SUBJECT:
         ACTION:
@@ -146,7 +146,7 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
 
         Respond only with valid JSON matching this shape:
         {
-          "syntaxElements": {
+          "requirementElements": {
             "SUBJECT": "",
             "ACTION": "",
             "OBJECT": "",
@@ -161,7 +161,7 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
             .systemPrompt("""
             You extract structured information from software requirements.
             You must respond with valid JSON only.
-            Use an empty string when a syntax element is absent.
+            Use an empty string when a requirement element is absent.
             Normalize extracted values exactly as requested by the prompt.
             """)
             .variable("requirement", rawRequirementText.text())
@@ -172,7 +172,7 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
                 """,
                 """
                 {
-                  "syntaxElements": {
+                  "requirementElements": {
                     "SUBJECT": "authentication service",
                     "ACTION": "must lock",
                     "OBJECT": "account",
@@ -189,7 +189,7 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
                 """,
                 """
                 {
-                  "syntaxElements": {
+                  "requirementElements": {
                     "SUBJECT": "System",
                     "ACTION": "soll bestätigen",
                     "OBJECT": "Bestellung",
