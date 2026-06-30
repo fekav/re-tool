@@ -1,4 +1,4 @@
-package io.fekav.req.conceptretrieval.domain;
+package io.fekav.req.shared.model;
 
 import java.util.HashSet;
 import java.util.List;

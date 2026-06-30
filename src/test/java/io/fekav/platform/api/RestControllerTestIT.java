@@ -3,6 +3,7 @@ package io.fekav.platform.api;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -25,13 +26,18 @@ import org.mockito.ArgumentCaptor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.fekav.req.conceptretrieval.domain.CandidateConcept;
-import io.fekav.req.conceptretrieval.domain.CandidateConceptMatch;
-import io.fekav.req.conceptretrieval.domain.CandidateConceptMatchSet;
+import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
+import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionSet;
+import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
+import io.fekav.req.conceptmatching.domain.ConceptMatchingService;
+import io.fekav.req.conceptmatching.domain.NewConceptProposal;
+import io.fekav.req.shared.model.CandidateConcept;
+import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CandidateConceptMatchSet;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
-import io.fekav.req.conceptretrieval.domain.RetrievedCandidateConcept;
-import io.fekav.req.conceptretrieval.domain.RetrievalEvidence;
-import io.fekav.req.conceptretrieval.domain.SelectedTerm;
+import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RetrievalEvidence;
+import io.fekav.req.shared.model.SelectedTerm;
 import io.fekav.req.classification.application.ClassificationService;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.ConfidenceScore;
@@ -66,6 +72,9 @@ class RestControllerTestIT {
     @InjectMock
     ConceptRetrievalService conceptRetrievalService;
 
+    @InjectMock
+    ConceptMatchingService conceptMatchingService;
+
     ObjectMapper objectMapper;
 
     @BeforeEach
@@ -74,6 +83,7 @@ class RestControllerTestIT {
         reset(syntaxExtraction);
         reset(requirementClassificationService);
         reset(conceptRetrievalService);
+        reset(conceptMatchingService);
     }
 
     @ParameterizedTest(name = "{index}: {0}")
@@ -297,6 +307,100 @@ class RestControllerTestIT {
             );
     }
 
+    @Test
+    void returnsConceptMatchDecisions_whenDecideConceptMatchesCommandIsPosted()
+        throws Exception {
+        // Given
+        RetrievalEvidence evidence = new RetrievalEvidence(
+            "conceptName",
+            "Matched concept name 'billing service' to graph candidate 'Billing Service'",
+            1.0
+        );
+        RetrievedCandidateConcept retrievedCandidate = new RetrievedCandidateConcept(
+            new CandidateConcept(
+                "sample-subject-billing-service",
+                "Billing Service",
+                "SystemComponent"
+            ),
+            List.of(evidence)
+        );
+        ConceptMatchDecisionSet decisionSet = new ConceptMatchDecisionSet(List.of(
+            new ConceptMatchDecision(
+                new SelectedTerm("SUBJECT", "billing service"),
+                ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
+                List.of(retrievedCandidate),
+                List.of(),
+                "Unique top candidate reached auto-map threshold 1.0 with score 1.0."
+            ),
+            new ConceptMatchDecision(
+                new SelectedTerm("OBJECT", "unknown workflow"),
+                ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+                List.of(),
+                List.of(new NewConceptProposal("unknown workflow", "OBJECT")),
+                "No existing candidates found; auto-creating concept from selected term."
+            )
+        ));
+        when(conceptMatchingService.decideMatches(any(CandidateConceptMatchSet.class)))
+            .thenReturn(decisionSet);
+
+        // When
+        String responseBody =
+            given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(decideConceptMatchesCommandRequest())
+            .when()
+                .post("/c")
+            .then()
+                .statusCode(201)
+                .contentType(ContentType.JSON)
+                .extract()
+                .asString();
+        ConceptMatchDecisionSet result =
+            objectMapper.readValue(responseBody, ConceptMatchDecisionSet.class);
+        JsonNode responseJson = objectMapper.readTree(responseBody);
+
+        // Then
+        assertThat(result.decisions()).hasSize(2);
+        assertThat(responseJson.at("/decisions/0/status").asText())
+            .isEqualTo("AUTO_MAP_EXISTING");
+        assertThat(responseJson.at("/decisions/0/candidates").isArray()).isTrue();
+        assertThat(responseJson.at("/decisions/0/newConcepts").isArray()).isTrue();
+        assertThat(responseJson.at("/decisions/0/rationale").asText())
+            .isEqualTo("Unique top candidate reached auto-map threshold 1.0 with score 1.0.");
+        assertThat(responseJson.at("/decisions/0/candidates/0/candidate/candidateKey").asText())
+            .isEqualTo("sample-subject-billing-service");
+        assertThat(responseJson.at("/decisions/1/status").asText())
+            .isEqualTo("AUTO_CREATE_NEW");
+        assertThat(responseJson.at("/decisions/1/candidates").isArray()).isTrue();
+        assertThat(responseJson.at("/decisions/1/candidates").size()).isZero();
+        assertThat(responseJson.at("/decisions/1/newConcepts").isArray()).isTrue();
+        assertThat(responseJson.at("/decisions/1/newConcepts/0/label").asText())
+            .isEqualTo("unknown workflow");
+        assertThat(responseJson.at("/decisions/1/newConcepts/0/conceptType").asText())
+            .isEqualTo("OBJECT");
+
+        ArgumentCaptor<CandidateConceptMatchSet> matches = candidateConceptMatchSetCaptor();
+        verify(conceptMatchingService).decideMatches(matches.capture());
+        assertThat(matches.getValue().matches())
+            .extracting(match -> match.selectedTerm().syntaxRole(), match -> match.selectedTerm().text())
+            .containsExactly(
+                tuple("SUBJECT", "billing service"),
+                tuple("OBJECT", "unknown workflow")
+            );
+        assertThat(matches.getValue().matches().getFirst().candidates())
+            .singleElement()
+            .satisfies(candidate -> {
+                assertThat(candidate.candidate().candidateKey())
+                    .isEqualTo("sample-subject-billing-service");
+                assertThat(candidate.candidate().label()).isEqualTo("Billing Service");
+                assertThat(candidate.candidate().conceptType()).isEqualTo("SystemComponent");
+                assertThat(candidate.evidence().getFirst().policyName()).isEqualTo("conceptName");
+                assertThat(candidate.evidence().getFirst().score()).isEqualTo(1.0);
+            });
+        assertThat(matches.getValue().matches().get(1).candidates()).isEmpty();
+    }
+
     static Stream<Arguments> requirementTexts() {
         return Stream.of(
             Arguments.of(
@@ -391,10 +495,66 @@ class RestControllerTestIT {
         ));
     }
 
+    private String decideConceptMatchesCommandRequest() throws Exception {
+        return objectMapper.writeValueAsString(Map.of(
+            "command",
+            "DecideConceptMatchesCommand",
+            "payload",
+            Map.of("matches", List.of(
+                Map.of(
+                    "selectedTerm",
+                    Map.of(
+                        "syntaxRole",
+                        "SUBJECT",
+                        "text",
+                        "billing service"
+                    ),
+                    "candidates",
+                    List.of(Map.of(
+                        "candidate",
+                        Map.of(
+                            "candidateKey",
+                            "sample-subject-billing-service",
+                            "label",
+                            "Billing Service",
+                            "conceptType",
+                            "SystemComponent"
+                        ),
+                        "evidence",
+                        List.of(Map.of(
+                            "policyName",
+                            "conceptName",
+                            "evidenceText",
+                            "Matched concept name 'billing service' to graph candidate " +
+                                "'Billing Service'",
+                            "score",
+                            1.0
+                        ))
+                    ))
+                ),
+                Map.of(
+                    "selectedTerm",
+                    Map.of(
+                        "syntaxRole",
+                        "OBJECT",
+                        "text",
+                        "unknown workflow"
+                    ),
+                    "candidates",
+                    List.of()
+                )
+            ))
+        ));
+    }
+
     @SuppressWarnings("unchecked")
     private ArgumentCaptor<Collection<SelectedTerm>>
             selectedTermsCaptor() {
         return ArgumentCaptor.forClass(Collection.class);
+    }
+
+    private ArgumentCaptor<CandidateConceptMatchSet> candidateConceptMatchSetCaptor() {
+        return ArgumentCaptor.forClass(CandidateConceptMatchSet.class);
     }
 
     private Set<String> responseSet(String value) {

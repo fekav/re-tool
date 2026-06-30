@@ -10,6 +10,10 @@ import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
+import io.fekav.req.shared.model.CandidateConcept;
+import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.SelectedTerm;
+
 class ConceptNameRetrievalPolicyTest {
 
     private final SelectedTerm selectedTerm = new SelectedTerm("SUBJECT", "billing service");

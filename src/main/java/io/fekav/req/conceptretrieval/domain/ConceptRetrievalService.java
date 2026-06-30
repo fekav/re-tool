@@ -4,6 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.SelectedTerm;
+
 public class ConceptRetrievalService {
 
     private final ConceptRetrievalPolicy retrievalPolicy;

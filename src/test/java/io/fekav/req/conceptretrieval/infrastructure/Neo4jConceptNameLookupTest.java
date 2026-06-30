@@ -29,7 +29,7 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
-import io.fekav.req.conceptretrieval.domain.SelectedTerm;
+import io.fekav.req.shared.model.SelectedTerm;
 
 @ExtendWith(MockitoExtension.class)
 class Neo4jConceptNameLookupTest {

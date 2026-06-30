@@ -8,9 +8,9 @@ import org.neo4j.driver.Record;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.Value;
 
-import io.fekav.req.conceptretrieval.domain.CandidateConcept;
+import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.conceptretrieval.domain.CandidateLookup;
-import io.fekav.req.conceptretrieval.domain.SelectedTerm;
+import io.fekav.req.shared.model.SelectedTerm;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

@@ -1,4 +1,4 @@
-package io.fekav.req.conceptretrieval.domain;
+package io.fekav.req.shared.model;
 
 public record CandidateConcept(
     String candidateKey,

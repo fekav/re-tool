@@ -8,11 +8,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import io.fekav.req.conceptretrieval.domain.CandidateConceptMatch;
-import io.fekav.req.conceptretrieval.domain.CandidateConceptMatchSet;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalPolicy;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
-import io.fekav.req.conceptretrieval.domain.SelectedTerm;
+import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.SelectedTerm;
 
 class RetrieveCandidateConceptsCommandHandlerTest {
 
@@ -27,11 +27,11 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         RetrieveCandidateConceptsCommandHandler handler =
             new RetrieveCandidateConceptsCommandHandler(new ConceptRetrievalService(policy));
         RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(List.of(
-            new RetrieveCandidateConceptsCommand.SelectedTermInput(
+            new SelectedTerm(
                 " SUBJECT ",
                 " billing service "
             ),
-            new RetrieveCandidateConceptsCommand.SelectedTermInput(
+            new SelectedTerm(
                 "ACTION",
                 "must refund"
             )
@@ -50,7 +50,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     }
 
     @Test
-    void rejectsCommand_whenSelectedTermInputsAreEmpty() {
+    void rejectsCommand_whenSelectedTermsAreEmpty() {
         // Given / When / Then
         assertThatThrownBy(() -> new RetrieveCandidateConceptsCommand(List.of()))
             .isInstanceOf(IllegalArgumentException.class)
@@ -58,23 +58,17 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     }
 
     @Test
-    void rejectsCommand_whenSelectedTermInputIsBlank() {
+    void rejectsSelectedTerm_whenTextIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new RetrieveCandidateConceptsCommand(List.of(
-            new RetrieveCandidateConceptsCommand.SelectedTermInput("SUBJECT", " ")
-        )))
+        assertThatThrownBy(() -> new SelectedTerm("SUBJECT", " "))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("selected term input text must not be blank");
+            .hasMessage("selected term text must not be blank");
     }
 
     @Test
-    void rejectsCommand_whenSelectedTermInputIsDuplicated() {
+    void rejectsCommand_whenSelectedTermIsDuplicated() {
         // Given
-        RetrieveCandidateConceptsCommand.SelectedTermInput selectedTerm =
-            new RetrieveCandidateConceptsCommand.SelectedTermInput(
-                "SUBJECT",
-                "billing service"
-            );
+        SelectedTerm selectedTerm = new SelectedTerm("SUBJECT", "billing service");
 
         // When / Then
         assertThatThrownBy(() -> new RetrieveCandidateConceptsCommand(List.of(

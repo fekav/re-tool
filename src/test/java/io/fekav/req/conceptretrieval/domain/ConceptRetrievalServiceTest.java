@@ -8,6 +8,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.SelectedTerm;
+
 class ConceptRetrievalServiceTest {
 
     @Test

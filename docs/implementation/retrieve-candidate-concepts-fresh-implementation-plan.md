@@ -39,7 +39,7 @@ label lookup or alias lookup, but they are not policies by themselves.
   lookup. Lower-weight lookup combinations must remain below `1.0`.
 - Retrieval does not create mappings, approve matches, reject candidates, create
   concepts, or request human review. It only produces ordered candidates and
-  evidence for `CREATE_MATCHING_CANDIDATES`.
+  evidence for `DECIDE_CONCEPT_MATCHES`.
 
 ## Policy Design
 
@@ -425,7 +425,7 @@ and the available lookup methods.
 | Lookup methods become hidden policies. | Medium | Lookup method ports expose weight and ordered candidates only; fallback, score aggregation, and stop rules live in `ConceptRetrievalPolicy`. |
 | Alias graph shape changes later. | Medium | Keep alias lookup behind its own adapter and evidence name. |
 | Specifications are introduced too early. | Low | Keep v1 conditions inside `OrderedWeightedConceptRetrievalPolicy`; extract Specifications only after repeated rules appear. |
-| Retrieval result is mistaken for a mapping decision. | High | Domain result contains candidates and evidence only; mapping outcomes remain in `CREATE_MATCHING_CANDIDATES`. |
+| Retrieval result is mistaken for a concept match decision. | High | Domain result contains candidates and evidence only; concept match outcomes remain in `DECIDE_CONCEPT_MATCHES`. |
 
 ## Open Questions
 

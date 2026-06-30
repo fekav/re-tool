@@ -6,6 +6,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import io.fekav.req.shared.model.CandidateConcept;
+import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.RetrievalEvidence;
+import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.SelectedTerm;
+
 public class ConceptNameRetrievalPolicy implements ConceptRetrievalPolicy {
 
     public static final String POLICY_NAME = "conceptName";

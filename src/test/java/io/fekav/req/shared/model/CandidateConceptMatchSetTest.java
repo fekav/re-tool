@@ -1,4 +1,4 @@
-package io.fekav.req.conceptretrieval.domain;
+package io.fekav.req.shared.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -2,15 +2,15 @@
 
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
-| Requirement KG Persistence | Requirement-to-KG ingestion | `docs/workflows/requirement-kg-persistence.md` | Workflow for persisting textual software requirements into a knowledge graph with provenance, extracted terms, concept-name candidate retrieval, mappings, and policy-governed concept creation. |
+| Requirement KG Persistence | Requirement-to-KG ingestion | `docs/workflows/requirement-kg-persistence.md` | Workflow for persisting textual software requirements into a knowledge graph with provenance, extracted terms, concept-name candidate retrieval, concept match decisions, and policy-governed concept creation. |
 
 ## Roles
 
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
 | Requirement Analyst | Analyst | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for validating requirement interpretation and extraction correctness. |
-| Test Engineer | Tester | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for reviewing quality, condition, and constraint mappings when policy assigns those decisions. |
-| Software Developer | Developer | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for reviewing mappings to implementation-facing concepts such as system components. |
+| Test Engineer | Tester | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for reviewing quality, condition, and constraint concept decisions when policy assigns those decisions. |
+| Software Developer | Developer | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for reviewing decisions involving implementation-facing concepts such as system components. |
 | Domain Modeler | Ontology curator; domain expert | `REQUEST_HUMAN_REVIEW`; Human Decision Points | Human role responsible for concept quality, concept creation approval, and ontology consistency. |
 
 ## Artifacts
@@ -28,10 +28,10 @@
 | CandidateConceptMatch | Term retrieval result | `RETRIEVE_CANDIDATE_CONCEPTS` | Pairing of one `SelectedTerm` with zero or more `RetrievedCandidateConcept` values. |
 | RetrievedCandidateConcept | Retrieved candidate | `RETRIEVE_CANDIDATE_CONCEPTS` | Candidate concept after retrieval policy processing, carrying non-empty candidate-specific retrieval evidence. |
 | RetrievalEvidence | Candidate evidence | `RETRIEVE_CANDIDATE_CONCEPTS` | Evidence produced for a retrieved candidate. Current concept-name retrieval records `policyName`, evidence text, and score `1.0`. |
-| TermConceptMappingSet | Mapping candidates | `CREATE_MATCHING_CANDIDATES` | Candidate mappings between extracted term mentions and KG concepts, with status and rationale. |
-| ConceptCreationPolicy | Creation policy; matching policy | `CREATE_MATCHING_CANDIDATES` | Configured rules that decide whether lookup misses or ambiguous terms are auto-created, proposed, reviewed, blocked, or rejected. |
-| MappingDecisionSet | Mapping decisions | `CREATE_MATCHING_CANDIDATES`; `REQUEST_HUMAN_REVIEW` | Final or pending decisions for term-to-concept mappings and concept proposals. |
-| ConceptProposalSet | New concept proposals | `CREATE_MATCHING_CANDIDATES`; `REQUEST_HUMAN_REVIEW` | Proposed new KG concepts generated when selected terms have empty candidate lists or do not sufficiently match existing concepts. |
+| ConceptMatchDecisionSet | Matching decisions | `DECIDE_CONCEPT_MATCHES`; `REQUEST_HUMAN_REVIEW`; `PERSIST_GRAPH_CHANGES` | Decision result containing one `ConceptMatchDecision` per selected term. |
+| ConceptMatchDecision | Selected-term concept decision | `DECIDE_CONCEPT_MATCHES`; `REQUEST_HUMAN_REVIEW`; `PERSIST_GRAPH_CHANGES` | Decision payload with `selectedTerm`, enum `status`, non-null `candidates`, non-null `newConcepts`, and non-blank `rationale`. |
+| ConceptMatchDecisionStatus | Matching decision status | `DECIDE_CONCEPT_MATCHES` | Enum outcome for one selected term: `AUTO_MAP_EXISTING`, `PROPOSE_EXISTING`, `REVIEW_REQUIRED`, or `AUTO_CREATE_NEW`. |
+| NewConceptProposal | New concept proposal | `DECIDE_CONCEPT_MATCHES`; `PERSIST_GRAPH_CHANGES` | Proposed new KG concept with label and concept type. In v1, lookup misses create one proposal from `selectedTerm.text` and `selectedTerm.syntaxRole`. |
 | Raw Requirement Text | Source text; RawText | `INTAKE_REQUIREMENT` | Original textual software requirement preserved for provenance and auditability. |
 | Provenance | Source metadata; traceability | `INTAKE_REQUIREMENT`; `PERSIST_GRAPH_CHANGES` | Metadata linking KG facts back to the raw requirement source, submitter, and ingestion event. |
 | SyntaxExtractionOutput | Requirement syntax DTO | `EXTRACT_REQUIREMENT_SYNTAX`; `docs/json-contracts.md` | Boundary DTO representing structured model output before it is validated and mapped to the Action domain model. |
@@ -68,6 +68,10 @@
 | CandidateLookup | Concept-name lookup port | `RETRIEVE_CANDIDATE_CONCEPTS` | Domain port used by `ConceptNameRetrievalPolicy` to find KG candidate concepts for one selected term. It does not assign matching outcomes or concept creation decisions. |
 | Neo4jConceptNameLookup | Neo4j concept-name lookup | `RETRIEVE_CANDIDATE_CONCEPTS` | Neo4j adapter for `CandidateLookup`. It matches selected term text against graph `label`, `text`, `alias`, and `aliases`, applies the syntax-role predicate, and orders by candidate label then candidate key. |
 | conceptName | Concept-name evidence policy name | `RETRIEVE_CANDIDATE_CONCEPTS`; `CONCEPT_RETRIEVAL_POLICY` | Retrieval evidence policy name emitted for concept-name matches. |
+| conceptmatching | Concept matching slice | `DECIDE_CONCEPT_MATCHES` | Slice that consumes `CandidateConceptMatchSet` data and emits a `ConceptMatchDecisionSet` without writing graph changes. |
+| ConceptMatchingService | Matching domain service | `DECIDE_CONCEPT_MATCHES` | Domain service that applies the active `ConceptMatchingPolicy` to each retrieved candidate match and returns one decision per selected term. |
+| ConceptMatchingPolicy | Matching policy port | `DECIDE_CONCEPT_MATCHES`; `MATCHING_POLICY` | Domain policy interface that converts one `CandidateConceptMatch` into one `ConceptMatchDecision`. |
+| ThresholdConceptMatchingPolicy | V1 matching policy | `DECIDE_CONCEPT_MATCHES`; `MATCHING_POLICY` | Current policy with hardcoded `auto_map_threshold = 1.0`; it auto-maps a unique top candidate at threshold, requires review for tied top candidates at threshold, proposes the best below-threshold existing candidate, and auto-creates a new concept for lookup misses. |
 | Subject | Actor; grammatical subject | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying who or what performs or owns an action. |
 | TargetObject | Object; target | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying what an action affects. |
 | Action | Behavior; verb | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying required behavior or operation and owning its subject, target object, conditions, and constraints. |
@@ -82,9 +86,9 @@
 | CLASSIFY_REQUIREMENT | Classify | State Table | State that assigns an initial KG type and property to the requirement. |
 | EXTRACT_REQUIREMENT_SYNTAX | Extract syntax | State Table | State that extracts candidate terms from requirement syntax. |
 | RETRIEVE_CANDIDATE_CONCEPTS | Retrieve matches | State Table | State that searches the KG for concept-name candidate concepts for selected syntax terms. |
-| CREATE_MATCHING_CANDIDATES | Create matchings | State Table | State that converts retrieval results into policy-governed term-to-concept matchings or review items. |
-| REQUEST_HUMAN_REVIEW | Human review | State Table | State that collects required review decisions for ambiguous mappings and concept proposals. |
-| PERSIST_GRAPH_CHANGES | Persist graph | State Table | State that writes requirement, provenance, terms, mappings, and approved concepts to the KG. |
+| DECIDE_CONCEPT_MATCHES | Decide concept matches | State Table | State that converts retrieval results into a `ConceptMatchDecisionSet` through the `conceptmatching` slice. |
+| REQUEST_HUMAN_REVIEW | Human review | State Table | State that collects required review decisions for ambiguous or governance-sensitive concept decisions. |
+| PERSIST_GRAPH_CHANGES | Persist graph | State Table | State that writes requirement, provenance, terms, concept decisions, and approved concepts to the KG. |
 | DONE | Complete | State Table | Terminal state for successful KG persistence. |
 | ABORTED | Failed; stopped | State Table | Terminal state for unsafe or impossible continuation. |
 
@@ -93,8 +97,8 @@
 | Term | Aliases | Used In | Description |
 |---|---|---|---|
 | AUTO_CREATE | Automatic creation | Human Decision Points | Policy option allowing new concepts to be created without human approval under configured conditions. |
-| PROPOSE_ONLY | Proposal only | Human Decision Points | Policy option that creates concept proposals without immediately creating KG concepts. |
-| REQUIRE_APPROVAL | Manual approval | Human Decision Points | Policy option requiring a human decision before concept creation or certain mappings. |
+| PROPOSE_ONLY | Proposal only | Human Decision Points | Policy option that keeps a concept decision non-final until review or persistence policy resolves it. |
+| REQUIRE_APPROVAL | Manual approval | Human Decision Points | Policy option requiring a human decision before concept creation or certain concept decisions. |
 | BLOCK | Stop | Human Decision Points | Policy option that prevents persistence or concept creation for unresolved cases. |
 
 ## Policies
@@ -106,7 +110,7 @@
 | SYNTAX_EXTRACTION_POLICY | Syntax extraction policy | State Table policy column | Requires subject, action text, and target object, while allowing condition and constraint only when expressed by the raw text. |
 | CONCEPT_RETRIEVAL_POLICY | Retrieval policy | State Table policy column | Domain policy that defines how selected terms become candidate concept matches. Current implementation is `ConceptNameRetrievalPolicy`. |
 | ConceptNameRetrievalPolicy | Concept-name retrieval policy | `CONCEPT_RETRIEVAL_POLICY`; `RETRIEVE_CANDIDATE_CONCEPTS` | Current retrieval policy that calls `CandidateLookup` once per selected term, de-duplicates duplicate candidate keys keeping the first occurrence, and treats graph labels, text values, aliases, and alias lists as equivalent concept-name matches with `conceptName` evidence and score `1.0`. |
-| MATCHING_POLICY | Matching decision policy | State Table policy column | Defines threshold boundaries for exact, probable, ambiguous, and lookup-miss matching outcomes and resolves them into approve, reject, propose, create, review, or block decisions. |
+| MATCHING_POLICY | Matching decision policy | State Table policy column | Defines how retrieved candidates become concept match decisions. V1 is `ThresholdConceptMatchingPolicy` with hardcoded `auto_map_threshold = 1.0`. |
 | HUMAN_REVIEW_POLICY | Review routing policy | State Table policy column | Defines reviewer ownership, allowed response shape, and due condition for policy-directed review items. |
 | GRAPH_PERSISTENCE_POLICY | Graph write policy | State Table policy column | Requires idempotent graph writes, policy-approved concept creation, and explicit permission to persist pending review states. |
 | COMPLETION_POLICY | Workflow completion policy | State Table policy column | Requires a committed KG transaction with persisted identifiers before the workflow can reach DONE. |

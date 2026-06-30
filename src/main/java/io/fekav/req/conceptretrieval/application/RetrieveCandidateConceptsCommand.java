@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Set;
 
 import io.fekav.platform.cqrs.Command;
-import io.fekav.req.conceptretrieval.domain.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.model.SelectedTerm;
 
 public record RetrieveCandidateConceptsCommand(
-    List<SelectedTermInput> selectedTerms
+    List<SelectedTerm> selectedTerms
 ) implements Command<CandidateConceptMatchSet> {
 
     public RetrieveCandidateConceptsCommand {
@@ -20,34 +21,14 @@ public record RetrieveCandidateConceptsCommand(
 
         selectedTerms = List.copyOf(selectedTerms);
         if (selectedTerms.stream().anyMatch(java.util.Objects::isNull)) {
-            throw new NullPointerException("selected term inputs must not contain null");
+            throw new NullPointerException("selected terms must not contain null");
         }
 
-        Set<SelectedTermInput> uniqueSelectedTerms = new HashSet<>(selectedTerms);
+        Set<SelectedTerm> uniqueSelectedTerms = new HashSet<>(selectedTerms);
         if (uniqueSelectedTerms.size() != selectedTerms.size()) {
             throw new IllegalArgumentException(
                 "retrieve candidate concepts command has duplicate selected terms"
             );
-        }
-    }
-
-    public record SelectedTermInput(
-        String syntaxRole,
-        String text
-    ) {
-
-        public SelectedTermInput {
-            if (syntaxRole == null || syntaxRole.isBlank()) {
-                throw new IllegalArgumentException(
-                    "selected term input syntax role must not be blank"
-                );
-            }
-            if (text == null || text.isBlank()) {
-                throw new IllegalArgumentException("selected term input text must not be blank");
-            }
-
-            syntaxRole = syntaxRole.strip();
-            text = text.strip();
         }
     }
 }
