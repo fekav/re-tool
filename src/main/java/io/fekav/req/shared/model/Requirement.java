@@ -12,14 +12,14 @@ import io.fekav.req.syntaxextraction.domain.Action;
 
 // Domain Model / Aggregat-Root
 public class Requirement {
-    private final ElementId id;
-    private final String rawText;
+    private final RequirementId id;
+    private final RawText rawText;
     private RequirementStatus status;
     private Action action;
     private Classification classificationResult;
     private final List<DomainEvent> domainEvents = new ArrayList<>();
     
-    private Requirement(ElementId id, String rawText) {
+    private Requirement(RequirementId id, RawText rawText) {
         this.id = id;
         this.rawText = rawText;
         this.status = RequirementStatus.PENDING;
@@ -30,10 +30,10 @@ public class Requirement {
     }
 
     public static Requirement create(RawText rawRequirementText) {
-        return new Requirement(ElementId.create(), rawRequirementText.text());
+        return new Requirement(RequirementId.create(), rawRequirementText);
     }
 
-    public String getRawText() {
+    public RawText getRawText() {
         return rawText;
     }
 
@@ -62,7 +62,7 @@ public class Requirement {
         return status;
     }
 
-    public ElementId getId() {
+    public RequirementId getId() {
         return id;
     }       
 
