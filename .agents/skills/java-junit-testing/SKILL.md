@@ -6,7 +6,7 @@ description: Write, review, and refactor tests for Java code following current b
 # Java Testing
 
 This skill governs how to write and review Java tests. The single most important habit it
-teaches is: **Writing simple, atomic test cases**.
+teaches is: **Writing simple, atomic cases testing only one behavior**.
 
 Secondary, **Black-box testing**. This skill is designed for fluctuating code. Do not rely on implemetation details of code under test.
 
