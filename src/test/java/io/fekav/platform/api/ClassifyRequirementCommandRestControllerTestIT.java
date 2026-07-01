@@ -1,12 +1,10 @@
 package io.fekav.platform.api;
 
-import static io.fekav.platform.api.RestControllerCommandTestSupport.commandRequest;
-import static io.fekav.platform.api.RestControllerCommandTestSupport.postCommandForBody;
+import static io.fekav.platform.api.RestControllerCommandTestSupport.executeCommandAsJson;
+import static io.fekav.platform.api.RestControllerCommandTestSupport.rawTextCommandRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
-
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -31,6 +29,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @Tag("integration")
 class ClassifyRequirementCommandRestControllerTestIT {
 
+    private static final String COMMAND = "ClassifyRequirementCommand";
     private static final String REQUIREMENT_TEXT =
         "The checkout service must support guest checkout.";
     private static final RequirementType CONCEPT_TYPE =
@@ -58,19 +57,19 @@ class ClassifyRequirementCommandRestControllerTestIT {
                 CONFIDENCE_SCORE,
                 RATIONALE
             ));
-        requestBody = classifyRequirementCommandRequest(REQUIREMENT_TEXT);
+        requestBody = rawTextCommandRequest(objectMapper, COMMAND, REQUIREMENT_TEXT);
     }
 
     @Test
     void returnsRawText_whenClassifyRequirementCommandIsPosted() throws Exception {
-        JsonNode result = executeCommandAsJson(requestBody);
+        JsonNode result = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(result.at("/rawText/text").asText()).isEqualTo(REQUIREMENT_TEXT);
     }
 
     @Test
     void returnsConceptType_whenClassifyRequirementCommandIsPosted() throws Exception {
-        JsonNode result = executeCommandAsJson(requestBody);
+        JsonNode result = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(result.at("/classification/conceptType").asText())
             .isEqualTo(CONCEPT_TYPE.name());
@@ -78,7 +77,7 @@ class ClassifyRequirementCommandRestControllerTestIT {
 
     @Test
     void returnsProperty_whenClassifyRequirementCommandIsPosted() throws Exception {
-        JsonNode result = executeCommandAsJson(requestBody);
+        JsonNode result = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(result.at("/classification/property").asText())
             .isEqualTo(PROPERTY.name());
@@ -86,7 +85,7 @@ class ClassifyRequirementCommandRestControllerTestIT {
 
     @Test
     void returnsConfidenceScore_whenClassifyRequirementCommandIsPosted() throws Exception {
-        JsonNode result = executeCommandAsJson(requestBody);
+        JsonNode result = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(result.at("/classification/confidenceScore/value").asDouble())
             .isEqualTo(CONFIDENCE_SCORE);
@@ -94,7 +93,7 @@ class ClassifyRequirementCommandRestControllerTestIT {
 
     @Test
     void returnsRationale_whenClassifyRequirementCommandIsPosted() throws Exception {
-        JsonNode result = executeCommandAsJson(requestBody);
+        JsonNode result = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(result.at("/classification/rationale/text").asText()).isEqualTo(RATIONALE);
     }
@@ -112,24 +111,12 @@ class ClassifyRequirementCommandRestControllerTestIT {
             ));
 
         JsonNode result = executeCommandAsJson(
-            classifyRequirementCommandRequest(requirementText)
+            objectMapper,
+            rawTextCommandRequest(objectMapper, COMMAND, requirementText)
         );
 
         assertThat(result.at("/classification/conceptType").asText())
             .isEqualTo(RequirementType.GOAL.name());
-    }
-
-    private JsonNode executeCommandAsJson(String requestBody) throws Exception {
-        return objectMapper.readTree(postCommandForBody(requestBody));
-    }
-
-    private String classifyRequirementCommandRequest(String requirementText)
-        throws Exception {
-        return commandRequest(
-            objectMapper,
-            "ClassifyRequirementCommand",
-            Map.of("rawText", requirementText)
-        );
     }
 
     private Classification classification(

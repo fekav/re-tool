@@ -10,16 +10,16 @@ import io.fekav.req.syntaxextraction.domain.Action;
 /**
  * Domain event
  */
-public record SyntaxExtractedEvent(
+public record RequirementElementsExtractedEvent(
         EventId eventId,
         Instant occurredAt,
         RawText rawText,
         Action action
 ) implements DomainEvent {
 
-    public static SyntaxExtractedEvent create(
+    public static RequirementElementsExtractedEvent create(
             RawText rawText,
             Action action) {
-        return new SyntaxExtractedEvent(EventId.create(), Instant.now(), rawText, action);
+        return new RequirementElementsExtractedEvent(EventId.create(), Instant.now(), rawText, action);
     }
 }

@@ -1,6 +1,6 @@
 package io.fekav.req.shared.kg;
 
-import io.fekav.req.shared.model.RequirementElement;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -98,7 +98,7 @@ public class Neo4jSchemaInitializer {
     );
 
     private static final List<Map<String, String>> REQUIREMENT_ELEMENTS =
-        Arrays.stream(RequirementElement.values())
+        Arrays.stream(RequirementElementType.values())
             .map(element -> Map.of("code", element.name(), "label", element.label()))
             .toList();
 

@@ -23,7 +23,7 @@ class CandidateConceptMatchTest {
 
         // When
         CandidateConceptMatch match = new CandidateConceptMatch(
-            new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
+            new RequirementElement(RequirementElementType.SUBJECT, " billing service "),
             List.of(new RetrievedCandidateConcept(
                 new CandidateConcept(
                     " concept-1 ",
@@ -36,8 +36,8 @@ class CandidateConceptMatchTest {
 
         // Then
         RetrievedCandidateConcept retrievedCandidate = match.candidates().getFirst();
-        assertThat(match.selectedTerm())
-            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+        assertThat(match.requirementElement())
+            .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(retrievedCandidate.candidate())
             .isEqualTo(new CandidateConcept("concept-1", "Billing Service", "SystemComponent"));
         assertThat(retrievedCandidate.evidence().getFirst().policyName())
@@ -48,20 +48,20 @@ class CandidateConceptMatchTest {
 
     @Test
     void supportsExactlyV1RequirementElements() {
-        assertThat(RequirementElement.values())
+        assertThat(RequirementElementType.values())
             .containsExactly(
-                RequirementElement.SUBJECT,
-                RequirementElement.ACTION,
-                RequirementElement.OBJECT,
-                RequirementElement.CONDITION,
-                RequirementElement.CONSTRAINT
+                RequirementElementType.SUBJECT,
+                RequirementElementType.ACTION,
+                RequirementElementType.OBJECT,
+                RequirementElementType.CONDITION,
+                RequirementElementType.CONSTRAINT
             );
     }
 
     @Test
     void rejectsSelectedTerm_whenRequirementElementIsNull() {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm(null, "billing service"))
+        assertThatThrownBy(() -> new RequirementElement(null, "billing service"))
             .isInstanceOf(NullPointerException.class)
             .hasMessage("selected term requirement element must not be null");
     }
@@ -70,7 +70,7 @@ class CandidateConceptMatchTest {
     @ValueSource(strings = { "", " " })
     void rejectsSelectedTerm_whenTextIsBlank(String text) {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm(RequirementElement.SUBJECT, text))
+        assertThatThrownBy(() -> new RequirementElement(RequirementElementType.SUBJECT, text))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("selected term text must not be blank");
     }
@@ -105,7 +105,7 @@ class CandidateConceptMatchTest {
     @Test
     void acceptsCandidateConceptMatch_whenCandidatesAreEmpty() {
         // Given
-        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
+        RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
 
         // When
         CandidateConceptMatch match = new CandidateConceptMatch(
@@ -114,7 +114,7 @@ class CandidateConceptMatchTest {
         );
 
         // Then
-        assertThat(match.selectedTerm()).isEqualTo(selectedTerm);
+        assertThat(match.requirementElement()).isEqualTo(selectedTerm);
         assertThat(match.candidates()).isEmpty();
     }
 
@@ -126,7 +126,7 @@ class CandidateConceptMatchTest {
 
         // When
         CandidateConceptMatch match = new CandidateConceptMatch(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             candidates
         );
         candidates.clear();
@@ -149,7 +149,7 @@ class CandidateConceptMatchTest {
 
         // When / Then
         assertThatThrownBy(() -> new CandidateConceptMatch(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             candidates
         ))
             .isInstanceOf(NullPointerException.class)

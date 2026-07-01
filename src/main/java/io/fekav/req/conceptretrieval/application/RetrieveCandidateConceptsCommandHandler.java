@@ -27,7 +27,7 @@ public class RetrieveCandidateConceptsCommandHandler
     @Override
     public ConceptCandidatesRetrievedEvent handle(RetrieveCandidateConceptsCommand command) {
         CandidateConceptMatch match =
-            conceptRetrievalService.retrieveCandidates(command.selectedTerm());
+            conceptRetrievalService.retrieveCandidates(command.requirementElement());
         ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(match);
 
         eventPublisher.publish(event);

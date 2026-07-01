@@ -11,15 +11,15 @@ import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.shared.model.SelectedTerm;
 
 class ThresholdConceptMatchingPolicyTest {
 
     private static final double AUTO_MAP_THRESHOLD = 0.75;
     private static final double BELOW_THRESHOLD_SCORE = 0.65;
 
-    private final SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
+    private final RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
     private final ThresholdConceptMatchingPolicy policy =
         new ThresholdConceptMatchingPolicy(AUTO_MAP_THRESHOLD);
 

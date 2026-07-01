@@ -12,17 +12,17 @@ import org.junit.jupiter.api.Test;
 
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptNameRetrievalPolicyTest {
 
-    private final SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
+    private final RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
 
     @Test
     void returnsNameCandidatesWithFullScore_whenLookupMatches() {
         // Given
-        List<SelectedTerm> lookupTerms = new ArrayList<>();
+        List<RequirementElement> lookupTerms = new ArrayList<>();
         ConceptNameRetrievalPolicy policy = new ConceptNameRetrievalPolicy(
             lookup(
                 lookupTerms,
@@ -38,7 +38,7 @@ class ConceptNameRetrievalPolicyTest {
 
         // Then
         assertThat(lookupTerms).containsExactly(selectedTerm);
-        assertThat(match.selectedTerm()).isEqualTo(selectedTerm);
+        assertThat(match.requirementElement()).isEqualTo(selectedTerm);
         assertThat(match.candidates())
             .extracting(
                 retrieved -> retrieved.candidate().candidateKey(),
@@ -68,7 +68,7 @@ class ConceptNameRetrievalPolicyTest {
     @Test
     void returnsEmptyCandidates_whenLookupMisses() {
         // Given
-        List<SelectedTerm> lookupTerms = new ArrayList<>();
+        List<RequirementElement> lookupTerms = new ArrayList<>();
         ConceptNameRetrievalPolicy policy = new ConceptNameRetrievalPolicy(
             lookup(lookupTerms, term -> List.of())
         );
@@ -78,7 +78,7 @@ class ConceptNameRetrievalPolicyTest {
 
         // Then
         assertThat(lookupTerms).containsExactly(selectedTerm);
-        assertThat(match.selectedTerm()).isEqualTo(selectedTerm);
+        assertThat(match.requirementElement()).isEqualTo(selectedTerm);
         assertThat(match.candidates()).isEmpty();
     }
 
@@ -146,8 +146,8 @@ class ConceptNameRetrievalPolicyTest {
     }
 
     private CandidateLookup lookup(
-        List<SelectedTerm> lookupTerms,
-        Function<SelectedTerm, List<CandidateConcept>> candidates
+        List<RequirementElement> lookupTerms,
+        Function<RequirementElement, List<CandidateConcept>> candidates
     ) {
         return term -> {
             lookupTerms.add(term);

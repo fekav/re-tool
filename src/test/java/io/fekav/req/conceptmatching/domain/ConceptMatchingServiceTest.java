@@ -9,8 +9,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptMatchingServiceTest {
 
@@ -20,11 +20,11 @@ class ConceptMatchingServiceTest {
         List<CandidateConceptMatch> handledMatches = new ArrayList<>();
         ConceptMatchingPolicy policy = match -> {
             handledMatches.add(match);
-            return autoCreateDecision(match.selectedTerm());
+            return autoCreateDecision(match.requirementElement());
         };
         ConceptMatchingService service = new ConceptMatchingService(policy);
         CandidateConceptMatch match =
-            noMatch(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+            noMatch(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
 
         // When
         ConceptMatchDecision result = service.evaluateMatch(match);
@@ -32,14 +32,14 @@ class ConceptMatchingServiceTest {
         // Then
         assertThat(handledMatches).containsExactly(match);
         assertThat(result.selectedTerm())
-            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+            .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
     }
 
     @Test
     void rejectsDecisionRequest_whenMatchIsNull() {
         // Given
         ConceptMatchingService service = new ConceptMatchingService(
-            match -> autoCreateDecision(match.selectedTerm())
+            match -> autoCreateDecision(match.requirementElement())
         );
 
         // When / Then
@@ -52,10 +52,10 @@ class ConceptMatchingServiceTest {
     void rejectsDecisionRequest_whenPolicyDoesNotReturnMatchingTerm() {
         // Given
         ConceptMatchingService service = new ConceptMatchingService(
-            match -> autoCreateDecision(new SelectedTerm(RequirementElement.ACTION, "must refund"))
+            match -> autoCreateDecision(new RequirementElement(RequirementElementType.ACTION, "must refund"))
         );
         CandidateConceptMatch match =
-            noMatch(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+            noMatch(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
 
         // When / Then
         assertThatThrownBy(() -> service.evaluateMatch(match))
@@ -71,11 +71,11 @@ class ConceptMatchingServiceTest {
             .hasMessage("matchingPolicy must not be null");
     }
 
-    private CandidateConceptMatch noMatch(SelectedTerm selectedTerm) {
+    private CandidateConceptMatch noMatch(RequirementElement selectedTerm) {
         return new CandidateConceptMatch(selectedTerm, List.of());
     }
 
-    private ConceptMatchDecision autoCreateDecision(SelectedTerm selectedTerm) {
+    private ConceptMatchDecision autoCreateDecision(RequirementElement selectedTerm) {
         return new ConceptMatchDecision(
             selectedTerm,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,

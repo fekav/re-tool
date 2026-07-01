@@ -1,19 +1,21 @@
 package io.fekav.req.shared.model;
 
-public enum RequirementElement {
-    SUBJECT("Subject"),
-    ACTION("Action"),
-    OBJECT("Object"),
-    CONDITION("Condition"),
-    CONSTRAINT("Constraint");
+import java.util.Objects;
 
-    private final String label;
+public record RequirementElement(
+    RequirementElementType type,
+    String text
+) {
 
-    RequirementElement(String label) {
-        this.label = label;
-    }
+    public RequirementElement {
+        Objects.requireNonNull(
+            type,
+            "selected term requirement element must not be null"
+        );
+        if (text == null || text.isBlank()) {
+            throw new IllegalArgumentException("selected term text must not be blank");
+        }
 
-    public String label() {
-        return label;
+        text = text.strip();
     }
 }

@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptMatchDecisionTest {
 
@@ -23,7 +23,7 @@ class ConceptMatchDecisionTest {
 
         // When
         ConceptMatchDecision decision = new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
+            new RequirementElement(RequirementElementType.SUBJECT, " billing service "),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
             List.of(candidate),
             " unique exact candidate "
@@ -31,7 +31,7 @@ class ConceptMatchDecisionTest {
 
         // Then
         assertThat(decision.selectedTerm())
-            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+            .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(decision.rationale()).isEqualTo("unique exact candidate");
     }
 
@@ -43,7 +43,7 @@ class ConceptMatchDecisionTest {
 
         // When
         ConceptMatchDecision decision = new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
             candidates,
             "unique exact candidate"
@@ -64,7 +64,7 @@ class ConceptMatchDecisionTest {
     void rejectsDecision_whenRationaleIsBlank() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             " "
@@ -77,7 +77,7 @@ class ConceptMatchDecisionTest {
     void rejectsDecision_whenCandidatesContainNull() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
             candidateListWithNull(),
             "unique exact candidate"
@@ -90,7 +90,7 @@ class ConceptMatchDecisionTest {
     void rejectsDecision_whenAutoMapHasNoCandidate() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
             List.of(),
             "unique exact candidate"
@@ -103,7 +103,7 @@ class ConceptMatchDecisionTest {
     void rejectsDecision_whenProposeExistingHasMultipleCandidates() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.PROPOSE_EXISTING,
             List.of(
                 candidate("concept-1", 0.8),
@@ -119,7 +119,7 @@ class ConceptMatchDecisionTest {
     void rejectsDecision_whenReviewRequiredHasSingleCandidate() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.REVIEW_REQUIRED,
             List.of(candidate("concept-1", 1.0)),
             "ambiguous top candidates"
@@ -132,7 +132,7 @@ class ConceptMatchDecisionTest {
     void rejectsDecision_whenAutoCreateHasCandidate() {
         // Given / When / Then
         assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(candidate("concept-1", 1.0)),
             "No existing candidates found"

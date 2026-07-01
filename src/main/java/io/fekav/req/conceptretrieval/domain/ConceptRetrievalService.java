@@ -3,7 +3,7 @@ package io.fekav.req.conceptretrieval.domain;
 import java.util.Objects;
 
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.SelectedTerm;
+import io.fekav.req.shared.model.RequirementElement;
 
 public class ConceptRetrievalService {
 
@@ -16,10 +16,10 @@ public class ConceptRetrievalService {
         );
     }
 
-    public CandidateConceptMatch retrieveCandidates(SelectedTerm selectedTerm) {
+    public CandidateConceptMatch retrieveCandidates(RequirementElement selectedTerm) {
         Objects.requireNonNull(selectedTerm, "selectedTerm must not be null");
         CandidateConceptMatch match = retrievalPolicy.retrieveCandidates(selectedTerm);
-        if (!selectedTerm.equals(match.selectedTerm())) {
+        if (!selectedTerm.equals(match.requirementElement())) {
             throw new IllegalStateException(
                 "retrieval policy returned a match for a different selected term"
             );

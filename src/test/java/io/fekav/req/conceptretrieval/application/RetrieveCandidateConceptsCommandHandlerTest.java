@@ -18,10 +18,10 @@ import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
 import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.RequirementElement;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
-import io.fekav.req.shared.model.SelectedTerm;
+import io.fekav.req.shared.model.RequirementElement;
 
 @ExtendWith(MockitoExtension.class)
 class RetrieveCandidateConceptsCommandHandlerTest {
@@ -32,7 +32,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     @Test
     void returnsConceptCandidatesRetrievedEventAndPublishesSameEvent_whenRetrievalSucceeds() {
         // Given
-        List<SelectedTerm> retrievedTerms = new ArrayList<>();
+        List<RequirementElement> retrievedTerms = new ArrayList<>();
         ConceptRetrievalPolicy policy = selectedTerm -> {
             retrievedTerms.add(selectedTerm);
             return match(selectedTerm, List.of(candidate("concept-1")));
@@ -40,7 +40,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         RetrieveCandidateConceptsCommandHandler handler =
             handlerWith(policy);
         RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(
-            new SelectedTerm(RequirementElement.SUBJECT,
+            new RequirementElement(RequirementElementType.SUBJECT,
                 " billing service "
             )
         );
@@ -50,9 +50,9 @@ class RetrieveCandidateConceptsCommandHandlerTest {
 
         // Then
         assertThat(retrievedTerms)
-            .containsExactly(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
-        assertThat(result.match().selectedTerm())
-            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+            .containsExactly(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
+        assertThat(result.match().requirementElement())
+            .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(result.match().candidates())
             .singleElement()
             .satisfies(candidate ->
@@ -67,15 +67,15 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         RetrieveCandidateConceptsCommandHandler handler =
             handlerWith(this::noMatch);
         RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(
-            new SelectedTerm(RequirementElement.ACTION, "must refund")
+            new RequirementElement(RequirementElementType.ACTION, "must refund")
         );
 
         // When
         ConceptCandidatesRetrievedEvent result = handler.handle(command);
 
         // Then
-        assertThat(result.match().selectedTerm())
-            .isEqualTo(new SelectedTerm(RequirementElement.ACTION, "must refund"));
+        assertThat(result.match().requirementElement())
+            .isEqualTo(new RequirementElement(RequirementElementType.ACTION, "must refund"));
         assertThat(result.match().candidates()).isEmpty();
         verify(eventPublisher).publish(result);
     }
@@ -91,7 +91,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     @Test
     void rejectsSelectedTerm_whenTextIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm(RequirementElement.SUBJECT, " "))
+        assertThatThrownBy(() -> new RequirementElement(RequirementElementType.SUBJECT, " "))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("selected term text must not be blank");
     }
@@ -109,7 +109,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         assertThat(commandType).isEqualTo(RetrieveCandidateConceptsCommand.class);
     }
 
-    private CandidateConceptMatch noMatch(SelectedTerm selectedTerm) {
+    private CandidateConceptMatch noMatch(RequirementElement selectedTerm) {
         return match(selectedTerm, List.of());
     }
 
@@ -121,7 +121,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     }
 
     private CandidateConceptMatch match(
-        SelectedTerm selectedTerm,
+        RequirementElement selectedTerm,
         List<RetrievedCandidateConcept> candidates
     ) {
         return new CandidateConceptMatch(selectedTerm, candidates);

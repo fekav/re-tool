@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Objects;
 
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
-import io.fekav.req.shared.model.SelectedTerm;
+import io.fekav.req.shared.model.RequirementElement;
 
 public record ConceptMatchDecision(
-    SelectedTerm selectedTerm,
+    RequirementElement selectedTerm,
     ConceptMatchDecisionStatus status,
     List<RetrievedCandidateConcept> candidates,
     String rationale

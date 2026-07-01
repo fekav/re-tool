@@ -10,7 +10,7 @@ import org.neo4j.driver.Value;
 
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.conceptretrieval.domain.CandidateLookup;
-import io.fekav.req.shared.model.SelectedTerm;
+import io.fekav.req.shared.model.RequirementElement;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -46,16 +46,16 @@ public class Neo4jConceptNameLookup implements CandidateLookup {
     }
 
     @Override
-    public List<CandidateConcept> findCandidates(SelectedTerm selectedTerm) {
+    public List<CandidateConcept> findCandidates(RequirementElement requirementElement) {
         try (Session session = driver.session()) {
             return session.executeRead(transaction -> {
                 var result = transaction.run(
                     QUERY,
                     Map.of(
                         "text",
-                        selectedTerm.text(),
+                        requirementElement.text(),
                         "requirementElement",
-                        selectedTerm.requirementElement().name()
+                        requirementElement.type().name()
                     )
                 );
                 return result

@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Objects;
 
 public record CandidateConceptMatch(
-    SelectedTerm selectedTerm,
+    RequirementElement requirementElement,
     List<RetrievedCandidateConcept> candidates
 ) {
 
     public CandidateConceptMatch {
-        Objects.requireNonNull(selectedTerm, "selectedTerm must not be null");
+        Objects.requireNonNull(requirementElement, "selectedTerm must not be null");
         Objects.requireNonNull(candidates, "candidates must not be null");
 
         if (candidates.stream().anyMatch(Objects::isNull)) {

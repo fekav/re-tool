@@ -21,10 +21,10 @@ import io.fekav.req.conceptmatching.domain.ConceptMatchingService;
 import io.fekav.req.shared.event.ConceptMatchEvaluatedEvent;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.RequirementElement;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
-import io.fekav.req.shared.model.SelectedTerm;
+import io.fekav.req.shared.model.RequirementElement;
 
 @ExtendWith(MockitoExtension.class)
 class EvaluateConceptMatchCommandHandlerTest {
@@ -42,7 +42,7 @@ class EvaluateConceptMatchCommandHandlerTest {
         };
         EvaluateConceptMatchCommandHandler handler = handlerWith(policy);
         CandidateConceptMatch match = matchInput(
-            new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
+            new RequirementElement(RequirementElementType.SUBJECT, " billing service "),
             List.of(candidateInput(
                 " concept-1 ",
                 " Billing Service ",
@@ -60,7 +60,7 @@ class EvaluateConceptMatchCommandHandlerTest {
         // Then
         assertThat(result.match()).isEqualTo(match);
         assertThat(result.decision().selectedTerm())
-            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+            .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(result.decision().status())
             .isEqualTo(ConceptMatchDecisionStatus.PROPOSE_EXISTING);
         assertThat(handledMatches).containsExactly(match);
@@ -87,7 +87,7 @@ class EvaluateConceptMatchCommandHandlerTest {
         // Given
         EvaluateConceptMatchCommandHandler handler = handlerWith(this::decisionFor);
         CandidateConceptMatch match = matchInput(
-            new SelectedTerm(RequirementElement.ACTION, "must refund"),
+            new RequirementElement(RequirementElementType.ACTION, "must refund"),
             List.of()
         );
 
@@ -114,7 +114,7 @@ class EvaluateConceptMatchCommandHandlerTest {
     @Test
     void rejectsSelectedTerm_whenTextIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new SelectedTerm(RequirementElement.SUBJECT, " "))
+        assertThatThrownBy(() -> new RequirementElement(RequirementElementType.SUBJECT, " "))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("selected term text must not be blank");
     }
@@ -135,7 +135,7 @@ class EvaluateConceptMatchCommandHandlerTest {
     private ConceptMatchDecision decisionFor(CandidateConceptMatch match) {
         if (match.candidates().isEmpty()) {
             return new ConceptMatchDecision(
-                match.selectedTerm(),
+                match.requirementElement(),
                 ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
                 List.of(),
                 "No existing candidates found"
@@ -144,7 +144,7 @@ class EvaluateConceptMatchCommandHandlerTest {
 
         RetrievedCandidateConcept candidate = match.candidates().getFirst();
         return new ConceptMatchDecision(
-            match.selectedTerm(),
+            match.requirementElement(),
             ConceptMatchDecisionStatus.PROPOSE_EXISTING,
             List.of(candidate),
             "Best candidate was proposed"
@@ -159,7 +159,7 @@ class EvaluateConceptMatchCommandHandlerTest {
     }
 
     private CandidateConceptMatch matchInput(
-        SelectedTerm selectedTerm,
+        RequirementElement selectedTerm,
         List<RetrievedCandidateConcept> candidates
     ) {
         return new CandidateConceptMatch(selectedTerm, candidates);

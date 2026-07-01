@@ -29,8 +29,8 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.shared.model.SelectedTerm;
 
 @ExtendWith(MockitoExtension.class)
 class Neo4jConceptNameLookupTest {
@@ -69,7 +69,7 @@ class Neo4jConceptNameLookupTest {
         ));
 
         // When
-        var candidates = lookup.findCandidates(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+        var candidates = lookup.findCandidates(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
 
         // Then
         assertThat(candidates)
@@ -108,7 +108,7 @@ class Neo4jConceptNameLookupTest {
         when(result.stream()).thenReturn(Stream.empty());
 
         // When
-        var candidates = lookup.findCandidates(new SelectedTerm(RequirementElement.ACTION, "must refund"));
+        var candidates = lookup.findCandidates(new RequirementElement(RequirementElementType.ACTION, "must refund"));
 
         // Then
         assertThat(candidates).isEmpty();

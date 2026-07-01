@@ -1,11 +1,11 @@
 package io.fekav.req.syntaxextraction.application;
 
 import io.fekav.platform.cqrs.Command;
-import io.fekav.req.shared.event.SyntaxExtractedEvent;
+import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 
 public record ExtractSyntaxCommand(
     String rawText
-) implements Command<SyntaxExtractedEvent> {
+) implements Command<RequirementElementsExtractedEvent> {
     public ExtractSyntaxCommand {
         if (rawText == null || rawText.isBlank()) {
             throw new IllegalArgumentException("Extraction command has no raw text");

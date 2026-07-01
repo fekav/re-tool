@@ -6,9 +6,11 @@ import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.fekav.req.shared.model.ElementId;
+import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.syntaxextraction.domain.Action;
 import io.fekav.req.syntaxextraction.domain.Condition;
 import io.fekav.req.syntaxextraction.domain.Constraint;
@@ -33,6 +35,37 @@ final class RestControllerCommandTestSupport {
             "payload",
             payload
         ));
+    }
+
+    static JsonNode executeCommandAsJson(
+        ObjectMapper objectMapper,
+        String requestBody
+    ) throws JsonProcessingException {
+        return objectMapper.readTree(postCommandForBody(requestBody));
+    }
+
+    static String rawTextCommandRequest(
+        ObjectMapper objectMapper,
+        String command,
+        String rawText
+    ) throws JsonProcessingException {
+        return commandRequest(
+            objectMapper,
+            command,
+            Map.of("rawText", rawText)
+        );
+    }
+
+    static String selectedTermCommandRequest(
+        ObjectMapper objectMapper,
+        String command,
+        RequirementElement selectedTerm
+    ) throws JsonProcessingException {
+        return commandRequest(
+            objectMapper,
+            command,
+            Map.of("requirementElement", selectedTermPayload(selectedTerm))
+        );
     }
 
     static ValidatableResponse postCommand(String requestBody) {
@@ -62,6 +95,15 @@ final class RestControllerCommandTestSupport {
             .contentType(ContentType.JSON)
             .extract()
             .as(responseType);
+    }
+
+    static Map<String, Object> selectedTermPayload(RequirementElement selectedTerm) {
+        return Map.of(
+            "type",
+            selectedTerm.type(),
+            "text",
+            selectedTerm.text()
+        );
     }
 
     static Set<String> responseSet(String value) {

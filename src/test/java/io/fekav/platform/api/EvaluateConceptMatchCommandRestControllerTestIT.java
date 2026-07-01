@@ -1,7 +1,8 @@
 package io.fekav.platform.api;
 
 import static io.fekav.platform.api.RestControllerCommandTestSupport.commandRequest;
-import static io.fekav.platform.api.RestControllerCommandTestSupport.postCommandForBody;
+import static io.fekav.platform.api.RestControllerCommandTestSupport.executeCommandAsJson;
+import static io.fekav.platform.api.RestControllerCommandTestSupport.selectedTermPayload;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
@@ -26,8 +27,8 @@ import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.shared.model.SelectedTerm;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -37,8 +38,9 @@ import io.quarkus.test.junit.QuarkusTest;
 @Tag("integration")
 class EvaluateConceptMatchCommandRestControllerTestIT {
 
-    private static final SelectedTerm SUBJECT_TERM =
-        new SelectedTerm(RequirementElement.SUBJECT, "billing service");
+    private static final String COMMAND = "EvaluateConceptMatchCommand";
+    private static final RequirementElement SUBJECT_TERM =
+        new RequirementElement(RequirementElementType.SUBJECT, "billing service");
     private static final CandidateConcept SUBJECT_CANDIDATE =
         new CandidateConcept(
             "sample-subject-billing-service",
@@ -75,11 +77,11 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     @Test
     void serializesMatch_whenEvaluateConceptMatchCommandIsPosted()
         throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
+        JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
 
-        assertThat(responseJson.at("/match/selectedTerm/requirementElement").asText())
-            .isEqualTo(SUBJECT_TERM.requirementElement().name());
-        assertThat(responseJson.at("/match/selectedTerm/text").asText())
+        assertThat(responseJson.at("/match/requirementElement/type").asText())
+            .isEqualTo(SUBJECT_TERM.type().name());
+        assertThat(responseJson.at("/match/requirementElement/text").asText())
             .isEqualTo(SUBJECT_TERM.text());
         assertThat(responseJson.at("/match/candidates/0/candidate/candidateKey").asText())
             .isEqualTo(SUBJECT_CANDIDATE.candidateKey());
@@ -88,7 +90,7 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     @Test
     void serializesDecisionStatus_whenEvaluateConceptMatchCommandIsPosted()
         throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
+        JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(responseJson.at("/decision/status").asText())
             .isEqualTo("AUTO_MAP_EXISTING");
@@ -97,7 +99,7 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     @Test
     void serializesDecisionCandidatesArray_whenEvaluateConceptMatchCommandIsPosted()
         throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
+        JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(responseJson.at("/decision/candidates").isArray()).isTrue();
     }
@@ -105,7 +107,7 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     @Test
     void serializesDecisionRationale_whenEvaluateConceptMatchCommandIsPosted()
         throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
+        JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(responseJson.at("/decision/rationale").asText())
             .isEqualTo(AUTO_MAP_RATIONALE);
@@ -114,7 +116,7 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     @Test
     void serializesDecisionCandidateKey_whenEvaluateConceptMatchCommandIsPosted()
         throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
+        JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
 
         assertThat(responseJson.at("/decision/candidates/0/candidate/candidateKey").asText())
             .isEqualTo(SUBJECT_CANDIDATE.candidateKey());
@@ -123,15 +125,11 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     @Test
     void passesMatchToMatchingService_whenEvaluateConceptMatchCommandIsPosted()
         throws Exception {
-        executeCommandAsJson();
+        executeCommandAsJson(objectMapper, requestBody);
 
         CandidateConceptMatch match = capturedMatch();
-        assertThat(match.selectedTerm()).isEqualTo(SUBJECT_TERM);
+        assertThat(match.requirementElement()).isEqualTo(SUBJECT_TERM);
         assertThat(match.candidates()).containsExactly(retrievedSubjectCandidate);
-    }
-
-    private JsonNode executeCommandAsJson() throws Exception {
-        return objectMapper.readTree(postCommandForBody(requestBody));
     }
 
     private CandidateConceptMatch capturedMatch() {
@@ -153,7 +151,7 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     private String evaluateConceptMatchCommandRequest() throws Exception {
         return commandRequest(
             objectMapper,
-            "EvaluateConceptMatchCommand",
+            COMMAND,
             Map.of("match", candidateMatchPayload(
                 SUBJECT_TERM,
                 List.of(retrievedCandidatePayload(retrievedSubjectCandidate))
@@ -162,11 +160,11 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     }
 
     private Map<String, Object> candidateMatchPayload(
-        SelectedTerm selectedTerm,
+        RequirementElement selectedTerm,
         List<Map<String, Object>> candidates
     ) {
         return Map.of(
-            "selectedTerm",
+            "requirementElement",
             selectedTermPayload(selectedTerm),
             "candidates",
             candidates
@@ -197,15 +195,6 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
                 "score",
                 evidence.score()
             ))
-        );
-    }
-
-    private Map<String, Object> selectedTermPayload(SelectedTerm selectedTerm) {
-        return Map.of(
-            "requirementElement",
-            selectedTerm.requirementElement(),
-            "text",
-            selectedTerm.text()
         );
     }
 }

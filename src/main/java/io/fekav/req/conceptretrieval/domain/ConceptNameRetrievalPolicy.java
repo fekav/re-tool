@@ -10,7 +10,7 @@ import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
-import io.fekav.req.shared.model.SelectedTerm;
+import io.fekav.req.shared.model.RequirementElement;
 
 public class ConceptNameRetrievalPolicy implements ConceptRetrievalPolicy {
 
@@ -27,7 +27,7 @@ public class ConceptNameRetrievalPolicy implements ConceptRetrievalPolicy {
     }
 
     @Override
-    public CandidateConceptMatch retrieveCandidates(SelectedTerm selectedTerm) {
+    public CandidateConceptMatch retrieveCandidates(RequirementElement selectedTerm) {
         Objects.requireNonNull(selectedTerm, "selectedTerm must not be null");
 
         List<CandidateConcept> candidates = deduplicatedCandidates(
@@ -41,7 +41,7 @@ public class ConceptNameRetrievalPolicy implements ConceptRetrievalPolicy {
     }
 
     private RetrievedCandidateConcept retrievedCandidate(
-        SelectedTerm selectedTerm,
+        RequirementElement selectedTerm,
         CandidateConcept candidate
     ) {
         RetrievalEvidence evidence = new RetrievalEvidence(
@@ -60,7 +60,7 @@ public class ConceptNameRetrievalPolicy implements ConceptRetrievalPolicy {
         return List.copyOf(candidatesByKey.values());
     }
 
-    private String evidenceText(SelectedTerm selectedTerm, CandidateConcept candidate) {
+    private String evidenceText(RequirementElement selectedTerm, CandidateConcept candidate) {
         return "Matched concept name '" + selectedTerm.text() + "' to graph candidate '" +
             candidate.label() + "'";
     }
