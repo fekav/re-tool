@@ -2,31 +2,49 @@ package io.fekav.req.conceptretrieval.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.fekav.platform.messaging.ApplicationEvent;
+import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalPolicy;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
+import io.fekav.req.shared.event.ConceptCandidatesReadyEvent;
+import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.CandidateConceptMatchSet;
 import io.fekav.req.shared.model.RequirementElement;
+import io.fekav.req.shared.model.RetrievalEvidence;
+import io.fekav.req.shared.model.RetrievedCandidateConcept;
 import io.fekav.req.shared.model.SelectedTerm;
 
+@ExtendWith(MockitoExtension.class)
 class RetrieveCandidateConceptsCommandHandlerTest {
 
+    @Mock
+    EventPublisher eventPublisher;
+
     @Test
-    void returnsCandidateConceptMatchSet_whenRetrievalSucceeds() {
+    void returnsCandidateConceptMatchSetAndPublishesEvents_whenRetrievalSucceeds() {
         // Given
         List<SelectedTerm> retrievedTerms = new ArrayList<>();
         ConceptRetrievalPolicy policy = selectedTerm -> {
             retrievedTerms.add(selectedTerm);
-            return noMatch(selectedTerm);
+            if (selectedTerm.requirementElement() == RequirementElement.SUBJECT) {
+                return match(selectedTerm, List.of(candidate("concept-1")));
+            }
+            return match(selectedTerm, List.of());
         };
         RetrieveCandidateConceptsCommandHandler handler =
-            new RetrieveCandidateConceptsCommandHandler(new ConceptRetrievalService(policy));
+            handlerWith(policy);
         RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(List.of(
             new SelectedTerm(RequirementElement.SUBJECT,
                 " billing service "
@@ -46,6 +64,55 @@ class RetrieveCandidateConceptsCommandHandlerTest {
                 new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
                 new SelectedTerm(RequirementElement.ACTION, "must refund")
             );
+
+        ArgumentCaptor<List<ApplicationEvent>> applicationEvents = eventCaptor();
+        verify(eventPublisher).publishApplicationEvents(applicationEvents.capture());
+        assertThat(applicationEvents.getValue())
+            .satisfiesExactly(
+                applicationEvent -> {
+                    assertThat(applicationEvent).isInstanceOf(ConceptCandidatesReadyEvent.class);
+                    ConceptCandidatesReadyEvent event =
+                        (ConceptCandidatesReadyEvent) applicationEvent;
+                    assertThat(event.match()).isEqualTo(result.matches().getFirst());
+                },
+                applicationEvent -> {
+                    assertThat(applicationEvent).isInstanceOf(ConceptCandidatesReadyEvent.class);
+                    ConceptCandidatesReadyEvent event =
+                        (ConceptCandidatesReadyEvent) applicationEvent;
+                    assertThat(event.match()).isEqualTo(result.matches().get(1));
+                    assertThat(event.match().candidates()).isEmpty();
+                }
+            );
+    }
+
+    @Test
+    void publishesEventWithEmptyCandidates_whenRetrievedMatchHasNoCandidates() {
+        // Given
+        RetrieveCandidateConceptsCommandHandler handler =
+            handlerWith(this::noMatch);
+        RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(List.of(
+            new SelectedTerm(RequirementElement.ACTION, "must refund")
+        ));
+
+        // When
+        CandidateConceptMatchSet result = handler.handle(command);
+
+        // Then
+        assertThat(result.matches())
+            .singleElement()
+            .satisfies(match -> assertThat(match.candidates()).isEmpty());
+
+        ArgumentCaptor<List<ApplicationEvent>> applicationEvents = eventCaptor();
+        verify(eventPublisher).publishApplicationEvents(applicationEvents.capture());
+        assertThat(applicationEvents.getValue())
+            .singleElement()
+            .satisfies(applicationEvent -> {
+                assertThat(applicationEvent).isInstanceOf(ConceptCandidatesReadyEvent.class);
+                ConceptCandidatesReadyEvent event =
+                    (ConceptCandidatesReadyEvent) applicationEvent;
+                assertThat(event.match()).isEqualTo(result.matches().getFirst());
+                assertThat(event.match().candidates()).isEmpty();
+            });
     }
 
     @Test
@@ -82,9 +149,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     void returnsCommandType() {
         // Given
         RetrieveCandidateConceptsCommandHandler handler =
-            new RetrieveCandidateConceptsCommandHandler(
-                new ConceptRetrievalService(this::noMatch)
-            );
+            handlerWith(this::noMatch);
 
         // When
         Class<RetrieveCandidateConceptsCommand> commandType = handler.commandType();
@@ -94,9 +159,32 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     }
 
     private CandidateConceptMatch noMatch(SelectedTerm selectedTerm) {
-        return new CandidateConceptMatch(
-            selectedTerm,
-            List.of()
+        return match(selectedTerm, List.of());
+    }
+
+    private RetrieveCandidateConceptsCommandHandler handlerWith(ConceptRetrievalPolicy policy) {
+        return new RetrieveCandidateConceptsCommandHandler(
+            eventPublisher,
+            new ConceptRetrievalService(policy)
         );
+    }
+
+    private CandidateConceptMatch match(
+        SelectedTerm selectedTerm,
+        List<RetrievedCandidateConcept> candidates
+    ) {
+        return new CandidateConceptMatch(selectedTerm, candidates);
+    }
+
+    private RetrievedCandidateConcept candidate(String candidateKey) {
+        return new RetrievedCandidateConcept(
+            new CandidateConcept(candidateKey, "Billing Service", "SystemComponent"),
+            List.of(new RetrievalEvidence("conceptName", "matched concept name", 1.0))
+        );
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private ArgumentCaptor<List<ApplicationEvent>> eventCaptor() {
+        return (ArgumentCaptor) ArgumentCaptor.forClass(List.class);
     }
 }

@@ -3,18 +3,30 @@ package io.fekav.req.conceptmatching.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.fekav.platform.messaging.ApplicationEvent;
+import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionSet;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
 import io.fekav.req.conceptmatching.domain.ConceptMatchingPolicy;
 import io.fekav.req.conceptmatching.domain.ConceptMatchingService;
 import io.fekav.req.conceptmatching.domain.NewConceptProposal;
+import io.fekav.req.shared.event.ConceptMatchReviewRequestedEvent;
+import io.fekav.req.shared.event.CreateConceptRequestedEvent;
+import io.fekav.req.shared.event.ExistingConceptProposedEvent;
+import io.fekav.req.shared.event.MapExistingConceptRequestedEvent;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.RetrievalEvidence;
@@ -22,7 +34,11 @@ import io.fekav.req.shared.model.RetrievedCandidateConcept;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
+@ExtendWith(MockitoExtension.class)
 class DecideConceptMatchesCommandHandlerTest {
+
+    @Mock
+    EventPublisher eventPublisher;
 
     @Test
     void returnsConceptMatchDecisionSet_whenMatchingSucceeds() {
@@ -33,7 +49,7 @@ class DecideConceptMatchesCommandHandlerTest {
             return decisionFor(match);
         };
         DecideConceptMatchesCommandHandler handler =
-            new DecideConceptMatchesCommandHandler(new ConceptMatchingService(policy));
+            handlerWith(policy);
         DecideConceptMatchesCommand command = new DecideConceptMatchesCommand(List.of(
             matchInput(
                 new SelectedTerm(RequirementElement.SUBJECT,
@@ -95,6 +111,122 @@ class DecideConceptMatchesCommandHandlerTest {
     }
 
     @Test
+    void publishesStatusSpecificEventForEachDecision_whenMatchingSucceeds() {
+        // Given
+        SelectedTerm autoMapTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
+        SelectedTerm proposeTerm = new SelectedTerm(RequirementElement.ACTION, "refund payment");
+        SelectedTerm reviewTerm = new SelectedTerm(RequirementElement.OBJECT, "customer account");
+        SelectedTerm autoCreateTerm = new SelectedTerm(RequirementElement.CONDITION, "after timeout");
+        RetrievedCandidateConcept concept1 = candidateInput(
+            "concept-1",
+            "Billing Service",
+            "SystemComponent",
+            "conceptName",
+            "matched billing service",
+            1.0
+        );
+        RetrievedCandidateConcept concept2 = candidateInput(
+            "concept-2",
+            "Customer Account",
+            "DataObject",
+            "conceptName",
+            "matched customer account",
+            0.8
+        );
+        RetrievedCandidateConcept concept3 = candidateInput(
+            "concept-3",
+            "Account Profile",
+            "DataObject",
+            "conceptName",
+            "matched account profile",
+            0.7
+        );
+        ConceptMatchDecision autoMapDecision = existingDecision(
+            autoMapTerm,
+            ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
+            concept1,
+            "Best candidate exceeded the auto-map threshold"
+        );
+        ConceptMatchDecision proposeDecision = existingDecision(
+            proposeTerm,
+            ConceptMatchDecisionStatus.PROPOSE_EXISTING,
+            concept1,
+            "Best candidate was proposed"
+        );
+        ConceptMatchDecision reviewDecision = new ConceptMatchDecision(
+            reviewTerm,
+            ConceptMatchDecisionStatus.REVIEW_REQUIRED,
+            List.of(concept2, concept3),
+            List.of(),
+            "Multiple candidates require review"
+        );
+        ConceptMatchDecision autoCreateDecision = new ConceptMatchDecision(
+            autoCreateTerm,
+            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+            List.of(),
+            List.of(new NewConceptProposal(autoCreateTerm.text(), autoCreateTerm.requirementElement())),
+            "No existing candidates found"
+        );
+        Map<SelectedTerm, ConceptMatchDecision> decisions = Map.of(
+            autoMapTerm, autoMapDecision,
+            proposeTerm, proposeDecision,
+            reviewTerm, reviewDecision,
+            autoCreateTerm, autoCreateDecision
+        );
+        DecideConceptMatchesCommandHandler handler = handlerWith(match -> decisions.get(match.selectedTerm()));
+        DecideConceptMatchesCommand command = new DecideConceptMatchesCommand(List.of(
+            matchInput(autoMapTerm, List.of(concept1)),
+            matchInput(proposeTerm, List.of(concept1)),
+            matchInput(reviewTerm, List.of(concept2, concept3)),
+            matchInput(autoCreateTerm, List.of())
+        ));
+
+        // When
+        ConceptMatchDecisionSet result = handler.handle(command);
+
+        // Then
+        assertThat(result.decisions())
+            .containsExactly(autoMapDecision, proposeDecision, reviewDecision, autoCreateDecision);
+
+        ArgumentCaptor<List<ApplicationEvent>> applicationEvents = eventCaptor();
+        verify(eventPublisher).publishApplicationEvents(applicationEvents.capture());
+        assertThat(applicationEvents.getValue())
+            .satisfiesExactly(
+                applicationEvent -> {
+                    assertThat(applicationEvent).isInstanceOf(MapExistingConceptRequestedEvent.class);
+                    MapExistingConceptRequestedEvent event =
+                        (MapExistingConceptRequestedEvent) applicationEvent;
+                    assertThat(event.selectedTerm()).isEqualTo(autoMapTerm);
+                    assertThat(event.existingConcept()).isEqualTo(concept1.candidate());
+                    assertThat(event.rationale())
+                        .isEqualTo("Best candidate exceeded the auto-map threshold");
+                },
+                applicationEvent -> {
+                    assertThat(applicationEvent).isInstanceOf(ExistingConceptProposedEvent.class);
+                    ExistingConceptProposedEvent event =
+                        (ExistingConceptProposedEvent) applicationEvent;
+                    assertThat(event.selectedTerm()).isEqualTo(proposeTerm);
+                    assertThat(event.existingConcept()).isEqualTo(concept1.candidate());
+                    assertThat(event.rationale()).isEqualTo("Best candidate was proposed");
+                },
+                applicationEvent -> {
+                    assertThat(applicationEvent).isInstanceOf(ConceptMatchReviewRequestedEvent.class);
+                    ConceptMatchReviewRequestedEvent event =
+                        (ConceptMatchReviewRequestedEvent) applicationEvent;
+                    assertThat(event.selectedTerm()).isEqualTo(reviewTerm);
+                    assertThat(event.rationale()).isEqualTo("Multiple candidates require review");
+                },
+                applicationEvent -> {
+                    assertThat(applicationEvent).isInstanceOf(CreateConceptRequestedEvent.class);
+                    CreateConceptRequestedEvent event =
+                        (CreateConceptRequestedEvent) applicationEvent;
+                    assertThat(event.selectedTerm()).isEqualTo(autoCreateTerm);
+                    assertThat(event.rationale()).isEqualTo("No existing candidates found");
+                }
+            );
+    }
+
+    @Test
     void rejectsCommand_whenMatchesAreEmpty() {
         // Given / When / Then
         assertThatThrownBy(() -> new DecideConceptMatchesCommand(List.of()))
@@ -147,9 +279,7 @@ class DecideConceptMatchesCommandHandlerTest {
     void returnsCommandType() {
         // Given
         DecideConceptMatchesCommandHandler handler =
-            new DecideConceptMatchesCommandHandler(
-                new ConceptMatchingService(this::decisionFor)
-            );
+            handlerWith(this::decisionFor);
 
         // When
         Class<DecideConceptMatchesCommand> commandType = handler.commandType();
@@ -182,6 +312,28 @@ class DecideConceptMatchesCommandHandlerTest {
         );
     }
 
+    private ConceptMatchDecision existingDecision(
+        SelectedTerm selectedTerm,
+        ConceptMatchDecisionStatus status,
+        RetrievedCandidateConcept candidate,
+        String rationale
+    ) {
+        return new ConceptMatchDecision(
+            selectedTerm,
+            status,
+            List.of(candidate),
+            List.of(),
+            rationale
+        );
+    }
+
+    private DecideConceptMatchesCommandHandler handlerWith(ConceptMatchingPolicy policy) {
+        return new DecideConceptMatchesCommandHandler(
+            eventPublisher,
+            new ConceptMatchingService(policy)
+        );
+    }
+
     private CandidateConceptMatch matchInput(
         SelectedTerm selectedTerm,
         List<RetrievedCandidateConcept> candidates
@@ -209,5 +361,10 @@ class DecideConceptMatchesCommandHandlerTest {
                 score
             ))
         );
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private ArgumentCaptor<List<ApplicationEvent>> eventCaptor() {
+        return (ArgumentCaptor) ArgumentCaptor.forClass(List.class);
     }
 }
