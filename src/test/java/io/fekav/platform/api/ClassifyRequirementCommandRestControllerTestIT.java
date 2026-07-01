@@ -1,7 +1,7 @@
 package io.fekav.platform.api;
 
 import static io.fekav.platform.api.RestControllerCommandTestSupport.commandRequest;
-import static io.fekav.platform.api.RestControllerCommandTestSupport.postCommandForResponse;
+import static io.fekav.platform.api.RestControllerCommandTestSupport.postCommandForBody;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.fekav.req.classification.application.ClassificationService;
@@ -61,32 +62,41 @@ class ClassifyRequirementCommandRestControllerTestIT {
     }
 
     @Test
-    void returnsConceptType_whenClassifyRequirementCommandIsPosted() {
-        Classification result = executeCommand(requestBody);
+    void returnsRawText_whenClassifyRequirementCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.conceptType()).isEqualTo(CONCEPT_TYPE);
+        assertThat(result.at("/rawText/text").asText()).isEqualTo(REQUIREMENT_TEXT);
     }
 
     @Test
-    void returnsProperty_whenClassifyRequirementCommandIsPosted() {
-        Classification result = executeCommand(requestBody);
+    void returnsConceptType_whenClassifyRequirementCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.property()).isEqualTo(PROPERTY);
+        assertThat(result.at("/classification/conceptType").asText())
+            .isEqualTo(CONCEPT_TYPE.name());
     }
 
     @Test
-    void returnsConfidenceScore_whenClassifyRequirementCommandIsPosted() {
-        Classification result = executeCommand(requestBody);
+    void returnsProperty_whenClassifyRequirementCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.confidenceScore())
-            .isEqualTo(new ConfidenceScore(CONFIDENCE_SCORE));
+        assertThat(result.at("/classification/property").asText())
+            .isEqualTo(PROPERTY.name());
     }
 
     @Test
-    void returnsRationale_whenClassifyRequirementCommandIsPosted() {
-        Classification result = executeCommand(requestBody);
+    void returnsConfidenceScore_whenClassifyRequirementCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.rationale()).isEqualTo(new Rationale(RATIONALE));
+        assertThat(result.at("/classification/confidenceScore/value").asDouble())
+            .isEqualTo(CONFIDENCE_SCORE);
+    }
+
+    @Test
+    void returnsRationale_whenClassifyRequirementCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
+
+        assertThat(result.at("/classification/rationale/text").asText()).isEqualTo(RATIONALE);
     }
 
     @Test
@@ -101,15 +111,16 @@ class ClassifyRequirementCommandRestControllerTestIT {
                 "The wording is ambiguous, so this is a forced best-fit classification."
             ));
 
-        Classification result = executeCommand(
+        JsonNode result = executeCommandAsJson(
             classifyRequirementCommandRequest(requirementText)
         );
 
-        assertThat(result.conceptType()).isEqualTo(RequirementType.GOAL);
+        assertThat(result.at("/classification/conceptType").asText())
+            .isEqualTo(RequirementType.GOAL.name());
     }
 
-    private Classification executeCommand(String requestBody) {
-        return postCommandForResponse(requestBody, Classification.class);
+    private JsonNode executeCommandAsJson(String requestBody) throws Exception {
+        return objectMapper.readTree(postCommandForBody(requestBody));
     }
 
     private String classifyRequirementCommandRequest(String requirementText)

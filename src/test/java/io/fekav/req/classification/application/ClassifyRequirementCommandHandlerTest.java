@@ -6,12 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
-import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.ConfidenceScore;
@@ -32,7 +28,7 @@ class ClassifyRequirementCommandHandlerTest {
     );
 
     @Test
-    void returnsRequirementClassificationAndPublishesEvent_whenClassificationSucceeds() {
+    void returnsRequirementClassifiedEventAndPublishesSameEvent_whenClassificationSucceeds() {
         String rawText = "The checkout page must load within 2 seconds on a 4G connection.";
         Classification classification = requirementClassification(
             RequirementType.REQUIREMENT,
@@ -43,20 +39,12 @@ class ClassifyRequirementCommandHandlerTest {
         when(requirementClassificationService.classifyRequirement(new RawText(rawText)))
             .thenReturn(classification);
 
-        Classification result = handler.handle(new ClassifyRequirementCommand(rawText));
+        RequirementClassifiedEvent result = handler.handle(new ClassifyRequirementCommand(rawText));
 
-        assertThat(result).isEqualTo(classification);
+        assertThat(result.rawText()).isEqualTo(new RawText(rawText));
+        assertThat(result.classification()).isEqualTo(classification);
         verify(requirementClassificationService).classifyRequirement(new RawText(rawText));
-
-        ArgumentCaptor<List<DomainEvent>> domainEvents = eventCaptor();
-        verify(eventPublisher).publishAll(domainEvents.capture());
-        assertThat(domainEvents.getValue())
-            .singleElement()
-            .satisfies(domainEvent -> {
-                assertThat(domainEvent).isInstanceOf(RequirementClassifiedEvent.class);
-                RequirementClassifiedEvent event = (RequirementClassifiedEvent) domainEvent;
-                assertThat(event.classification()).isEqualTo(classification);
-            });
+        verify(eventPublisher).publish(result);
     }
 
     @Test
@@ -71,9 +59,9 @@ class ClassifyRequirementCommandHandlerTest {
         when(requirementClassificationService.classifyRequirement(new RawText(rawText)))
             .thenReturn(classification);
 
-        Classification result = handler.handle(new ClassifyRequirementCommand(rawText));
+        RequirementClassifiedEvent result = handler.handle(new ClassifyRequirementCommand(rawText));
 
-        assertThat(result.confidenceScore()).isEqualTo(new ConfidenceScore(0.42));
+        assertThat(result.classification().confidenceScore()).isEqualTo(new ConfidenceScore(0.42));
     }
 
     @Test
@@ -95,10 +83,5 @@ class ClassifyRequirementCommandHandlerTest {
             new ConfidenceScore(confidenceScore),
             new Rationale(rationale)
         );
-    }
-
-    @SuppressWarnings("unchecked")
-    private ArgumentCaptor<List<DomainEvent>> eventCaptor() {
-        return ArgumentCaptor.forClass(List.class);
     }
 }

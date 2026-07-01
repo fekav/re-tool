@@ -5,17 +5,22 @@ import java.time.Instant;
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventId;
 import io.fekav.req.classification.domain.Classification;
-import io.fekav.req.shared.model.RequirementId;
+import io.fekav.req.shared.model.RawText;
 
 public record RequirementClassifiedEvent(
         EventId eventId,
         Instant occurredAt,
-        RequirementId requirementId,
+        RawText rawText,
         Classification classification) implements DomainEvent {
 
     public static RequirementClassifiedEvent create(
-            RequirementId id,
+            RawText rawText,
             Classification classification) {
-        return new RequirementClassifiedEvent(EventId.create(), Instant.now(), id, classification);
+        return new RequirementClassifiedEvent(
+            EventId.create(),
+            Instant.now(),
+            rawText,
+            classification
+        );
     }
 }

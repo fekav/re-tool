@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class CandidateConceptMatchSetTest {
+class CandidateConceptMatchTest {
 
     @Test
     void trimsDomainStrings_whenValuesAreCreated() {
@@ -22,24 +22,22 @@ class CandidateConceptMatchSetTest {
         );
 
         // When
-        CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(List.of(
-            new CandidateConceptMatch(
-                new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
-                List.of(new RetrievedCandidateConcept(
-                    new CandidateConcept(
-                        " concept-1 ",
-                        " Billing Service ",
-                        " SystemComponent "
-                    ),
-                    List.of(evidence)
-                ))
-            )
-        ));
+        CandidateConceptMatch match = new CandidateConceptMatch(
+            new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
+            List.of(new RetrievedCandidateConcept(
+                new CandidateConcept(
+                    " concept-1 ",
+                    " Billing Service ",
+                    " SystemComponent "
+                ),
+                List.of(evidence)
+            ))
+        );
 
         // Then
-        CandidateConceptMatch match = matchSet.matches().getFirst();
         RetrievedCandidateConcept retrievedCandidate = match.candidates().getFirst();
-        assertThat(match.selectedTerm()).isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+        assertThat(match.selectedTerm())
+            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
         assertThat(retrievedCandidate.candidate())
             .isEqualTo(new CandidateConcept("concept-1", "Billing Service", "SystemComponent"));
         assertThat(retrievedCandidate.evidence().getFirst().policyName())
@@ -121,45 +119,47 @@ class CandidateConceptMatchSetTest {
     }
 
     @Test
-    void defensivelyCopiesCollections_whenMatchSetIsCreated() {
+    void defensivelyCopiesCollections_whenMatchIsCreated() {
         // Given
-        List<CandidateConceptMatch> matches = new ArrayList<>();
-        matches.add(new CandidateConceptMatch(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
-            List.of()
-        ));
+        List<RetrievedCandidateConcept> candidates = new ArrayList<>();
+        candidates.add(candidate("concept-1"));
 
         // When
-        CandidateConceptMatchSet matchSet = new CandidateConceptMatchSet(matches);
-        matches.clear();
+        CandidateConceptMatch match = new CandidateConceptMatch(
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            candidates
+        );
+        candidates.clear();
 
         // Then
-        assertThat(matchSet.matches())
+        assertThat(match.candidates())
             .singleElement()
-            .satisfies(match ->
-                assertThat(match.selectedTerm())
-                    .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"))
+            .satisfies(candidate ->
+                assertThat(candidate.candidate().candidateKey()).isEqualTo("concept-1")
             );
-        assertThatThrownBy(() -> matchSet.matches().clear())
+        assertThatThrownBy(() -> match.candidates().clear())
             .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
-    void rejectsMatchSet_whenSelectedTermAppearsMoreThanOnce() {
+    void rejectsCandidateConceptMatch_whenCandidatesContainNull() {
         // Given
-        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
-        CandidateConceptMatch firstMatch = new CandidateConceptMatch(
-            selectedTerm,
-            List.of()
-        );
-        CandidateConceptMatch secondMatch = new CandidateConceptMatch(
-            selectedTerm,
-            List.of()
-        );
+        List<RetrievedCandidateConcept> candidates = new ArrayList<>();
+        candidates.add(null);
 
         // When / Then
-        assertThatThrownBy(() -> new CandidateConceptMatchSet(List.of(firstMatch, secondMatch)))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("candidate concept match set must contain one match per selected term");
+        assertThatThrownBy(() -> new CandidateConceptMatch(
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            candidates
+        ))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("candidates must not contain null");
+    }
+
+    private RetrievedCandidateConcept candidate(String candidateKey) {
+        return new RetrievedCandidateConcept(
+            new CandidateConcept(candidateKey, "Billing Service", "SystemComponent"),
+            List.of(new RetrievalEvidence("conceptName", "matched concept name", 1.0))
+        );
     }
 }

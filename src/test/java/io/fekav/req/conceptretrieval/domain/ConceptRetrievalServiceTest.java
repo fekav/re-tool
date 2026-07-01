@@ -9,14 +9,13 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CandidateConceptMatchSet;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.SelectedTerm;
 
 class ConceptRetrievalServiceTest {
 
     @Test
-    void returnsOneMatchForEachSelectedTerm() {
+    void returnsMatchForSelectedTerm() {
         // Given
         List<SelectedTerm> retrievedTerms = new ArrayList<>();
         ConceptRetrievalPolicy policy = selectedTerm -> {
@@ -24,30 +23,25 @@ class ConceptRetrievalServiceTest {
             return noMatch(selectedTerm);
         };
         ConceptRetrievalService service = new ConceptRetrievalService(policy);
-        List<SelectedTerm> selectedTerms = List.of(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
-            new SelectedTerm(RequirementElement.ACTION, "refund")
-        );
+        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
 
         // When
-        CandidateConceptMatchSet matchSet = service.retrieveCandidates(selectedTerms);
+        CandidateConceptMatch match = service.retrieveCandidates(selectedTerm);
 
         // Then
-        assertThat(retrievedTerms).containsExactlyElementsOf(selectedTerms);
-        assertThat(matchSet.matches())
-            .extracting(CandidateConceptMatch::selectedTerm)
-            .containsExactlyElementsOf(selectedTerms);
+        assertThat(retrievedTerms).containsExactly(selectedTerm);
+        assertThat(match.selectedTerm()).isEqualTo(selectedTerm);
     }
 
     @Test
-    void rejectsRetrievalRequest_whenSelectedTermsAreEmpty() {
+    void rejectsRetrievalRequest_whenSelectedTermIsNull() {
         // Given
         ConceptRetrievalService service = new ConceptRetrievalService(this::noMatch);
 
         // When / Then
-        assertThatThrownBy(() -> service.retrieveCandidates(List.of()))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("selected terms must not be empty");
+        assertThatThrownBy(() -> service.retrieveCandidates(null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("selectedTerm must not be null");
     }
 
     @Test
@@ -56,11 +50,10 @@ class ConceptRetrievalServiceTest {
         ConceptRetrievalService service = new ConceptRetrievalService(
             selectedTerm -> noMatch(new SelectedTerm(RequirementElement.ACTION, "refund"))
         );
+        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
 
         // When / Then
-        assertThatThrownBy(() -> service.retrieveCandidates(List.of(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service")
-        )))
+        assertThatThrownBy(() -> service.retrieveCandidates(selectedTerm))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("retrieval policy returned a match for a different selected term");
     }

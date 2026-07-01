@@ -2,7 +2,7 @@ package io.fekav.req.syntaxextraction.application;
 
 import io.fekav.platform.cqrs.CommandHandler;
 import io.fekav.platform.messaging.EventPublisher;
-import io.fekav.req.shared.model.Requirement;
+import io.fekav.req.shared.event.SyntaxExtractedEvent;
 import io.fekav.req.syntaxextraction.domain.Action;
 import io.fekav.req.shared.model.RawText;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -15,7 +15,7 @@ import jakarta.transaction.Transactional;
  */
 @ApplicationScoped
 public class ExtractSyntaxCommandHandler
-        implements CommandHandler<ExtractSyntaxResponse, ExtractSyntaxCommand> {
+        implements CommandHandler<SyntaxExtractedEvent, ExtractSyntaxCommand> {
 
     private final EventPublisher eventPublisher;
     private final SyntaxExtraction syntaxExtraction;
@@ -31,16 +31,14 @@ public class ExtractSyntaxCommandHandler
 
     @Override
     @Transactional
-    public ExtractSyntaxResponse handle(ExtractSyntaxCommand command) {
+    public SyntaxExtractedEvent handle(ExtractSyntaxCommand command) {
         RawText rawRequirementText = new RawText(command.rawText());
-        Requirement requirement = Requirement.create(rawRequirementText);
-
         Action action = syntaxExtraction.extractSyntax(rawRequirementText);
-        requirement.applyExtraction(action);
+        SyntaxExtractedEvent event = SyntaxExtractedEvent.create(rawRequirementText, action);
 
-        eventPublisher.publishAll(requirement.domainEvents());
+        eventPublisher.publish(event);
 
-        return ExtractSyntaxResponse.from(action);
+        return event;
     }
 
     @Override

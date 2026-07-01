@@ -1,19 +1,16 @@
 package io.fekav.req.conceptretrieval.application;
 
-import java.util.List;
-
 import io.fekav.platform.cqrs.CommandHandler;
-import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
-import io.fekav.req.shared.event.ConceptCandidatesReadyEvent;
-import io.fekav.req.shared.model.CandidateConceptMatchSet;
+import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
+import io.fekav.req.shared.model.CandidateConceptMatch;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class RetrieveCandidateConceptsCommandHandler
-        implements CommandHandler<CandidateConceptMatchSet, RetrieveCandidateConceptsCommand> {
+        implements CommandHandler<ConceptCandidatesRetrievedEvent, RetrieveCandidateConceptsCommand> {
 
     private final EventPublisher eventPublisher;
     private final ConceptRetrievalService conceptRetrievalService;
@@ -28,19 +25,14 @@ public class RetrieveCandidateConceptsCommandHandler
     }
 
     @Override
-    public CandidateConceptMatchSet handle(RetrieveCandidateConceptsCommand command) {
-        CandidateConceptMatchSet matches =
-            conceptRetrievalService.retrieveCandidates(command.selectedTerms());
-        List<ApplicationEvent> events = matches
-            .matches()
-            .stream()
-            .map(ConceptCandidatesReadyEvent::create)
-            .map(ApplicationEvent.class::cast)
-            .toList();
+    public ConceptCandidatesRetrievedEvent handle(RetrieveCandidateConceptsCommand command) {
+        CandidateConceptMatch match =
+            conceptRetrievalService.retrieveCandidates(command.selectedTerm());
+        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(match);
 
-        eventPublisher.publishApplicationEvents(events);
+        eventPublisher.publish(event);
 
-        return matches;
+        return event;
     }
 
     @Override

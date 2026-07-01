@@ -21,7 +21,7 @@ import io.fekav.req.shared.model.SelectedTerm;
 class ConceptApplicationEventTest {
 
     @Test
-    void createConceptCandidatesReadyEvent_preservesMatchWithCandidatesAndSetsMetadata() {
+    void createConceptCandidatesRetrievedEvent_preservesMatchWithCandidatesAndSetsMetadata() {
         // Given
         CandidateConceptMatch match = matchWithCandidates(
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
@@ -29,7 +29,7 @@ class ConceptApplicationEventTest {
         );
 
         // When
-        ConceptCandidatesReadyEvent event = ConceptCandidatesReadyEvent.create(match);
+        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(match);
 
         // Then
         assertThat(event).isInstanceOf(ApplicationEvent.class);
@@ -40,7 +40,7 @@ class ConceptApplicationEventTest {
     }
 
     @Test
-    void createConceptCandidatesReadyEvent_preservesMatchWithoutCandidates() {
+    void createConceptCandidatesRetrievedEvent_preservesMatchWithoutCandidates() {
         // Given
         CandidateConceptMatch match = new CandidateConceptMatch(
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
@@ -48,11 +48,32 @@ class ConceptApplicationEventTest {
         );
 
         // When
-        ConceptCandidatesReadyEvent event = ConceptCandidatesReadyEvent.create(match);
+        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(match);
 
         // Then
         assertThat(event.match()).isEqualTo(match);
         assertThat(event.match().candidates()).isEmpty();
+    }
+
+    @Test
+    void createConceptMatchEvaluatedEvent_preservesMatchAndDecisionWithMetadata() {
+        // Given
+        CandidateConceptMatch match = matchWithCandidates(
+            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
+            candidate("concept-1")
+        );
+        ConceptMatchDecision decision = autoMapExistingDecision();
+
+        // When
+        ConceptMatchEvaluatedEvent event = ConceptMatchEvaluatedEvent.create(match, decision);
+
+        // Then
+        assertThat(event).isInstanceOf(ApplicationEvent.class);
+        assertThat(event).isNotInstanceOf(DomainEvent.class);
+        assertThat(event.eventId()).isNotNull();
+        assertThat(event.occurredAt()).isNotNull();
+        assertThat(event.match()).isEqualTo(match);
+        assertThat(event.decision()).isEqualTo(decision);
     }
 
     @Test

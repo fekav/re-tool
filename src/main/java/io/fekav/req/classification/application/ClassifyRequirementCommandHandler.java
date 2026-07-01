@@ -3,15 +3,15 @@ package io.fekav.req.classification.application;
 import io.fekav.platform.cqrs.CommandHandler;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.classification.domain.Classification;
+import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.model.RawText;
-import io.fekav.req.shared.model.Requirement;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 @ApplicationScoped
 public class ClassifyRequirementCommandHandler
-        implements CommandHandler<Classification, ClassifyRequirementCommand> {
+        implements CommandHandler<RequirementClassifiedEvent, ClassifyRequirementCommand> {
 
     private final EventPublisher eventPublisher;
     private final ClassificationService requirementClassificationService;
@@ -27,17 +27,16 @@ public class ClassifyRequirementCommandHandler
 
     @Override
     @Transactional
-    public Classification handle(ClassifyRequirementCommand command) {
+    public RequirementClassifiedEvent handle(ClassifyRequirementCommand command) {
         RawText rawRequirementText = new RawText(command.rawText());
-        Requirement requirement = Requirement.create(rawRequirementText);
-
         Classification requirementClassification =
             requirementClassificationService.classifyRequirement(rawRequirementText);
-        requirement.applyClassification(requirementClassification);
+        RequirementClassifiedEvent event =
+            RequirementClassifiedEvent.create(rawRequirementText, requirementClassification);
 
-        eventPublisher.publishAll(requirement.domainEvents());
+        eventPublisher.publish(event);
 
-        return requirementClassification;
+        return event;
     }
 
     @Override

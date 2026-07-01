@@ -42,7 +42,7 @@ public class Requirement {
         this.status = RequirementStatus.EXTRACTED;
         
         domainEvents.add(
-            SyntaxExtractedEvent.create(this.id, action)
+            SyntaxExtractedEvent.create(this.rawText, action)
         );
     }
 
@@ -54,7 +54,7 @@ public class Requirement {
         this.status = RequirementStatus.CLASSIFIED;
 
         domainEvents.add(
-            RequirementClassifiedEvent.create(this.id, classification)
+            RequirementClassifiedEvent.create(this.rawText, classification)
         );
     }
 

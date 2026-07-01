@@ -1,10 +1,8 @@
 package io.fekav.req.conceptmatching.domain;
 
-import java.util.List;
 import java.util.Objects;
 
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CandidateConceptMatchSet;
 
 public class ConceptMatchingService {
 
@@ -17,19 +15,8 @@ public class ConceptMatchingService {
         );
     }
 
-    public ConceptMatchDecisionSet decideMatches(CandidateConceptMatchSet matches) {
-        Objects.requireNonNull(matches, "matches must not be null");
-
-        List<ConceptMatchDecision> decisions = matches
-            .matches()
-            .stream()
-            .map(this::decideMatch)
-            .toList();
-
-        return new ConceptMatchDecisionSet(decisions);
-    }
-
-    private ConceptMatchDecision decideMatch(CandidateConceptMatch match) {
+    public ConceptMatchDecision evaluateMatch(CandidateConceptMatch match) {
+        Objects.requireNonNull(match, "match must not be null");
         ConceptMatchDecision decision = matchingPolicy.decide(match);
         if (!match.selectedTerm().equals(decision.selectedTerm())) {
             throw new IllegalStateException(

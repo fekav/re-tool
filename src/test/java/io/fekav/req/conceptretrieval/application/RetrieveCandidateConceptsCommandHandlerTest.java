@@ -9,18 +9,15 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalPolicy;
 import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
-import io.fekav.req.shared.event.ConceptCandidatesReadyEvent;
+import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CandidateConceptMatchSet;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
@@ -33,94 +30,62 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     EventPublisher eventPublisher;
 
     @Test
-    void returnsCandidateConceptMatchSetAndPublishesEvents_whenRetrievalSucceeds() {
+    void returnsConceptCandidatesRetrievedEventAndPublishesSameEvent_whenRetrievalSucceeds() {
         // Given
         List<SelectedTerm> retrievedTerms = new ArrayList<>();
         ConceptRetrievalPolicy policy = selectedTerm -> {
             retrievedTerms.add(selectedTerm);
-            if (selectedTerm.requirementElement() == RequirementElement.SUBJECT) {
-                return match(selectedTerm, List.of(candidate("concept-1")));
-            }
-            return match(selectedTerm, List.of());
+            return match(selectedTerm, List.of(candidate("concept-1")));
         };
         RetrieveCandidateConceptsCommandHandler handler =
             handlerWith(policy);
-        RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(List.of(
+        RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(
             new SelectedTerm(RequirementElement.SUBJECT,
                 " billing service "
-            ),
-            new SelectedTerm(RequirementElement.ACTION,
-                "must refund"
             )
-        ));
+        );
 
         // When
-        CandidateConceptMatchSet result = handler.handle(command);
+        ConceptCandidatesRetrievedEvent result = handler.handle(command);
 
         // Then
-        assertThat(result.matches()).hasSize(2);
         assertThat(retrievedTerms)
-            .containsExactly(
-                new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
-                new SelectedTerm(RequirementElement.ACTION, "must refund")
+            .containsExactly(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+        assertThat(result.match().selectedTerm())
+            .isEqualTo(new SelectedTerm(RequirementElement.SUBJECT, "billing service"));
+        assertThat(result.match().candidates())
+            .singleElement()
+            .satisfies(candidate ->
+                assertThat(candidate.candidate().candidateKey()).isEqualTo("concept-1")
             );
-
-        ArgumentCaptor<List<ApplicationEvent>> applicationEvents = eventCaptor();
-        verify(eventPublisher).publishApplicationEvents(applicationEvents.capture());
-        assertThat(applicationEvents.getValue())
-            .satisfiesExactly(
-                applicationEvent -> {
-                    assertThat(applicationEvent).isInstanceOf(ConceptCandidatesReadyEvent.class);
-                    ConceptCandidatesReadyEvent event =
-                        (ConceptCandidatesReadyEvent) applicationEvent;
-                    assertThat(event.match()).isEqualTo(result.matches().getFirst());
-                },
-                applicationEvent -> {
-                    assertThat(applicationEvent).isInstanceOf(ConceptCandidatesReadyEvent.class);
-                    ConceptCandidatesReadyEvent event =
-                        (ConceptCandidatesReadyEvent) applicationEvent;
-                    assertThat(event.match()).isEqualTo(result.matches().get(1));
-                    assertThat(event.match().candidates()).isEmpty();
-                }
-            );
+        verify(eventPublisher).publish(result);
     }
 
     @Test
-    void publishesEventWithEmptyCandidates_whenRetrievedMatchHasNoCandidates() {
+    void returnsEventWithEmptyCandidates_whenRetrievedMatchHasNoCandidates() {
         // Given
         RetrieveCandidateConceptsCommandHandler handler =
             handlerWith(this::noMatch);
-        RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(List.of(
+        RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(
             new SelectedTerm(RequirementElement.ACTION, "must refund")
-        ));
+        );
 
         // When
-        CandidateConceptMatchSet result = handler.handle(command);
+        ConceptCandidatesRetrievedEvent result = handler.handle(command);
 
         // Then
-        assertThat(result.matches())
-            .singleElement()
-            .satisfies(match -> assertThat(match.candidates()).isEmpty());
-
-        ArgumentCaptor<List<ApplicationEvent>> applicationEvents = eventCaptor();
-        verify(eventPublisher).publishApplicationEvents(applicationEvents.capture());
-        assertThat(applicationEvents.getValue())
-            .singleElement()
-            .satisfies(applicationEvent -> {
-                assertThat(applicationEvent).isInstanceOf(ConceptCandidatesReadyEvent.class);
-                ConceptCandidatesReadyEvent event =
-                    (ConceptCandidatesReadyEvent) applicationEvent;
-                assertThat(event.match()).isEqualTo(result.matches().getFirst());
-                assertThat(event.match().candidates()).isEmpty();
-            });
+        assertThat(result.match().selectedTerm())
+            .isEqualTo(new SelectedTerm(RequirementElement.ACTION, "must refund"));
+        assertThat(result.match().candidates()).isEmpty();
+        verify(eventPublisher).publish(result);
     }
 
     @Test
-    void rejectsCommand_whenSelectedTermsAreEmpty() {
+    void rejectsCommand_whenSelectedTermIsNull() {
         // Given / When / Then
-        assertThatThrownBy(() -> new RetrieveCandidateConceptsCommand(List.of()))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("retrieve candidate concepts command has no selected terms");
+        assertThatThrownBy(() -> new RetrieveCandidateConceptsCommand(null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("selectedTerm must not be null");
     }
 
     @Test
@@ -129,20 +94,6 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         assertThatThrownBy(() -> new SelectedTerm(RequirementElement.SUBJECT, " "))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("selected term text must not be blank");
-    }
-
-    @Test
-    void rejectsCommand_whenSelectedTermIsDuplicated() {
-        // Given
-        SelectedTerm selectedTerm = new SelectedTerm(RequirementElement.SUBJECT, "billing service");
-
-        // When / Then
-        assertThatThrownBy(() -> new RetrieveCandidateConceptsCommand(List.of(
-            selectedTerm,
-            selectedTerm
-        )))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("retrieve candidate concepts command has duplicate selected terms");
     }
 
     @Test
@@ -181,10 +132,5 @@ class RetrieveCandidateConceptsCommandHandlerTest {
             new CandidateConcept(candidateKey, "Billing Service", "SystemComponent"),
             List.of(new RetrievalEvidence("conceptName", "matched concept name", 1.0))
         );
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private ArgumentCaptor<List<ApplicationEvent>> eventCaptor() {
-        return (ArgumentCaptor) ArgumentCaptor.forClass(List.class);
     }
 }

@@ -2,8 +2,7 @@ package io.fekav.platform.api;
 
 import static io.fekav.platform.api.RestControllerCommandTestSupport.action;
 import static io.fekav.platform.api.RestControllerCommandTestSupport.commandRequest;
-import static io.fekav.platform.api.RestControllerCommandTestSupport.postCommandForResponse;
-import static io.fekav.platform.api.RestControllerCommandTestSupport.responseSet;
+import static io.fekav.platform.api.RestControllerCommandTestSupport.postCommandForBody;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
@@ -14,10 +13,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.fekav.req.shared.model.RawText;
-import io.fekav.req.syntaxextraction.application.ExtractSyntaxResponse;
 import io.fekav.req.syntaxextraction.application.SyntaxExtraction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
@@ -53,38 +52,45 @@ class ExtractSyntaxCommandRestControllerTestIT {
     }
 
     @Test
-    void returnsSubject_whenExtractSyntaxCommandIsPosted() {
-        ExtractSyntaxResponse result = executeCommand(requestBody);
+    void returnsRawText_whenExtractSyntaxCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.requirementElements().SUBJECT()).isEqualTo(SUBJECT);
+        assertThat(result.at("/rawText/text").asText()).isEqualTo(REQUIREMENT_TEXT);
     }
 
     @Test
-    void returnsAction_whenExtractSyntaxCommandIsPosted() {
-        ExtractSyntaxResponse result = executeCommand(requestBody);
+    void returnsSubject_whenExtractSyntaxCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.requirementElements().ACTION()).isEqualTo(ACTION);
+        assertThat(result.at("/action/subject/text").asText()).isEqualTo(SUBJECT);
     }
 
     @Test
-    void returnsObject_whenExtractSyntaxCommandIsPosted() {
-        ExtractSyntaxResponse result = executeCommand(requestBody);
+    void returnsAction_whenExtractSyntaxCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.requirementElements().OBJECT()).isEqualTo(TARGET_OBJECT);
+        assertThat(result.at("/action/actionText").asText()).isEqualTo(ACTION);
     }
 
     @Test
-    void returnsConstraint_whenExtractSyntaxCommandIsPosted() {
-        ExtractSyntaxResponse result = executeCommand(requestBody);
+    void returnsObject_whenExtractSyntaxCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.requirementElements().CONSTRAINT()).isEqualTo(responseSet(CONSTRAINT));
+        assertThat(result.at("/action/targetObject/text").asText()).isEqualTo(TARGET_OBJECT);
     }
 
     @Test
-    void returnsCondition_whenExtractSyntaxCommandIsPosted() {
-        ExtractSyntaxResponse result = executeCommand(requestBody);
+    void returnsConstraint_whenExtractSyntaxCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
 
-        assertThat(result.requirementElements().CONDITION()).isEqualTo(responseSet(CONDITION));
+        assertThat(result.at("/action/constraints/0/text").asText()).isEqualTo(CONSTRAINT);
+    }
+
+    @Test
+    void returnsCondition_whenExtractSyntaxCommandIsPosted() throws Exception {
+        JsonNode result = executeCommandAsJson(requestBody);
+
+        assertThat(result.at("/action/conditions/0/text").asText()).isEqualTo(CONDITION);
     }
 
     @Test
@@ -101,15 +107,15 @@ class ExtractSyntaxCommandRestControllerTestIT {
                 ""
             ));
 
-        ExtractSyntaxResponse result = executeCommand(
+        JsonNode result = executeCommandAsJson(
             extractSyntaxCommandRequest(requirementText)
         );
 
-        assertThat(result.requirementElements().CONDITION()).isEmpty();
+        assertThat(result.at("/action/conditions").size()).isZero();
     }
 
-    private ExtractSyntaxResponse executeCommand(String requestBody) {
-        return postCommandForResponse(requestBody, ExtractSyntaxResponse.class);
+    private JsonNode executeCommandAsJson(String requestBody) throws Exception {
+        return objectMapper.readTree(postCommandForBody(requestBody));
     }
 
     private String extractSyntaxCommandRequest(String requirementText)

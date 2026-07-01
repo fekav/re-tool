@@ -33,7 +33,7 @@ class RequirementTest {
             .satisfies(domainEvent -> {
                 assertThat(domainEvent).isInstanceOf(SyntaxExtractedEvent.class);
                 SyntaxExtractedEvent event = (SyntaxExtractedEvent) domainEvent;
-                assertThat(event.requirementId()).isEqualTo(requirement.getId());
+                assertThat(event.rawText()).isEqualTo(requirement.getRawText());
                 assertThat(event.action()).isEqualTo(action);
             });
     }
@@ -65,7 +65,7 @@ class RequirementTest {
             .satisfies(domainEvent -> {
                 assertThat(domainEvent).isInstanceOf(RequirementClassifiedEvent.class);
                 RequirementClassifiedEvent event = (RequirementClassifiedEvent) domainEvent;
-                assertThat(event.requirementId()).isEqualTo(requirement.getId());
+                assertThat(event.rawText()).isEqualTo(requirement.getRawText());
                 assertThat(event.classification()).isEqualTo(classification);
             });
     }
