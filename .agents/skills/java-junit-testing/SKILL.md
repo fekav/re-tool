@@ -1,6 +1,6 @@
 ---
 name: java-junit-testing
-description: Write, review, and refactor tests for Java code following current best practices. Use this skill whenever the user asks to write, add, fix, or review unit tests, integration tests, or test cases for Java classes, or "testing this class/service/method".
+description: Write, review, and refactor tests for Java code following current best practices. Use this when you implementing new logic, or whenever the user asks explicitly to write, add, fix, or review unit tests, integration tests, or test cases for Java classes, or "testing this class/service/method".
 ---
 
 # Java Testing
