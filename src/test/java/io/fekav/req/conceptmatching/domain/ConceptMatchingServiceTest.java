@@ -88,7 +88,6 @@ class ConceptMatchingServiceTest {
             selectedTerm,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal(selectedTerm.text(), selectedTerm.requirementElement())),
             "No existing candidates found"
         );
     }

@@ -22,7 +22,6 @@ import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionSet;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
 import io.fekav.req.conceptmatching.domain.ConceptMatchingPolicy;
 import io.fekav.req.conceptmatching.domain.ConceptMatchingService;
-import io.fekav.req.conceptmatching.domain.NewConceptProposal;
 import io.fekav.req.shared.event.ConceptMatchReviewRequestedEvent;
 import io.fekav.req.shared.event.CreateConceptRequestedEvent;
 import io.fekav.req.shared.event.ExistingConceptProposedEvent;
@@ -157,14 +156,12 @@ class DecideConceptMatchesCommandHandlerTest {
             reviewTerm,
             ConceptMatchDecisionStatus.REVIEW_REQUIRED,
             List.of(concept2, concept3),
-            List.of(),
             "Multiple candidates require review"
         );
         ConceptMatchDecision autoCreateDecision = new ConceptMatchDecision(
             autoCreateTerm,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal(autoCreateTerm.text(), autoCreateTerm.requirementElement())),
             "No existing candidates found"
         );
         Map<SelectedTerm, ConceptMatchDecision> decisions = Map.of(
@@ -294,10 +291,6 @@ class DecideConceptMatchesCommandHandlerTest {
                 match.selectedTerm(),
                 ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
                 List.of(),
-                List.of(new NewConceptProposal(
-                    match.selectedTerm().text(),
-                    match.selectedTerm().requirementElement()
-                )),
                 "No existing candidates found"
             );
         }
@@ -307,7 +300,6 @@ class DecideConceptMatchesCommandHandlerTest {
             match.selectedTerm(),
             ConceptMatchDecisionStatus.PROPOSE_EXISTING,
             List.of(candidate),
-            List.of(),
             "Best candidate was proposed"
         );
     }
@@ -322,7 +314,6 @@ class DecideConceptMatchesCommandHandlerTest {
             selectedTerm,
             status,
             List.of(candidate),
-            List.of(),
             rationale
         );
     }

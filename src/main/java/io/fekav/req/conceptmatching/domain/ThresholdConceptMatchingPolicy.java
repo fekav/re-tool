@@ -53,7 +53,6 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
                     match.selectedTerm(),
                     ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
                     topCandidates,
-                    List.of(),
                     "Unique top candidate reached auto-map threshold " +
                         autoMapThreshold + " with score " + topScore + "."
                 );
@@ -62,7 +61,6 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
                 match.selectedTerm(),
                 ConceptMatchDecisionStatus.REVIEW_REQUIRED,
                 topCandidates,
-                List.of(),
                 "Multiple top candidates share score " + topScore +
                     " at auto-map threshold " + autoMapThreshold +
                     "; human review is required."
@@ -78,7 +76,6 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
             match.selectedTerm(),
             ConceptMatchDecisionStatus.PROPOSE_EXISTING,
             List.of(bestCandidate),
-            List.of(),
             "Top candidate score " + topScore + " is below auto-map threshold " +
                 autoMapThreshold + "; proposing best existing candidate."
         );
@@ -89,10 +86,6 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
             match.selectedTerm(),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal(
-                match.selectedTerm().text(),
-                match.selectedTerm().requirementElement()
-            )),
             "No existing candidates found; auto-creating concept from selected term."
         );
     }

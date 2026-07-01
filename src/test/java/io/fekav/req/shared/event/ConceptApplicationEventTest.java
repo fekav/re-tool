@@ -11,7 +11,6 @@ import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
-import io.fekav.req.conceptmatching.domain.NewConceptProposal;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.RequirementElement;
@@ -195,7 +194,6 @@ class ConceptApplicationEventTest {
             new SelectedTerm(RequirementElement.OBJECT, "customer account"),
             ConceptMatchDecisionStatus.REVIEW_REQUIRED,
             List.of(candidate("concept-1"), candidate("concept-2")),
-            List.of(),
             "Multiple candidates require review"
         );
     }
@@ -206,7 +204,6 @@ class ConceptApplicationEventTest {
             selectedTerm,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal(selectedTerm.text(), selectedTerm.requirementElement())),
             "No existing candidates found"
         );
     }
@@ -220,7 +217,6 @@ class ConceptApplicationEventTest {
             selectedTerm,
             status,
             List.of(candidate("concept-" + selectedTerm.requirementElement().name().toLowerCase())),
-            List.of(),
             rationale
         );
     }

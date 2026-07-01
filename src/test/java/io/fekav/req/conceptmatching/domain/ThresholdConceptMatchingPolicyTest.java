@@ -2,7 +2,6 @@ package io.fekav.req.conceptmatching.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.groups.Tuple.tuple;
 
 import java.util.List;
 
@@ -44,7 +43,6 @@ class ThresholdConceptMatchingPolicyTest {
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-1");
-        assertThat(decision.newConcepts()).isEmpty();
         assertThat(decision.rationale())
             .contains("auto-map threshold " + AUTO_MAP_THRESHOLD)
             .contains("score " + AUTO_MAP_THRESHOLD);
@@ -70,7 +68,6 @@ class ThresholdConceptMatchingPolicyTest {
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-2", "concept-1");
-        assertThat(decision.newConcepts()).isEmpty();
         assertThat(decision.rationale())
             .contains("Multiple top candidates share score " + AUTO_MAP_THRESHOLD)
             .contains("auto-map threshold " + AUTO_MAP_THRESHOLD);
@@ -95,7 +92,6 @@ class ThresholdConceptMatchingPolicyTest {
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-1");
-        assertThat(decision.newConcepts()).isEmpty();
         assertThat(decision.rationale())
             .contains("Top candidate score " + BELOW_THRESHOLD_SCORE)
             .contains("auto-map threshold " + AUTO_MAP_THRESHOLD);
@@ -110,11 +106,9 @@ class ThresholdConceptMatchingPolicyTest {
         ConceptMatchDecision decision = policy.decide(match);
 
         // Then
+        assertThat(decision.selectedTerm()).isEqualTo(selectedTerm);
         assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.AUTO_CREATE_NEW);
         assertThat(decision.candidates()).isEmpty();
-        assertThat(decision.newConcepts())
-            .extracting(NewConceptProposal::label, NewConceptProposal::requirementElement)
-            .containsExactly(tuple("billing service", RequirementElement.SUBJECT));
         assertThat(decision.rationale())
             .isEqualTo("No existing candidates found; auto-creating concept from selected term.");
     }

@@ -25,7 +25,6 @@ import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionSet;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
 import io.fekav.req.conceptmatching.domain.ConceptMatchingService;
-import io.fekav.req.conceptmatching.domain.NewConceptProposal;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatchSet;
 import io.fekav.req.shared.model.RetrievalEvidence;
@@ -59,8 +58,6 @@ class DecideConceptMatchesCommandRestControllerTestIT {
         );
     private static final String AUTO_MAP_RATIONALE =
         "Unique top candidate reached auto-map threshold 1.0 with score 1.0.";
-    private static final NewConceptProposal OBJECT_PROPOSAL =
-        new NewConceptProposal("unknown workflow", RequirementElement.OBJECT);
 
     @InjectMock
     ConceptMatchingService conceptMatchingService;
@@ -102,14 +99,6 @@ class DecideConceptMatchesCommandRestControllerTestIT {
         JsonNode responseJson = executeCommandAsJson();
 
         assertThat(responseJson.at("/decisions/0/candidates").isArray()).isTrue();
-    }
-
-    @Test
-    void serializesAutoMapNewConceptsArray_whenDecideConceptMatchesCommandIsPosted()
-        throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
-
-        assertThat(responseJson.at("/decisions/0/newConcepts").isArray()).isTrue();
     }
 
     @Test
@@ -155,33 +144,6 @@ class DecideConceptMatchesCommandRestControllerTestIT {
         assertThat(responseJson.at("/decisions/1/candidates").size()).isZero();
     }
 
-    @Test
-    void serializesAutoCreateNewConceptsArray_whenDecideConceptMatchesCommandIsPosted()
-        throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
-
-        assertThat(responseJson.at("/decisions/1/newConcepts").isArray()).isTrue();
-    }
-
-    @Test
-    void serializesAutoCreateProposalLabel_whenDecideConceptMatchesCommandIsPosted()
-        throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
-
-        assertThat(responseJson.at("/decisions/1/newConcepts/0/label").asText())
-            .isEqualTo(OBJECT_PROPOSAL.label());
-    }
-
-    @Test
-    void serializesAutoCreateProposalRequirementElement_whenDecideConceptMatchesCommandIsPosted()
-        throws Exception {
-        JsonNode responseJson = executeCommandAsJson();
-
-        assertThat(responseJson.at("/decisions/1/newConcepts/0/requirementElement").asText())
-            .isEqualTo(OBJECT_PROPOSAL.requirementElement().name());
-    }
-
-    @Test
     void passesSelectedTermsToMatchingService_whenDecideConceptMatchesCommandIsPosted() {
         executeCommand();
 
@@ -235,14 +197,12 @@ class DecideConceptMatchesCommandRestControllerTestIT {
                 SUBJECT_TERM,
                 ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
                 List.of(retrievedSubjectCandidate),
-                List.of(),
                 AUTO_MAP_RATIONALE
             ),
             new ConceptMatchDecision(
                 OBJECT_TERM,
                 ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
                 List.of(),
-                List.of(OBJECT_PROPOSAL),
                 "No existing candidates found; auto-creating concept from selected term."
             )
         ));

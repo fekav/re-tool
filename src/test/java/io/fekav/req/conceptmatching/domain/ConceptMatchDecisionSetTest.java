@@ -27,7 +27,6 @@ class ConceptMatchDecisionSetTest {
                 new SelectedTerm(RequirementElement.SUBJECT, " billing service "),
                 ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
                 List.of(candidate),
-                List.of(),
                 " unique exact candidate "
             )
         ));
@@ -47,7 +46,6 @@ class ConceptMatchDecisionSetTest {
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal("billing service", RequirementElement.SUBJECT)),
             "No existing candidates found"
         ));
 
@@ -108,7 +106,6 @@ class ConceptMatchDecisionSetTest {
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal("billing service", RequirementElement.SUBJECT)),
             " "
         ))
             .isInstanceOf(IllegalArgumentException.class)
@@ -122,25 +119,10 @@ class ConceptMatchDecisionSetTest {
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
             candidateListWithNull(),
-            List.of(),
             "unique exact candidate"
         ))
             .isInstanceOf(NullPointerException.class)
             .hasMessage("concept match decision candidates must not contain null");
-    }
-
-    @Test
-    void rejectsDecision_whenNewConceptsContainNull() {
-        // Given / When / Then
-        assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
-            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
-            List.of(),
-            newConceptListWithNull(),
-            "No existing candidates found"
-        ))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("concept match decision new concepts must not contain null");
     }
 
     @Test
@@ -149,7 +131,6 @@ class ConceptMatchDecisionSetTest {
         assertThatThrownBy(() -> new ConceptMatchDecision(
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
-            List.of(),
             List.of(),
             "unique exact candidate"
         ))
@@ -167,7 +148,6 @@ class ConceptMatchDecisionSetTest {
                 candidate("concept-1", 0.8),
                 candidate("concept-2", 0.7)
             ),
-            List.of(),
             "best existing candidate"
         ))
             .isInstanceOf(IllegalArgumentException.class)
@@ -181,7 +161,6 @@ class ConceptMatchDecisionSetTest {
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.REVIEW_REQUIRED,
             List.of(candidate("concept-1", 1.0)),
-            List.of(),
             "ambiguous top candidates"
         ))
             .isInstanceOf(IllegalArgumentException.class)
@@ -195,54 +174,10 @@ class ConceptMatchDecisionSetTest {
             new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(candidate("concept-1", 1.0)),
-            List.of(new NewConceptProposal("billing service", RequirementElement.SUBJECT)),
             "No existing candidates found"
         ))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("auto-create-new decisions must not contain candidates");
-    }
-
-    @Test
-    void rejectsDecision_whenAutoCreateHasNoNewConcept() {
-        // Given / When / Then
-        assertThatThrownBy(() -> new ConceptMatchDecision(
-            new SelectedTerm(RequirementElement.SUBJECT, "billing service"),
-            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
-            List.of(),
-            List.of(),
-            "No existing candidates found"
-        ))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("auto-create-new decisions must contain exactly one new concept");
-    }
-
-    @Test
-    void rejectsNewConceptProposal_whenLabelIsBlank() {
-        // Given / When / Then
-        assertThatThrownBy(() -> new NewConceptProposal(" ", RequirementElement.SUBJECT))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("new concept proposal label must not be blank");
-    }
-
-    @Test
-    void rejectsNewConceptProposal_whenRequirementElementIsNull() {
-        // Given / When / Then
-        assertThatThrownBy(() -> new NewConceptProposal("billing service", null))
-            .isInstanceOf(NullPointerException.class)
-            .hasMessage("new concept proposal requirement element must not be null");
-    }
-
-    @Test
-    void trimsNewConceptProposalLabel_whenCreated() {
-        // When
-        NewConceptProposal proposal = new NewConceptProposal(
-            " billing service ",
-            RequirementElement.SUBJECT
-        );
-
-        // Then
-        assertThat(proposal.label()).isEqualTo("billing service");
-        assertThat(proposal.requirementElement()).isEqualTo(RequirementElement.SUBJECT);
     }
 
     private ConceptMatchDecision autoCreateDecision(SelectedTerm selectedTerm) {
@@ -250,7 +185,6 @@ class ConceptMatchDecisionSetTest {
             selectedTerm,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            List.of(new NewConceptProposal(selectedTerm.text(), selectedTerm.requirementElement())),
             "No existing candidates found"
         );
     }
@@ -274,9 +208,4 @@ class ConceptMatchDecisionSetTest {
         return candidates;
     }
 
-    private List<NewConceptProposal> newConceptListWithNull() {
-        List<NewConceptProposal> newConcepts = new ArrayList<>();
-        newConcepts.add(null);
-        return newConcepts;
-    }
 }
