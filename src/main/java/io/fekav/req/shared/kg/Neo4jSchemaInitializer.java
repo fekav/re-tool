@@ -28,8 +28,8 @@ public class Neo4jSchemaInitializer {
         FOR (p:Provenance) REQUIRE p.id IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT syntax_element_id IF NOT EXISTS
-        FOR (e:SyntaxElement) REQUIRE e.id IS UNIQUE
+        CREATE CONSTRAINT requirement_element_id IF NOT EXISTS
+        FOR (e:RequirementElement) REQUIRE e.id IS UNIQUE
         """,
         """
         CREATE CONSTRAINT requirement_type_code IF NOT EXISTS
@@ -48,12 +48,12 @@ public class Neo4jSchemaInitializer {
         FOR (p:RequirementProperty) REQUIRE p.label IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT requirement_element_code IF NOT EXISTS
-        FOR (e:RequirementElement) REQUIRE e.code IS UNIQUE
+        CREATE CONSTRAINT requirement_element_type_code IF NOT EXISTS
+        FOR (e:RequirementElementType) REQUIRE e.code IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT requirement_element_label IF NOT EXISTS
-        FOR (e:RequirementElement) REQUIRE e.label IS UNIQUE
+        CREATE CONSTRAINT requirement_element_type_label IF NOT EXISTS
+        FOR (e:RequirementElementType) REQUIRE e.label IS UNIQUE
         """,
         """
         CREATE CONSTRAINT requirement_relation_type_code IF NOT EXISTS
@@ -81,8 +81,8 @@ public class Neo4jSchemaInitializer {
         FOR (r:Requirement) ON (r.rawText)
         """,
         """
-        CREATE INDEX syntax_element_text IF NOT EXISTS
-        FOR (e:SyntaxElement) ON (e.text)
+        CREATE INDEX requirement_element_text IF NOT EXISTS
+        FOR (e:RequirementElement) ON (e.text)
         """
     );
 
@@ -97,7 +97,7 @@ public class Neo4jSchemaInitializer {
         Map.of("code", "QUALITY", "label", "Quality")
     );
 
-    private static final List<Map<String, String>> REQUIREMENT_ELEMENTS =
+    private static final List<Map<String, String>> REQUIREMENT_ELEMENT_TYPES =
         Arrays.stream(RequirementElementType.values())
             .map(element -> Map.of("code", element.name(), "label", element.label()))
             .toList();
@@ -183,43 +183,43 @@ public class Neo4jSchemaInitializer {
         )
     );
 
-    private static final List<Map<String, String>> SAMPLE_SYNTAX_ELEMENTS = List.of(
+    private static final List<Map<String, String>> SAMPLE_REQUIREMENT_ELEMENTS = List.of(
         Map.of(
             "id",
-            "sample-syntax-requirement-1-subject",
+            "sample-requirement-element-1-subject",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "requirementElement",
+            "type",
             "SUBJECT",
             "text",
             "billing service"
         ),
         Map.of(
             "id",
-            "sample-syntax-requirement-1-action",
+            "sample-requirement-element-1-action",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "requirementElement",
+            "type",
             "ACTION",
             "text",
             "log"
         ),
         Map.of(
             "id",
-            "sample-syntax-requirement-1-object",
+            "sample-requirement-element-1-object",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "requirementElement",
+            "type",
             "OBJECT",
             "text",
             "failed payment attempts"
         ),
         Map.of(
             "id",
-            "sample-syntax-requirement-1-constraint",
+            "sample-requirement-element-1-constraint",
             "requirementId",
             SAMPLE_REQUIREMENT_ID,
-            "requirementElement",
+            "type",
             "CONSTRAINT",
             "text",
             "with reason codes"
@@ -269,11 +269,11 @@ public class Neo4jSchemaInitializer {
 
             tx.run(
                 """
-                UNWIND $requirementElements AS requirementElement
-                MERGE (e:RequirementElement {code: requirementElement.code})
-                SET e.label = requirementElement.label
+                UNWIND $requirementElementTypes AS requirementElementType
+                MERGE (e:RequirementElementType {code: requirementElementType.code})
+                SET e.label = requirementElementType.label
                 """,
-                parameters("requirementElements", REQUIREMENT_ELEMENTS)
+                parameters("requirementElementTypes", REQUIREMENT_ELEMENT_TYPES)
             );
 
             tx.run(
@@ -323,13 +323,13 @@ public class Neo4jSchemaInitializer {
                 """
                 UNWIND $requirementElements AS element
                 MATCH (r:Requirement {id: element.requirementId})
-                MERGE (e:SyntaxElement {id: element.id})
-                SET e.requirementElement = element.requirementElement,
+                MERGE (e:RequirementElement {id: element.id})
+                SET e.type = element.type,
                     e.text = element.text,
                     e.sample = true
-                MERGE (r)-[:HAS_SYNTAX_ELEMENT]->(e)
+                MERGE (r)-[:HAS_REQUIREMENT_ELEMENT]->(e)
                 """,
-                parameters("requirementElements", SAMPLE_SYNTAX_ELEMENTS)
+                parameters("requirementElements", SAMPLE_REQUIREMENT_ELEMENTS)
             );
 
             tx.run(

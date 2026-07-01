@@ -67,20 +67,20 @@ class Neo4jSchemaInitializerTest {
             .containsExactly(
                 "CREATE CONSTRAINT requirement_id IF NOT EXISTS FOR (r:Requirement) REQUIRE r.id IS UNIQUE",
                 "CREATE CONSTRAINT provenance_id IF NOT EXISTS FOR (p:Provenance) REQUIRE p.id IS UNIQUE",
-                "CREATE CONSTRAINT syntax_element_id IF NOT EXISTS FOR (e:SyntaxElement) REQUIRE e.id IS UNIQUE",
+                "CREATE CONSTRAINT requirement_element_id IF NOT EXISTS FOR (e:RequirementElement) REQUIRE e.id IS UNIQUE",
                 "CREATE CONSTRAINT requirement_type_code IF NOT EXISTS FOR (t:RequirementType) REQUIRE t.code IS UNIQUE",
                 "CREATE CONSTRAINT requirement_type_label IF NOT EXISTS FOR (t:RequirementType) REQUIRE t.label IS UNIQUE",
                 "CREATE CONSTRAINT requirement_property_code IF NOT EXISTS FOR (p:RequirementProperty) REQUIRE p.code IS UNIQUE",
                 "CREATE CONSTRAINT requirement_property_label IF NOT EXISTS FOR (p:RequirementProperty) REQUIRE p.label IS UNIQUE",
-                "CREATE CONSTRAINT requirement_element_code IF NOT EXISTS FOR (e:RequirementElement) REQUIRE e.code IS UNIQUE",
-                "CREATE CONSTRAINT requirement_element_label IF NOT EXISTS FOR (e:RequirementElement) REQUIRE e.label IS UNIQUE",
+                "CREATE CONSTRAINT requirement_element_type_code IF NOT EXISTS FOR (e:RequirementElementType) REQUIRE e.code IS UNIQUE",
+                "CREATE CONSTRAINT requirement_element_type_label IF NOT EXISTS FOR (e:RequirementElementType) REQUIRE e.label IS UNIQUE",
                 "CREATE CONSTRAINT requirement_relation_type_code IF NOT EXISTS FOR (t:RequirementRelationType) REQUIRE t.code IS UNIQUE",
                 "CREATE CONSTRAINT requirement_relation_type_label IF NOT EXISTS FOR (t:RequirementRelationType) REQUIRE t.label IS UNIQUE",
                 "CREATE CONSTRAINT allowed_requirement_relation_key IF NOT EXISTS FOR (a:AllowedRequirementRelation) REQUIRE (a.sourceTypeCode, a.relationTypeCode, a.targetTypeCode) IS UNIQUE",
                 "CREATE INDEX requirement_type IF NOT EXISTS FOR (r:Requirement) ON (r.type)",
                 "CREATE INDEX requirement_property IF NOT EXISTS FOR (r:Requirement) ON (r.property)",
                 "CREATE INDEX requirement_raw_text IF NOT EXISTS FOR (r:Requirement) ON (r.rawText)",
-                "CREATE INDEX syntax_element_text IF NOT EXISTS FOR (e:SyntaxElement) ON (e.text)"
+                "CREATE INDEX requirement_element_text IF NOT EXISTS FOR (e:RequirementElement) ON (e.text)"
             );
         verify(session).close();
     }
@@ -101,11 +101,11 @@ class Neo4jSchemaInitializerTest {
             .contains(
                 "UNWIND $types AS type MERGE (t:RequirementType {code: type.code}) SET t.label = type.label",
                 "UNWIND $properties AS property MERGE (p:RequirementProperty {code: property.code}) SET p.label = property.label",
-                "UNWIND $requirementElements AS requirementElement MERGE (e:RequirementElement {code: requirementElement.code}) SET e.label = requirementElement.label",
+                "UNWIND $requirementElementTypes AS requirementElementType MERGE (e:RequirementElementType {code: requirementElementType.code}) SET e.label = requirementElementType.label",
                 "UNWIND $relationTypes AS relationType MERGE (t:RequirementRelationType {code: relationType.code}) SET t.label = relationType.label",
                 "UNWIND $allowedRelations AS relation MERGE (:AllowedRequirementRelation { sourceTypeCode: relation.sourceTypeCode, relationTypeCode: relation.relationTypeCode, targetTypeCode: relation.targetTypeCode })",
                 "UNWIND $requirements AS requirement MERGE (r:Requirement {id: requirement.id}) SET r.rawText = requirement.rawText, r.type = requirement.type, r.property = requirement.property, r.sample = true MERGE (p:Provenance {id: requirement.provenanceId}) SET p.source = 'sample', p.rawText = requirement.rawText MERGE (r)-[:HAS_PROVENANCE]->(p)",
-                "UNWIND $requirementElements AS element MATCH (r:Requirement {id: element.requirementId}) MERGE (e:SyntaxElement {id: element.id}) SET e.requirementElement = element.requirementElement, e.text = element.text, e.sample = true MERGE (r)-[:HAS_SYNTAX_ELEMENT]->(e)",
+                "UNWIND $requirementElements AS element MATCH (r:Requirement {id: element.requirementId}) MERGE (e:RequirementElement {id: element.id}) SET e.type = element.type, e.text = element.text, e.sample = true MERGE (r)-[:HAS_REQUIREMENT_ELEMENT]->(e)",
                 "MATCH (need:Requirement {id: $needId}) MATCH (goal:Requirement {id: $goalId}) MERGE (need)-[:SATISFIES]->(goal)",
                 "MATCH (requirement:Requirement {id: $requirementId}) MATCH (need:Requirement {id: $needId}) MERGE (requirement)-[:REFINES]->(need)"
             );
