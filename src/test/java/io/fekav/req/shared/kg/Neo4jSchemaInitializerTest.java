@@ -68,6 +68,8 @@ class Neo4jSchemaInitializerTest {
                 "CREATE CONSTRAINT requirement_id IF NOT EXISTS FOR (r:Requirement) REQUIRE r.id IS UNIQUE",
                 "CREATE CONSTRAINT provenance_id IF NOT EXISTS FOR (p:Provenance) REQUIRE p.id IS UNIQUE",
                 "CREATE CONSTRAINT requirement_element_id IF NOT EXISTS FOR (e:RequirementElement) REQUIRE e.id IS UNIQUE",
+                "CREATE CONSTRAINT action_id IF NOT EXISTS FOR (a:Action) REQUIRE a.id IS UNIQUE",
+                "CREATE CONSTRAINT action_requirement_id IF NOT EXISTS FOR (a:Action) REQUIRE a.requirementId IS UNIQUE",
                 "CREATE CONSTRAINT requirement_type_code IF NOT EXISTS FOR (t:RequirementType) REQUIRE t.code IS UNIQUE",
                 "CREATE CONSTRAINT requirement_type_label IF NOT EXISTS FOR (t:RequirementType) REQUIRE t.label IS UNIQUE",
                 "CREATE CONSTRAINT requirement_property_code IF NOT EXISTS FOR (p:RequirementProperty) REQUIRE p.code IS UNIQUE",
@@ -80,6 +82,7 @@ class Neo4jSchemaInitializerTest {
                 "CREATE INDEX requirement_type IF NOT EXISTS FOR (r:Requirement) ON (r.type)",
                 "CREATE INDEX requirement_property IF NOT EXISTS FOR (r:Requirement) ON (r.property)",
                 "CREATE INDEX requirement_raw_text IF NOT EXISTS FOR (r:Requirement) ON (r.rawText)",
+                "CREATE INDEX action_text IF NOT EXISTS FOR (a:Action) ON (a.actionText)",
                 "CREATE INDEX requirement_element_text IF NOT EXISTS FOR (e:RequirementElement) ON (e.text)"
             );
         verify(session).close();
@@ -105,9 +108,11 @@ class Neo4jSchemaInitializerTest {
                 "UNWIND $relationTypes AS relationType MERGE (t:RequirementRelationType {code: relationType.code}) SET t.label = relationType.label",
                 "UNWIND $allowedRelations AS relation MERGE (:AllowedRequirementRelation { sourceTypeCode: relation.sourceTypeCode, relationTypeCode: relation.relationTypeCode, targetTypeCode: relation.targetTypeCode })",
                 "UNWIND $requirements AS requirement MERGE (r:Requirement {id: requirement.id}) SET r.rawText = requirement.rawText, r.type = requirement.type, r.property = requirement.property, r.sample = true MERGE (p:Provenance {id: requirement.provenanceId}) SET p.source = 'sample', p.rawText = requirement.rawText MERGE (r)-[:HAS_PROVENANCE]->(p)",
-                "UNWIND $requirementElements AS element MATCH (r:Requirement {id: element.requirementId}) MERGE (e:RequirementElement {id: element.id}) SET e.type = element.type, e.text = element.text, e.sample = true MERGE (r)-[:HAS_REQUIREMENT_ELEMENT]->(e)",
+                "UNWIND $actions AS action MATCH (r:Requirement {id: action.requirementId}) MERGE (a:Action {id: action.id}) SET a.actionText = action.actionText, a.requirementId = action.requirementId, a.sample = true MERGE (r)-[:HAS_ACTION]->(a)",
+                "UNWIND $requirementElements AS element MATCH (a:Action {id: element.actionId}) MERGE (e:RequirementElement {id: element.id}) SET e.type = element.type, e.text = element.text, e.sample = true MERGE (a)-[:HAS_REQUIREMENT_ELEMENT]->(e)",
                 "MATCH (need:Requirement {id: $needId}) MATCH (goal:Requirement {id: $goalId}) MERGE (need)-[:SATISFIES]->(goal)",
-                "MATCH (requirement:Requirement {id: $requirementId}) MATCH (need:Requirement {id: $needId}) MERGE (requirement)-[:REFINES]->(need)"
+                "UNWIND $refinesRelations AS relation MATCH (requirement:Requirement {id: relation.sourceRequirementId}) MATCH (need:Requirement {id: relation.targetRequirementId}) MERGE (requirement)-[:REFINES]->(need)",
+                "UNWIND $dependsOnRelations AS relation MATCH (source:Requirement {id: relation.sourceRequirementId}) MATCH (target:Requirement {id: relation.targetRequirementId}) MERGE (source)-[:DEPENDS_ON]->(target)"
             );
 
         assertThat(parameters.getAllValues())
@@ -124,8 +129,121 @@ class Neo4jSchemaInitializerTest {
             )
             .anySatisfy(parameter ->
                 assertThat(parameter)
-                    .containsEntry("requirementId", "sample-requirement-1")
-                    .containsEntry("needId", "sample-need-1")
+                    .containsKey("requirements")
+                    .extractingByKey("requirements")
+                    .asList()
+                    .contains(
+                        Map.of(
+                            "id",
+                            "sample-requirement-3",
+                            "rawText",
+                            "The support dashboard must display failed payment attempts with customer account, timestamp, and standard reason category within five seconds.",
+                            "type",
+                            "REQUIREMENT",
+                            "property",
+                            "FUNCTIONAL",
+                            "provenanceId",
+                            "sample-provenance-requirement-3"
+                        ),
+                        Map.of(
+                            "id",
+                            "sample-requirement-4",
+                            "rawText",
+                            "The billing audit store must retain failed payment attempt records for 90 days in encrypted storage.",
+                            "type",
+                            "REQUIREMENT",
+                            "property",
+                            "QUALITY",
+                            "provenanceId",
+                            "sample-provenance-requirement-4"
+                        )
+                    )
+            )
+            .anySatisfy(parameter ->
+                assertThat(parameter)
+                    .containsKey("actions")
+                    .extractingByKey("actions")
+                    .asList()
+                    .contains(
+                        Map.of(
+                            "id",
+                            "sample-action-1",
+                            "requirementId",
+                            "sample-requirement-1",
+                            "actionText",
+                            "log"
+                        ),
+                        Map.of(
+                            "id",
+                            "sample-action-3",
+                            "requirementId",
+                            "sample-requirement-3",
+                            "actionText",
+                            "display"
+                        )
+                    )
+            )
+            .anySatisfy(parameter ->
+                assertThat(parameter)
+                    .containsKey("requirementElements")
+                    .extractingByKey("requirementElements")
+                    .asList()
+                    .contains(
+                        Map.of(
+                            "id",
+                            "sample-requirement-element-1-subject",
+                            "actionId",
+                            "sample-action-1",
+                            "type",
+                            "SUBJECT",
+                            "text",
+                            "billing service"
+                        ),
+                        Map.of(
+                            "id",
+                            "sample-requirement-element-2-condition",
+                            "actionId",
+                            "sample-action-2",
+                            "type",
+                            "CONDITION",
+                            "text",
+                            "before the billing service logs a failed payment attempt"
+                        )
+                    )
+            )
+            .anySatisfy(parameter ->
+                assertThat(parameter)
+                    .containsKey("refinesRelations")
+                    .extractingByKey("refinesRelations")
+                    .asList()
+                    .contains(
+                        Map.of(
+                            "sourceRequirementId",
+                            "sample-requirement-3",
+                            "targetRequirementId",
+                            "sample-need-1"
+                        )
+                    )
+            )
+            .anySatisfy(parameter ->
+                assertThat(parameter)
+                    .containsKey("dependsOnRelations")
+                    .extractingByKey("dependsOnRelations")
+                    .asList()
+                    .contains(
+                        Map.of(
+                            "sourceRequirementId",
+                            "sample-requirement-3",
+                            "targetRequirementId",
+                            "sample-requirement-1"
+                        ),
+                        Map.of(
+                            "sourceRequirementId",
+                            "sample-requirement-4",
+                            "targetRequirementId",
+                            "sample-requirement-1"
+                        )
+                    )
             );
     }
 

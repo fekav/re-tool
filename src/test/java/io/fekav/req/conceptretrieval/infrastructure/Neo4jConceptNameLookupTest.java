@@ -61,11 +61,11 @@ class Neo4jConceptNameLookupTest {
     }
 
     @Test
-    void returnsConceptNameCandidatesInDeterministicGraphOrder() {
+    void returnsRequirementElementCandidatesInDeterministicGraphOrder() {
         // Given
         when(result.stream()).thenReturn(Stream.of(
-            record("concept-1", "Billing API", "SystemComponent"),
-            record("concept-2", "Billing Service", null)
+            record("sample-requirement-element-1-subject", "billing service", "SUBJECT"),
+            record("sample-requirement-element-2-subject", "payment adapter", "SUBJECT")
         ));
 
         // When
@@ -79,26 +79,63 @@ class Neo4jConceptNameLookupTest {
                 candidate -> candidate.conceptType()
             )
             .containsExactly(
-                tuple("concept-1", "Billing API", "SystemComponent"),
-                tuple("concept-2", "Billing Service", null)
+                tuple("sample-requirement-element-1-subject", "billing service", "SUBJECT"),
+                tuple("sample-requirement-element-2-subject", "payment adapter", "SUBJECT")
             );
 
         ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
         verify(transaction).run(query.capture(), parameters.capture());
         assertThat(singleLine(query.getValue()))
-            .contains("candidate.label = $text")
+            .contains("MATCH (candidate:RequirementElement)")
             .contains("candidate.text = $text")
-            .contains("candidate.alias = $text")
-            .contains("$text IN coalesce(candidate.aliases, [])")
-            .contains("candidate.requirementElement IS NULL")
-            .contains("candidate.requirementElement = $requirementElement")
+            .contains("candidate.type = $requirementElement")
+            .contains("toString(coalesce(candidate.id, candidate.text)) AS candidateKey")
             .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
+            .doesNotContain("candidate.label")
+            .doesNotContain("candidate.alias")
+            .doesNotContain("candidate.requirementElement")
+            .doesNotContain("candidate.actionText")
             .doesNotContain("$allowedConceptTypes");
         assertThat(parameters.getValue())
             .containsEntry("text", "billing service")
             .containsEntry("requirementElement", "SUBJECT")
             .containsOnlyKeys("text", "requirementElement");
+        verify(session).close();
+    }
+
+    @Test
+    void returnsActionCandidatesByActionText() {
+        // Given
+        when(result.stream()).thenReturn(Stream.of(
+            record("sample-action-1", "log", "ACTION")
+        ));
+
+        // When
+        var candidates = lookup.findCandidates(new RequirementElement(RequirementElementType.ACTION, "log"));
+
+        // Then
+        assertThat(candidates)
+            .extracting(
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.conceptType()
+            )
+            .containsExactly(tuple("sample-action-1", "log", "ACTION"));
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
+        verify(transaction).run(query.capture(), parameters.capture());
+        assertThat(singleLine(query.getValue()))
+            .contains("MATCH (candidate:Action)")
+            .contains("candidate.actionText = $text")
+            .contains("RETURN candidateKey, candidateLabel, 'ACTION' AS conceptType")
+            .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
+            .doesNotContain("candidate.type = $requirementElement")
+            .doesNotContain("RequirementElement");
+        assertThat(parameters.getValue())
+            .containsEntry("text", "log")
+            .containsOnlyKeys("text");
         verify(session).close();
     }
 

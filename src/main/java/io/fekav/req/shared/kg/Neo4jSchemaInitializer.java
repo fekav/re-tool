@@ -17,6 +17,12 @@ public class Neo4jSchemaInitializer {
     private static final String SAMPLE_GOAL_ID = "sample-goal-1";
     private static final String SAMPLE_NEED_ID = "sample-need-1";
     private static final String SAMPLE_REQUIREMENT_ID = "sample-requirement-1";
+    private static final String SAMPLE_REASON_CATEGORY_REQUIREMENT_ID =
+        "sample-requirement-2";
+    private static final String SAMPLE_DASHBOARD_REQUIREMENT_ID =
+        "sample-requirement-3";
+    private static final String SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID =
+        "sample-requirement-4";
 
     private static final List<String> SCHEMA_STATEMENTS = List.of(
         """
@@ -30,6 +36,14 @@ public class Neo4jSchemaInitializer {
         """
         CREATE CONSTRAINT requirement_element_id IF NOT EXISTS
         FOR (e:RequirementElement) REQUIRE e.id IS UNIQUE
+        """,
+        """
+        CREATE CONSTRAINT action_id IF NOT EXISTS
+        FOR (a:Action) REQUIRE a.id IS UNIQUE
+        """,
+        """
+        CREATE CONSTRAINT action_requirement_id IF NOT EXISTS
+        FOR (a:Action) REQUIRE a.requirementId IS UNIQUE
         """,
         """
         CREATE CONSTRAINT requirement_type_code IF NOT EXISTS
@@ -79,6 +93,10 @@ public class Neo4jSchemaInitializer {
         """
         CREATE INDEX requirement_raw_text IF NOT EXISTS
         FOR (r:Requirement) ON (r.rawText)
+        """,
+        """
+        CREATE INDEX action_text IF NOT EXISTS
+        FOR (a:Action) ON (a.actionText)
         """,
         """
         CREATE INDEX requirement_element_text IF NOT EXISTS
@@ -180,6 +198,77 @@ public class Neo4jSchemaInitializer {
             "FUNCTIONAL",
             "provenanceId",
             "sample-provenance-requirement-1"
+        ),
+        Map.of(
+            "id",
+            SAMPLE_REASON_CATEGORY_REQUIREMENT_ID,
+            "rawText",
+            "The payment adapter must normalize provider decline codes into standard reason categories before the billing service logs a failed payment attempt.",
+            "type",
+            "REQUIREMENT",
+            "property",
+            "FUNCTIONAL",
+            "provenanceId",
+            "sample-provenance-requirement-2"
+        ),
+        Map.of(
+            "id",
+            SAMPLE_DASHBOARD_REQUIREMENT_ID,
+            "rawText",
+            "The support dashboard must display failed payment attempts with customer account, timestamp, and standard reason category within five seconds.",
+            "type",
+            "REQUIREMENT",
+            "property",
+            "FUNCTIONAL",
+            "provenanceId",
+            "sample-provenance-requirement-3"
+        ),
+        Map.of(
+            "id",
+            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+            "rawText",
+            "The billing audit store must retain failed payment attempt records for 90 days in encrypted storage.",
+            "type",
+            "REQUIREMENT",
+            "property",
+            "QUALITY",
+            "provenanceId",
+            "sample-provenance-requirement-4"
+        )
+    );
+
+    private static final List<Map<String, String>> SAMPLE_ACTIONS = List.of(
+        Map.of(
+            "id",
+            "sample-action-1",
+            "requirementId",
+            SAMPLE_REQUIREMENT_ID,
+            "actionText",
+            "log"
+        ),
+        Map.of(
+            "id",
+            "sample-action-2",
+            "requirementId",
+            SAMPLE_REASON_CATEGORY_REQUIREMENT_ID,
+            "actionText",
+            "normalize"
+        ),
+        Map.of(
+            "id",
+            "sample-action-3",
+            "requirementId",
+            SAMPLE_DASHBOARD_REQUIREMENT_ID,
+            "actionText",
+            "display"
+        ),
+        Map.of(
+            "id",
+            "sample-action-4",
+            "requirementId",
+            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+            "actionText",
+            "retain"
         )
     );
 
@@ -187,8 +276,8 @@ public class Neo4jSchemaInitializer {
         Map.of(
             "id",
             "sample-requirement-element-1-subject",
-            "requirementId",
-            SAMPLE_REQUIREMENT_ID,
+            "actionId",
+            "sample-action-1",
             "type",
             "SUBJECT",
             "text",
@@ -196,19 +285,9 @@ public class Neo4jSchemaInitializer {
         ),
         Map.of(
             "id",
-            "sample-requirement-element-1-action",
-            "requirementId",
-            SAMPLE_REQUIREMENT_ID,
-            "type",
-            "ACTION",
-            "text",
-            "log"
-        ),
-        Map.of(
-            "id",
             "sample-requirement-element-1-object",
-            "requirementId",
-            SAMPLE_REQUIREMENT_ID,
+            "actionId",
+            "sample-action-1",
             "type",
             "OBJECT",
             "text",
@@ -217,14 +296,158 @@ public class Neo4jSchemaInitializer {
         Map.of(
             "id",
             "sample-requirement-element-1-constraint",
-            "requirementId",
-            SAMPLE_REQUIREMENT_ID,
+            "actionId",
+            "sample-action-1",
             "type",
             "CONSTRAINT",
             "text",
             "with reason codes"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-2-subject",
+            "actionId",
+            "sample-action-2",
+            "type",
+            "SUBJECT",
+            "text",
+            "payment adapter"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-2-object",
+            "actionId",
+            "sample-action-2",
+            "type",
+            "OBJECT",
+            "text",
+            "provider decline codes"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-2-condition",
+            "actionId",
+            "sample-action-2",
+            "type",
+            "CONDITION",
+            "text",
+            "before the billing service logs a failed payment attempt"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-2-constraint",
+            "actionId",
+            "sample-action-2",
+            "type",
+            "CONSTRAINT",
+            "text",
+            "into standard reason categories"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-3-subject",
+            "actionId",
+            "sample-action-3",
+            "type",
+            "SUBJECT",
+            "text",
+            "support dashboard"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-3-object",
+            "actionId",
+            "sample-action-3",
+            "type",
+            "OBJECT",
+            "text",
+            "failed payment attempts"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-3-constraint",
+            "actionId",
+            "sample-action-3",
+            "type",
+            "CONSTRAINT",
+            "text",
+            "with customer account, timestamp, and standard reason category within five seconds"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-4-subject",
+            "actionId",
+            "sample-action-4",
+            "type",
+            "SUBJECT",
+            "text",
+            "billing audit store"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-4-object",
+            "actionId",
+            "sample-action-4",
+            "type",
+            "OBJECT",
+            "text",
+            "failed payment attempt records"
+        ),
+        Map.of(
+            "id",
+            "sample-requirement-element-4-constraint",
+            "actionId",
+            "sample-action-4",
+            "type",
+            "CONSTRAINT",
+            "text",
+            "for 90 days in encrypted storage"
         )
     );
+
+    private static final List<Map<String, String>> SAMPLE_REFINES_RELATIONS =
+        List.of(
+            Map.of(
+                "sourceRequirementId",
+                SAMPLE_REQUIREMENT_ID,
+                "targetRequirementId",
+                SAMPLE_NEED_ID
+            ),
+            Map.of(
+                "sourceRequirementId",
+                SAMPLE_DASHBOARD_REQUIREMENT_ID,
+                "targetRequirementId",
+                SAMPLE_NEED_ID
+            ),
+            Map.of(
+                "sourceRequirementId",
+                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+                "targetRequirementId",
+                SAMPLE_NEED_ID
+            )
+        );
+
+    private static final List<Map<String, String>> SAMPLE_DEPENDS_ON_RELATIONS =
+        List.of(
+            Map.of(
+                "sourceRequirementId",
+                SAMPLE_REQUIREMENT_ID,
+                "targetRequirementId",
+                SAMPLE_REASON_CATEGORY_REQUIREMENT_ID
+            ),
+            Map.of(
+                "sourceRequirementId",
+                SAMPLE_DASHBOARD_REQUIREMENT_ID,
+                "targetRequirementId",
+                SAMPLE_REQUIREMENT_ID
+            ),
+            Map.of(
+                "sourceRequirementId",
+                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+                "targetRequirementId",
+                SAMPLE_REQUIREMENT_ID
+            )
+        );
 
     private final Driver driver;
 
@@ -321,13 +544,26 @@ public class Neo4jSchemaInitializer {
 
             tx.run(
                 """
+                UNWIND $actions AS action
+                MATCH (r:Requirement {id: action.requirementId})
+                MERGE (a:Action {id: action.id})
+                SET a.actionText = action.actionText,
+                    a.requirementId = action.requirementId,
+                    a.sample = true
+                MERGE (r)-[:HAS_ACTION]->(a)
+                """,
+                parameters("actions", SAMPLE_ACTIONS)
+            );
+
+            tx.run(
+                """
                 UNWIND $requirementElements AS element
-                MATCH (r:Requirement {id: element.requirementId})
+                MATCH (a:Action {id: element.actionId})
                 MERGE (e:RequirementElement {id: element.id})
                 SET e.type = element.type,
                     e.text = element.text,
                     e.sample = true
-                MERGE (r)-[:HAS_REQUIREMENT_ELEMENT]->(e)
+                MERGE (a)-[:HAS_REQUIREMENT_ELEMENT]->(e)
                 """,
                 parameters("requirementElements", SAMPLE_REQUIREMENT_ELEMENTS)
             );
@@ -343,16 +579,22 @@ public class Neo4jSchemaInitializer {
 
             tx.run(
                 """
-                MATCH (requirement:Requirement {id: $requirementId})
-                MATCH (need:Requirement {id: $needId})
+                UNWIND $refinesRelations AS relation
+                MATCH (requirement:Requirement {id: relation.sourceRequirementId})
+                MATCH (need:Requirement {id: relation.targetRequirementId})
                 MERGE (requirement)-[:REFINES]->(need)
                 """,
-                Map.of(
-                    "requirementId",
-                    SAMPLE_REQUIREMENT_ID,
-                    "needId",
-                    SAMPLE_NEED_ID
-                )
+                parameters("refinesRelations", SAMPLE_REFINES_RELATIONS)
+            );
+
+            tx.run(
+                """
+                UNWIND $dependsOnRelations AS relation
+                MATCH (source:Requirement {id: relation.sourceRequirementId})
+                MATCH (target:Requirement {id: relation.targetRequirementId})
+                MERGE (source)-[:DEPENDS_ON]->(target)
+                """,
+                parameters("dependsOnRelations", SAMPLE_DEPENDS_ON_RELATIONS)
             );
 
             return null;

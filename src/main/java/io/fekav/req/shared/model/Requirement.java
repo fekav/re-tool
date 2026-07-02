@@ -6,8 +6,6 @@ import java.util.Objects;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.req.classification.domain.Classification;
-import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
-import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.syntaxextraction.domain.Action;
 
 // Domain Model / Aggregat-Root
@@ -15,6 +13,7 @@ public class Requirement {
     private final RequirementId id;
     private final RawText rawText;
     private RequirementStatus status;
+    private Provenance provenance;
     private Action action;
     private Classification classificationResult;
     private final List<DomainEvent> domainEvents = new ArrayList<>();
@@ -37,13 +36,19 @@ public class Requirement {
         return rawText;
     }
 
+    public void applyProvenance(Provenance provenance) {
+        assertProvenanceHasNotAlreadyBeenApplied();
+
+        this.provenance = Objects.requireNonNull(
+            provenance,
+            "provenance must not be null"
+        );
+        this.status = RequirementStatus.INGESTED;
+    }
+
     public void applyExtraction(Action action) {
         this.action = Objects.requireNonNull(action, "action must not be null");
         this.status = RequirementStatus.EXTRACTED;
-        
-        domainEvents.add(
-            RequirementElementsExtractedEvent.create(this.rawText, action)
-        );
     }
 
     public void applyClassification(Classification classification) {
@@ -52,10 +57,6 @@ public class Requirement {
             "classification must not be null"
         );
         this.status = RequirementStatus.CLASSIFIED;
-
-        domainEvents.add(
-            RequirementClassifiedEvent.create(this.rawText, classification)
-        );
     }
 
     public RequirementStatus getStatus() {
@@ -64,7 +65,11 @@ public class Requirement {
 
     public RequirementId getId() {
         return id;
-    }       
+    }
+
+    public Provenance getProvenance() {
+        return provenance;
+    }
 
     public List<DomainEvent> domainEvents() {
         return List.copyOf(domainEvents);
@@ -72,6 +77,12 @@ public class Requirement {
 
     public void clearEvents() {
         domainEvents.clear();
+    }
+
+    private void assertProvenanceHasNotAlreadyBeenApplied() {
+        if (this.provenance != null) {
+            throw new IllegalStateException("provenance already applied");
+        }
     }
     
 }
