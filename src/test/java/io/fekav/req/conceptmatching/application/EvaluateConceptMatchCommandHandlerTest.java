@@ -21,6 +21,7 @@ import io.fekav.req.conceptmatching.domain.ConceptMatchingService;
 import io.fekav.req.shared.event.ConceptMatchEvaluatedEvent;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CorrelationId;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
@@ -35,6 +36,7 @@ class EvaluateConceptMatchCommandHandlerTest {
     @Test
     void returnsConceptMatchEvaluatedEventAndPublishesSameEvent_whenMatchingSucceeds() {
         // Given
+        CorrelationId correlationId = CorrelationId.create();
         List<CandidateConceptMatch> handledMatches = new ArrayList<>();
         ConceptMatchingPolicy policy = match -> {
             handledMatches.add(match);
@@ -52,12 +54,13 @@ class EvaluateConceptMatchCommandHandlerTest {
                 1.0
             ))
         );
-        EvaluateConceptMatchCommand command = new EvaluateConceptMatchCommand(match);
+        EvaluateConceptMatchCommand command = new EvaluateConceptMatchCommand(correlationId, match);
 
         // When
         ConceptMatchEvaluatedEvent result = handler.handle(command);
 
         // Then
+        assertThat(result.correlationId()).isEqualTo(correlationId);
         assertThat(result.match()).isEqualTo(match);
         assertThat(result.decision().selectedTerm())
             .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));

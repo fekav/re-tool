@@ -15,6 +15,7 @@ import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
+import io.fekav.req.shared.model.CorrelationId;
 import io.fekav.req.shared.model.RawText;
 
 class ClassifyRequirementCommandHandlerTest {
@@ -29,6 +30,7 @@ class ClassifyRequirementCommandHandlerTest {
 
     @Test
     void returnsRequirementClassifiedEventAndPublishesSameEvent_whenClassificationSucceeds() {
+        CorrelationId correlationId = CorrelationId.create();
         String rawText = "The checkout page must load within 2 seconds on a 4G connection.";
         Classification classification = requirementClassification(
             RequirementType.REQUIREMENT,
@@ -39,8 +41,11 @@ class ClassifyRequirementCommandHandlerTest {
         when(requirementClassificationService.classifyRequirement(new RawText(rawText)))
             .thenReturn(classification);
 
-        RequirementClassifiedEvent result = handler.handle(new ClassifyRequirementCommand(rawText));
+        RequirementClassifiedEvent result = handler.handle(
+            new ClassifyRequirementCommand(correlationId, rawText)
+        );
 
+        assertThat(result.correlationId()).isEqualTo(correlationId);
         assertThat(result.rawText()).isEqualTo(new RawText(rawText));
         assertThat(result.classification()).isEqualTo(classification);
         verify(requirementClassificationService).classifyRequirement(new RawText(rawText));

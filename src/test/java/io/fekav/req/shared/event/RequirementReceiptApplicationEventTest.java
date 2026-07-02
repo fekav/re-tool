@@ -15,6 +15,7 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
+import io.fekav.req.shared.model.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -37,6 +38,7 @@ class RequirementReceiptApplicationEventTest {
         // Assert
         assertThat(event).isInstanceOf(ApplicationEvent.class);
         assertThat(event).isNotInstanceOf(DomainEvent.class);
+        assertThat(event.correlationId()).isNotNull();
     }
 
     @Test
@@ -46,14 +48,18 @@ class RequirementReceiptApplicationEventTest {
 
         // Assert
         assertThat(componentNames)
-            .containsExactly("eventId", "occurredAt", "provenance")
+            .containsExactly("eventId", "occurredAt", "correlationId", "provenance")
             .doesNotContain("requirementId", "rawText");
     }
 
     @Test
     void isApplicationEvent_whenRequirementIsClassified() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+
         // Act
         RequirementClassifiedEvent event = RequirementClassifiedEvent.create(
+            correlationId,
             new RawText("The checkout service must support guest checkout."),
             classification()
         );
@@ -61,12 +67,17 @@ class RequirementReceiptApplicationEventTest {
         // Assert
         assertThat(event).isInstanceOf(ApplicationEvent.class);
         assertThat(event).isNotInstanceOf(DomainEvent.class);
+        assertThat(event.correlationId()).isEqualTo(correlationId);
     }
 
     @Test
     void isApplicationEvent_whenRequirementElementsAreExtracted() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+
         // Act
         RequirementElementsExtractedEvent event = RequirementElementsExtractedEvent.create(
+            correlationId,
             new RawText("The dashboard shall export metrics."),
             action()
         );
@@ -74,6 +85,7 @@ class RequirementReceiptApplicationEventTest {
         // Assert
         assertThat(event).isInstanceOf(ApplicationEvent.class);
         assertThat(event).isNotInstanceOf(DomainEvent.class);
+        assertThat(event.correlationId()).isEqualTo(correlationId);
     }
 
     private String[] recordComponentNames(Class<? extends Record> recordType) {

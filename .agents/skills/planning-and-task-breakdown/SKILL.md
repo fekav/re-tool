@@ -29,6 +29,7 @@ Before writing any code, operate in read-only mode:
 - Identify existing patterns and conventions
 - Map dependencies between components
 - Note risks and unknowns
+- Note missing architecture decisions
 
 **Do NOT write code during planning.** The output is a plan document, not implementation.
 
@@ -220,14 +221,15 @@ When multiple agents or sessions are available:
 - All tasks are XL-sized
 - No checkpoints between tasks
 - Dependency order isn't considered
+- implicit architecture decisions made without asking user
 
 ## Verification
 
 Before starting implementation, confirm:
 
-- [ ] Every task has acceptance criteria
+- [ ] Every task has acceptance criteria    
 - [ ] Every task has a verification step
-- [ ] Every input, every output, every artifact or similar work items are named explicitly
+- [ ] Every input, every output, every artif    act or similar work items are named explicitly
 - [ ] Task dependencies are identified and ordered correctly
 - [ ] No task touches more than ~5 files
 - [ ] Checkpoints exist between major phases

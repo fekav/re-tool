@@ -18,6 +18,7 @@ import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
 import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CorrelationId;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
@@ -32,6 +33,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
     @Test
     void returnsConceptCandidatesRetrievedEventAndPublishesSameEvent_whenRetrievalSucceeds() {
         // Given
+        CorrelationId correlationId = CorrelationId.create();
         List<RequirementElement> retrievedTerms = new ArrayList<>();
         ConceptRetrievalPolicy policy = selectedTerm -> {
             retrievedTerms.add(selectedTerm);
@@ -40,6 +42,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         RetrieveCandidateConceptsCommandHandler handler =
             handlerWith(policy);
         RetrieveCandidateConceptsCommand command = new RetrieveCandidateConceptsCommand(
+            correlationId,
             new RequirementElement(RequirementElementType.SUBJECT,
                 " billing service "
             )
@@ -49,6 +52,7 @@ class RetrieveCandidateConceptsCommandHandlerTest {
         ConceptCandidatesRetrievedEvent result = handler.handle(command);
 
         // Then
+        assertThat(result.correlationId()).isEqualTo(correlationId);
         assertThat(retrievedTerms)
             .containsExactly(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(result.match().requirementElement())

@@ -28,7 +28,11 @@ public class EvaluateConceptMatchCommandHandler
     public ConceptMatchEvaluatedEvent handle(EvaluateConceptMatchCommand command) {
         ConceptMatchDecision decision = conceptMatchingService.evaluateMatch(command.match());
         ConceptMatchEvaluatedEvent event =
-            ConceptMatchEvaluatedEvent.create(command.match(), decision);
+            ConceptMatchEvaluatedEvent.create(
+                command.correlationId(),
+                command.match(),
+                decision
+            );
 
         eventPublisher.publish(event);
 

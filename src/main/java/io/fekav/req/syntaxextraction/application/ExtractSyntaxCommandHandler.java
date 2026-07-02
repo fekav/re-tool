@@ -34,7 +34,11 @@ public class ExtractSyntaxCommandHandler
     public RequirementElementsExtractedEvent handle(ExtractSyntaxCommand command) {
         RawText rawRequirementText = new RawText(command.rawText());
         Action action = syntaxExtraction.extractSyntax(rawRequirementText);
-        RequirementElementsExtractedEvent event = RequirementElementsExtractedEvent.create(rawRequirementText, action);
+        RequirementElementsExtractedEvent event = RequirementElementsExtractedEvent.create(
+            command.correlationId(),
+            rawRequirementText,
+            action
+        );
 
         eventPublisher.publish(event);
 

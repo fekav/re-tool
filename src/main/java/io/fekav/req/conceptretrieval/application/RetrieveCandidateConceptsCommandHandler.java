@@ -28,7 +28,8 @@ public class RetrieveCandidateConceptsCommandHandler
     public ConceptCandidatesRetrievedEvent handle(RetrieveCandidateConceptsCommand command) {
         CandidateConceptMatch match =
             conceptRetrievalService.retrieveCandidates(command.requirementElement());
-        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(match);
+        ConceptCandidatesRetrievedEvent event =
+            ConceptCandidatesRetrievedEvent.create(command.correlationId(), match);
 
         eventPublisher.publish(event);
 

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
+import io.fekav.req.shared.model.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.RawText;
 import io.fekav.req.syntaxextraction.domain.Action;
@@ -29,13 +30,16 @@ class ExtractEntitiesCommandHandlerTest {
 
     @Test
     void returnsSyntaxExtractedEventAndPublishesSameEvent_whenExtractionSucceeds() {
+        CorrelationId correlationId = CorrelationId.create();
         String rawText = "The reporting dashboard shall export monthly usage metrics.";
         Action action = action();
         when(syntaxExtraction.extractSyntax(new RawText(rawText)))
             .thenReturn(action);
 
-        RequirementElementsExtractedEvent result = handler.handle(new ExtractSyntaxCommand(rawText));
+        RequirementElementsExtractedEvent result =
+            handler.handle(new ExtractSyntaxCommand(correlationId, rawText));
 
+        assertThat(result.correlationId()).isEqualTo(correlationId);
         assertThat(result.rawText()).isEqualTo(new RawText(rawText));
         assertThat(result.action()).isEqualTo(action);
         verify(syntaxExtraction).extractSyntax(new RawText(rawText));

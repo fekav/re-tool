@@ -32,7 +32,11 @@ public class ClassifyRequirementCommandHandler
         Classification requirementClassification =
             requirementClassificationService.classifyRequirement(rawRequirementText);
         RequirementClassifiedEvent event =
-            RequirementClassifiedEvent.create(rawRequirementText, requirementClassification);
+            RequirementClassifiedEvent.create(
+                command.correlationId(),
+                rawRequirementText,
+                requirementClassification
+            );
 
         eventPublisher.publish(event);
 

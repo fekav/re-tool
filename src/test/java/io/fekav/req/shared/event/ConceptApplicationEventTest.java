@@ -13,6 +13,7 @@ import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CorrelationId;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;
@@ -23,34 +24,38 @@ class ConceptApplicationEventTest {
     @Test
     void createConceptCandidatesRetrievedEvent_preservesMatchWithCandidatesAndSetsMetadata() {
         // Given
+        CorrelationId correlationId = CorrelationId.create();
         CandidateConceptMatch match = matchWithCandidates(
             new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             candidate("concept-1")
         );
 
         // When
-        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(match);
+        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(correlationId, match);
 
         // Then
         assertThat(event).isInstanceOf(ApplicationEvent.class);
         assertThat(event).isNotInstanceOf(DomainEvent.class);
         assertThat(event.eventId()).isNotNull();
         assertThat(event.occurredAt()).isNotNull();
+        assertThat(event.correlationId()).isEqualTo(correlationId);
         assertThat(event.match()).isEqualTo(match);
     }
 
     @Test
     void createConceptCandidatesRetrievedEvent_preservesMatchWithoutCandidates() {
         // Given
+        CorrelationId correlationId = CorrelationId.create();
         CandidateConceptMatch match = new CandidateConceptMatch(
             new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             List.of()
         );
 
         // When
-        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(match);
+        ConceptCandidatesRetrievedEvent event = ConceptCandidatesRetrievedEvent.create(correlationId, match);
 
         // Then
+        assertThat(event.correlationId()).isEqualTo(correlationId);
         assertThat(event.match()).isEqualTo(match);
         assertThat(event.match().candidates()).isEmpty();
     }
@@ -58,6 +63,7 @@ class ConceptApplicationEventTest {
     @Test
     void createConceptMatchEvaluatedEvent_preservesMatchAndDecisionWithMetadata() {
         // Given
+        CorrelationId correlationId = CorrelationId.create();
         CandidateConceptMatch match = matchWithCandidates(
             new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             candidate("concept-1")
@@ -65,13 +71,14 @@ class ConceptApplicationEventTest {
         ConceptMatchDecision decision = autoMapExistingDecision();
 
         // When
-        ConceptMatchEvaluatedEvent event = ConceptMatchEvaluatedEvent.create(match, decision);
+        ConceptMatchEvaluatedEvent event = ConceptMatchEvaluatedEvent.create(correlationId, match, decision);
 
         // Then
         assertThat(event).isInstanceOf(ApplicationEvent.class);
         assertThat(event).isNotInstanceOf(DomainEvent.class);
         assertThat(event.eventId()).isNotNull();
         assertThat(event.occurredAt()).isNotNull();
+        assertThat(event.correlationId()).isEqualTo(correlationId);
         assertThat(event.match()).isEqualTo(match);
         assertThat(event.decision()).isEqualTo(decision);
     }

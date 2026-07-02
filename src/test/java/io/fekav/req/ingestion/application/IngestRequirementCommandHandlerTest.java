@@ -29,6 +29,7 @@ class IngestRequirementCommandHandlerTest {
 
         // Assert
         assertThat(result).isInstanceOf(ApplicationEvent.class);
+        assertThat(result.correlationId()).isNotNull();
         assertThat(result.provenance().getOriginalText().text()).isEqualTo(originalText);
         assertThat(result.provenance().getSourceMetadata()).isEqualTo(SourceMetadata.apiRequest());
         assertThat(result.provenance().getIngestedAt()).isEqualTo(result.occurredAt());
