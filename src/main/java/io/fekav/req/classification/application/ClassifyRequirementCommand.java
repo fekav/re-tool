@@ -2,7 +2,7 @@ package io.fekav.req.classification.application;
 
 import io.fekav.platform.cqrs.Command;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 
 public record ClassifyRequirementCommand(
     CorrelationId correlationId,

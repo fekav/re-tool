@@ -32,7 +32,7 @@ import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;

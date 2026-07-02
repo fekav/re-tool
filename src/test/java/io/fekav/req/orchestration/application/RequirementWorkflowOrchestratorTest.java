@@ -32,7 +32,7 @@ import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -119,10 +119,11 @@ class RequirementWorkflowOrchestratorTest {
     void dispatchesRetrievalForEveryExtractedRequirementElement() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
+        Action action = actionWithConditionAndConstraint();
         RequirementElementsExtractedEvent event = RequirementElementsExtractedEvent.create(
             correlationId,
             RAW_TEXT,
-            actionWithConditionAndConstraint()
+            action
         );
 
         // Act
@@ -150,6 +151,28 @@ class RequirementWorkflowOrchestratorTest {
     }
 
     @Test
+    void doesNotDispatchRetrievalAgain_whenEquivalentExtractionEventIsRedeliveredWithNewEventId() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+        Action action = actionWithConditionAndConstraint();
+
+        // Act
+        orchestrator.onRequirementElementsExtracted(RequirementElementsExtractedEvent.create(
+            correlationId,
+            RAW_TEXT,
+            action
+        ));
+        orchestrator.onRequirementElementsExtracted(RequirementElementsExtractedEvent.create(
+            correlationId,
+            RAW_TEXT,
+            action
+        ));
+
+        // Assert
+        assertThat(commandBus.commands()).hasSize(5);
+    }
+
+    @Test
     void dispatchesMatchingForRetrievedCandidateMatch() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
@@ -172,26 +195,65 @@ class RequirementWorkflowOrchestratorTest {
     }
 
     @Test
+    void doesNotDispatchMatchingAgain_whenEquivalentRetrievalEventIsRedeliveredWithNewEventId() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+        CandidateConceptMatch match = noCandidates(
+            new RequirementElement(RequirementElementType.SUBJECT, "login form")
+        );
+
+        // Act
+        orchestrator.onConceptCandidatesRetrieved(
+            ConceptCandidatesRetrievedEvent.create(correlationId, match)
+        );
+        orchestrator.onConceptCandidatesRetrieved(
+            ConceptCandidatesRetrievedEvent.create(correlationId, match)
+        );
+
+        // Assert
+        assertThat(commandBus.commands()).hasSize(1);
+    }
+
+    @Test
+    void doesNotDispatchMatching_whenRetrievedCandidateMatchIsNotExpected() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+        eventStore.appendIfAbsent(RequirementElementsExtractedEvent.create(
+            correlationId,
+            RAW_TEXT,
+            actionWithoutOptionalElements()
+        ));
+        CandidateConceptMatch unexpectedMatch = noCandidates(
+            new RequirementElement(RequirementElementType.CONDITION, "after logout")
+        );
+
+        // Act
+        orchestrator.onConceptCandidatesRetrieved(
+            ConceptCandidatesRetrievedEvent.create(correlationId, unexpectedMatch)
+        );
+
+        // Assert
+        assertThat(commandBus.commands()).isEmpty();
+    }
+
+    @Test
     void publishesCompletionOnce_whenClassifiedEventCompletesWorkflow() {
         // Arrange
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
         List<CandidateConceptMatch> matches = requiredMatches();
-        eventStore.appendIfAbsent(correlationId, ingestedEvent);
+        eventStore.appendIfAbsent(ingestedEvent);
         eventStore.appendIfAbsent(
-            correlationId,
             RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action)
         );
         matches.forEach(match ->
             eventStore.appendIfAbsent(
-                correlationId,
                 ConceptCandidatesRetrievedEvent.create(correlationId, match)
             )
         );
         matches.forEach(match ->
             eventStore.appendIfAbsent(
-                correlationId,
                 ConceptMatchEvaluatedEvent.create(
                     correlationId,
                     match,

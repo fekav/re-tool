@@ -20,7 +20,7 @@ import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
 import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.req.shared.model.ConceptMatchResult;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;

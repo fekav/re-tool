@@ -6,4 +6,6 @@ public interface ApplicationEvent {
     Instant occurredAt();
 
     EventId eventId();
+
+    CorrelationId correlationId();
 }

@@ -15,7 +15,7 @@ import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.RawText;
 
 class ClassifyRequirementCommandHandlerTest {

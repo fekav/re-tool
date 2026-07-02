@@ -18,7 +18,7 @@ import io.fekav.req.conceptretrieval.domain.ConceptRetrievalService;
 import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
 import io.fekav.req.shared.model.CandidateConcept;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateConcept;

@@ -1,9 +1,11 @@
 package io.fekav.req.orchestration.domain;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.req.classification.domain.Classification;
@@ -54,8 +56,8 @@ public final class WorkflowState {
         Classification classification = null;
         Action action = null;
         List<RequirementElement> expectedRequirementElements = List.of();
-        List<CandidateConceptMatch> retrievedCandidateMatches = new ArrayList<>();
-        List<ConceptMatchResult> conceptMatchResults = new ArrayList<>();
+        List<CandidateConceptMatch> allRetrievedCandidateMatches = new ArrayList<>();
+        List<ConceptMatchResult> allConceptMatchResults = new ArrayList<>();
 
         for (ApplicationEvent event : events) {
             Objects.requireNonNull(event, "events must not contain null");
@@ -71,24 +73,73 @@ public final class WorkflowState {
                 expectedRequirementElements = collector.collectFrom(extractedEvent.action());
             }
             if (event instanceof ConceptCandidatesRetrievedEvent retrievedEvent) {
-                retrievedCandidateMatches.add(retrievedEvent.match());
+                allRetrievedCandidateMatches.add(retrievedEvent.match());
             }
             if (event instanceof ConceptMatchEvaluatedEvent evaluatedEvent) {
-                conceptMatchResults.add(new ConceptMatchResult(
+                allConceptMatchResults.add(new ConceptMatchResult(
                     evaluatedEvent.match(),
                     evaluatedEvent.decision()
                 ));
             }
         }
 
+        List<CandidateConceptMatch> relevantRetrievedCandidateMatches =
+            filterRelevantRetrievedCandidateMatches(
+                expectedRequirementElements,
+                allRetrievedCandidateMatches
+            );
+        List<ConceptMatchResult> relevantConceptMatchResults =
+            filterRelevantConceptMatchResults(
+                allRetrievedCandidateMatches,
+                relevantRetrievedCandidateMatches,
+                allConceptMatchResults
+            );
+
         return new WorkflowState(
             Optional.ofNullable(provenance),
             Optional.ofNullable(classification),
             Optional.ofNullable(action),
             expectedRequirementElements,
-            retrievedCandidateMatches,
-            conceptMatchResults
+            relevantRetrievedCandidateMatches,
+            relevantConceptMatchResults
         );
+    }
+
+    private static List<CandidateConceptMatch> filterRelevantRetrievedCandidateMatches(
+        List<RequirementElement> expectedRequirementElements,
+        List<CandidateConceptMatch> retrievedCandidateMatches
+    ) {
+        if (expectedRequirementElements.isEmpty()) {
+            return distinctValues(retrievedCandidateMatches);
+        }
+
+        Set<RequirementElement> expectedElements =
+            new LinkedHashSet<>(expectedRequirementElements);
+        return distinctValues(retrievedCandidateMatches.stream()
+            .filter(match -> expectedElements.contains(match.requirementElement()))
+            .toList());
+    }
+
+    private static List<ConceptMatchResult> filterRelevantConceptMatchResults(
+        List<CandidateConceptMatch> allRetrievedCandidateMatches,
+        List<CandidateConceptMatch> relevantRetrievedCandidateMatches,
+        List<ConceptMatchResult> conceptMatchResults
+    ) {
+        if (allRetrievedCandidateMatches.isEmpty()) {
+            return distinctValues(conceptMatchResults);
+        }
+
+        Set<CandidateConceptMatch> relevantMatches =
+            new LinkedHashSet<>(relevantRetrievedCandidateMatches);
+        return distinctValues(conceptMatchResults.stream()
+            .filter(result -> relevantMatches.contains(result.match()))
+            .toList());
+    }
+
+    private static <T> List<T> distinctValues(List<T> values) {
+        return values.stream()
+            .distinct()
+            .toList();
     }
 
     public Optional<Provenance> provenance() {

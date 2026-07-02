@@ -1,4 +1,4 @@
-package io.fekav.req.shared.model;
+package io.fekav.platform.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -10,6 +10,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import io.fekav.platform.messaging.ApplicationEvent;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.classification.domain.Classification;
 import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
@@ -23,7 +24,6 @@ import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -81,6 +81,30 @@ class WorkflowStateTest {
         // Assert
         assertThat(state.retrievedCandidateMatches()).containsExactlyElementsOf(matches);
         assertThat(state.expectedMatchDecisionCount()).isEqualTo(3);
+        assertThat(state.isComplete()).isFalse();
+    }
+
+    @Test
+    void ignoresRetrievedCandidateMatches_whenRequirementElementWasNotExpected() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+        CandidateConceptMatch unexpectedMatch = noCandidates(
+            new RequirementElement(RequirementElementType.CONDITION, "after logout")
+        );
+
+        // Act
+        WorkflowState state = WorkflowState.replay(List.of(
+            RequirementElementsExtractedEvent.create(
+                correlationId,
+                RAW_TEXT,
+                actionWithoutOptionalElements()
+            ),
+            ConceptCandidatesRetrievedEvent.create(correlationId, unexpectedMatch)
+        ));
+
+        // Assert
+        assertThat(state.retrievedCandidateMatches()).isEmpty();
+        assertThat(state.expectedMatchDecisionCount()).isZero();
         assertThat(state.isComplete()).isFalse();
     }
 

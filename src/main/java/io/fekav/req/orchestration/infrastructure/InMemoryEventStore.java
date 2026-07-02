@@ -9,9 +9,9 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.fekav.platform.messaging.ApplicationEvent;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.platform.messaging.EventId;
 import io.fekav.req.orchestration.application.EventStore;
-import io.fekav.req.shared.model.CorrelationId;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
@@ -23,25 +23,26 @@ public class InMemoryEventStore implements EventStore {
         new HashMap<>();
 
     @Override
-    public synchronized boolean appendIfAbsent(
-        CorrelationId correlationId,
-        ApplicationEvent event
-    ) {
-        Objects.requireNonNull(correlationId, "correlationId must not be null");
+    public synchronized boolean appendIfAbsent(ApplicationEvent event) {
         Objects.requireNonNull(event, "event must not be null");
+        CorrelationId correlationId = Objects.requireNonNull(
+            event.correlationId(),
+            "event correlationId must not be null"
+        );
+        EventId eventId = Objects.requireNonNull(event.eventId(), "eventId must not be null");
 
         Set<EventId> eventIds = eventIdsByCorrelationId.computeIfAbsent(
             correlationId,
             ignored -> new HashSet<>()
         );
 
-        if (eventIds.contains(event.eventId())) {
+        if (eventIds.contains(eventId)) {
             return false;
         }
 
         eventsByCorrelationId.computeIfAbsent(correlationId, ignored -> new ArrayList<>())
             .add(event);
-        eventIds.add(event.eventId());
+        eventIds.add(eventId);
         return true;
     }
 

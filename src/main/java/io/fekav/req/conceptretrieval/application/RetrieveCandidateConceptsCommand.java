@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import io.fekav.platform.cqrs.Command;
 import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.RequirementElement;
 
 public record RetrieveCandidateConceptsCommand(

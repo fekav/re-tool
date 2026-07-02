@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.RawText;
 import io.fekav.req.syntaxextraction.domain.Action;

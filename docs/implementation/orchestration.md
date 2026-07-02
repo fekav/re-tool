@@ -22,7 +22,7 @@ the next required commands.
 
 - The orchestrator is a separate slice: `src/main/java/io/fekav/req/orchestration`.
 - `RequirementIngestedEvent` is the workflow start event.
-- `CorrelationId` is a shared value object in `io.fekav.req.shared.model`.
+- `CorrelationId` is a shared value object in `io.fekav.platform.messaging`.
 - Existing workflow commands and events carry the same `correlationId`.
 - No `RequirementId` is introduced in this workflow. A persisted requirement
   identity belongs to a later persist slice.
@@ -92,8 +92,8 @@ before a persistent requirement identity exists.
 
 **Files likely touched:**
 
-- `src/main/java/io/fekav/req/shared/model/CorrelationId.java`
-- `src/test/java/io/fekav/req/shared/model/CorrelationIdTest.java`
+- `src/main/java/io/fekav/platform/messaging/CorrelationId.java`
+- `src/test/java/io/fekav/platform/messaging/CorrelationIdTest.java`
 
 **Acceptance criteria:**
 
@@ -163,10 +163,9 @@ provide the first in-process implementation.
 
 **Acceptance criteria:**
 
-- `appendIfAbsent(CorrelationId, ApplicationEvent)` stores events by
-  correlation id and event id.
-- `appendIfAbsent(CorrelationId, ApplicationEvent)` returns whether the event
-  was newly stored.
+- `appendIfAbsent(ApplicationEvent)` stores events by the event's correlation
+  id and event id.
+- `appendIfAbsent(ApplicationEvent)` returns whether the event was newly stored.
 - `load(CorrelationId)` returns events in append order.
 - `load(CorrelationId)` returns an immutable copy.
 - The in-memory adapter is safe for the initial synchronous in-process workflow.

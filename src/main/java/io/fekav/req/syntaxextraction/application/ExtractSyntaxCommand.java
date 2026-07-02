@@ -2,7 +2,7 @@ package io.fekav.req.syntaxextraction.application;
 
 import io.fekav.platform.cqrs.Command;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 
 public record ExtractSyntaxCommand(
     CorrelationId correlationId,

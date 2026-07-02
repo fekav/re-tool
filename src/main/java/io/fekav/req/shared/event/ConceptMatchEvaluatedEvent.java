@@ -7,7 +7,7 @@ import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventId;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 
 public record ConceptMatchEvaluatedEvent(
     EventId eventId,

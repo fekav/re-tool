@@ -1,4 +1,4 @@
-package io.fekav.req.shared.model;
+package io.fekav.platform.messaging;
 
 import java.util.Objects;
 import java.util.UUID;

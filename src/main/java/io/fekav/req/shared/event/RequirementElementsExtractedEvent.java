@@ -5,7 +5,7 @@ import java.util.Objects;
 
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventId;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.RawText;
 import io.fekav.req.syntaxextraction.domain.Action;
 

@@ -5,7 +5,7 @@ import java.util.Objects;
 import io.fekav.platform.cqrs.Command;
 import io.fekav.req.shared.event.ConceptMatchEvaluatedEvent;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.CorrelationId;
+import io.fekav.platform.messaging.CorrelationId;
 
 public record EvaluateConceptMatchCommand(
     CorrelationId correlationId,
