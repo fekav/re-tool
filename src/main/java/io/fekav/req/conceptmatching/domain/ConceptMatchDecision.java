@@ -7,14 +7,14 @@ import io.fekav.req.shared.model.RetrievedCandidateConcept;
 import io.fekav.req.shared.model.RequirementElement;
 
 public record ConceptMatchDecision(
-    RequirementElement selectedTerm,
+    RequirementElement requirementElement,
     ConceptMatchDecisionStatus status,
     List<RetrievedCandidateConcept> candidates,
     String rationale
 ) {
 
     public ConceptMatchDecision {
-        Objects.requireNonNull(selectedTerm, "selectedTerm must not be null");
+        Objects.requireNonNull(requirementElement, "requirementElement must not be null");
         Objects.requireNonNull(status, "status must not be null");
         Objects.requireNonNull(candidates, "concept match decision candidates must not be null");
         if (rationale == null || rationale.isBlank()) {

@@ -14,8 +14,8 @@ import io.fekav.req.shared.event.ConceptMatchEvaluatedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
+import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.ConceptMatchResult;
 import io.fekav.req.shared.model.Provenance;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.syntaxextraction.domain.Action;
@@ -27,7 +27,7 @@ public final class WorkflowState {
     private final Optional<Action> action;
     private final List<RequirementElement> expectedRequirementElements;
     private final List<CandidateConceptMatch> retrievedCandidateMatches;
-    private final List<ConceptMatchResult> conceptMatchResults;
+    private final List<ConceptMatchDecision> conceptMatchDecisions;
 
     private WorkflowState(
         Optional<Provenance> provenance,
@@ -35,7 +35,7 @@ public final class WorkflowState {
         Optional<Action> action,
         List<RequirementElement> expectedRequirementElements,
         List<CandidateConceptMatch> retrievedCandidateMatches,
-        List<ConceptMatchResult> conceptMatchResults
+        List<ConceptMatchDecision> conceptMatchDecisions
     ) {
         this.provenance = Objects.requireNonNull(provenance, "provenance must not be null");
         this.classification = Objects.requireNonNull(
@@ -45,7 +45,7 @@ public final class WorkflowState {
         this.action = Objects.requireNonNull(action, "action must not be null");
         this.expectedRequirementElements = List.copyOf(expectedRequirementElements);
         this.retrievedCandidateMatches = List.copyOf(retrievedCandidateMatches);
-        this.conceptMatchResults = List.copyOf(conceptMatchResults);
+        this.conceptMatchDecisions = List.copyOf(conceptMatchDecisions);
     }
 
     public static WorkflowState replay(List<ApplicationEvent> events) {
@@ -57,7 +57,7 @@ public final class WorkflowState {
         Action action = null;
         List<RequirementElement> expectedRequirementElements = List.of();
         List<CandidateConceptMatch> allRetrievedCandidateMatches = new ArrayList<>();
-        List<ConceptMatchResult> allConceptMatchResults = new ArrayList<>();
+        List<ConceptMatchDecision> allConceptMatchDecisions = new ArrayList<>();
 
         for (ApplicationEvent event : events) {
             Objects.requireNonNull(event, "events must not contain null");
@@ -76,10 +76,7 @@ public final class WorkflowState {
                 allRetrievedCandidateMatches.add(retrievedEvent.match());
             }
             if (event instanceof ConceptMatchEvaluatedEvent evaluatedEvent) {
-                allConceptMatchResults.add(new ConceptMatchResult(
-                    evaluatedEvent.match(),
-                    evaluatedEvent.decision()
-                ));
+                allConceptMatchDecisions.add(evaluatedEvent.decision());
             }
         }
 
@@ -88,11 +85,11 @@ public final class WorkflowState {
                 expectedRequirementElements,
                 allRetrievedCandidateMatches
             );
-        List<ConceptMatchResult> relevantConceptMatchResults =
-            filterRelevantConceptMatchResults(
+        List<ConceptMatchDecision> relevantConceptMatchDecisions =
+            filterRelevantConceptMatchDecisions(
                 allRetrievedCandidateMatches,
                 relevantRetrievedCandidateMatches,
-                allConceptMatchResults
+                allConceptMatchDecisions
             );
 
         return new WorkflowState(
@@ -101,7 +98,7 @@ public final class WorkflowState {
             Optional.ofNullable(action),
             expectedRequirementElements,
             relevantRetrievedCandidateMatches,
-            relevantConceptMatchResults
+            relevantConceptMatchDecisions
         );
     }
 
@@ -120,19 +117,23 @@ public final class WorkflowState {
             .toList());
     }
 
-    private static List<ConceptMatchResult> filterRelevantConceptMatchResults(
+    private static List<ConceptMatchDecision> filterRelevantConceptMatchDecisions(
         List<CandidateConceptMatch> allRetrievedCandidateMatches,
         List<CandidateConceptMatch> relevantRetrievedCandidateMatches,
-        List<ConceptMatchResult> conceptMatchResults
+        List<ConceptMatchDecision> conceptMatchDecisions
     ) {
         if (allRetrievedCandidateMatches.isEmpty()) {
-            return distinctValues(conceptMatchResults);
+            return distinctValues(conceptMatchDecisions);
         }
 
-        Set<CandidateConceptMatch> relevantMatches =
-            new LinkedHashSet<>(relevantRetrievedCandidateMatches);
-        return distinctValues(conceptMatchResults.stream()
-            .filter(result -> relevantMatches.contains(result.match()))
+        Set<RequirementElement> relevantRequirementElements =
+            new LinkedHashSet<>(relevantRetrievedCandidateMatches.stream()
+                .map(CandidateConceptMatch::requirementElement)
+                .toList());
+        return distinctValues(conceptMatchDecisions.stream()
+            .filter(decision ->
+                relevantRequirementElements.contains(decision.requirementElement())
+            )
             .toList());
     }
 
@@ -170,8 +171,8 @@ public final class WorkflowState {
         return retrievedCandidateMatches.size();
     }
 
-    public List<ConceptMatchResult> conceptMatchResults() {
-        return conceptMatchResults;
+    public List<ConceptMatchDecision> conceptMatchDecisions() {
+        return conceptMatchDecisions;
     }
 
     public boolean isComplete() {
@@ -179,6 +180,6 @@ public final class WorkflowState {
             classification.isPresent() &&
             action.isPresent() &&
             retrievedCandidateMatches.size() == expectedRetrievalCount() &&
-            conceptMatchResults.size() == expectedMatchDecisionCount();
+            conceptMatchDecisions.size() == expectedMatchDecisionCount();
     }
 }

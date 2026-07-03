@@ -38,7 +38,7 @@ class ThresholdConceptMatchingPolicyTest {
         ConceptMatchDecision decision = policy.decide(match);
 
         // Then
-        assertThat(decision.selectedTerm()).isEqualTo(selectedTerm);
+        assertThat(decision.requirementElement()).isEqualTo(selectedTerm);
         assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.AUTO_MAP_EXISTING);
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
@@ -106,7 +106,7 @@ class ThresholdConceptMatchingPolicyTest {
         ConceptMatchDecision decision = policy.decide(match);
 
         // Then
-        assertThat(decision.selectedTerm()).isEqualTo(selectedTerm);
+        assertThat(decision.requirementElement()).isEqualTo(selectedTerm);
         assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.AUTO_CREATE_NEW);
         assertThat(decision.candidates()).isEmpty();
         assertThat(decision.rationale())

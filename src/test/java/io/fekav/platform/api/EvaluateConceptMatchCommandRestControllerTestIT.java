@@ -75,16 +75,22 @@ class EvaluateConceptMatchCommandRestControllerTestIT {
     }
 
     @Test
-    void serializesMatch_whenEvaluateConceptMatchCommandIsPosted()
+    void serializesDecisionRequirementElement_whenEvaluateConceptMatchCommandIsPosted()
         throws Exception {
         JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
 
-        assertThat(responseJson.at("/match/requirementElement/type").asText())
+        assertThat(responseJson.at("/decision/requirementElement/type").asText())
             .isEqualTo(SUBJECT_TERM.type().name());
-        assertThat(responseJson.at("/match/requirementElement/text").asText())
+        assertThat(responseJson.at("/decision/requirementElement/text").asText())
             .isEqualTo(SUBJECT_TERM.text());
-        assertThat(responseJson.at("/match/candidates/0/candidate/candidateKey").asText())
-            .isEqualTo(SUBJECT_CANDIDATE.candidateKey());
+    }
+
+    @Test
+    void serializesNoMatch_whenEvaluateConceptMatchCommandIsPosted()
+        throws Exception {
+        JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
+
+        assertThat(responseJson.at("/match").isMissingNode()).isTrue();
     }
 
     @Test

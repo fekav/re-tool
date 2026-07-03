@@ -31,7 +31,7 @@ class ConceptMatchingServiceTest {
 
         // Then
         assertThat(handledMatches).containsExactly(match);
-        assertThat(result.selectedTerm())
+        assertThat(result.requirementElement())
             .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
     }
 
@@ -60,7 +60,7 @@ class ConceptMatchingServiceTest {
         // When / Then
         assertThatThrownBy(() -> service.evaluateMatch(match))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage("matching policy returned a decision for a different selected term");
+            .hasMessage("matching policy returned a decision for a different requirement element");
     }
 
     @Test

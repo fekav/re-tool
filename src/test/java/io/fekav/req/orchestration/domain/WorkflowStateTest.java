@@ -122,7 +122,6 @@ class WorkflowStateTest {
         matches.forEach(match -> events.add(ConceptCandidatesRetrievedEvent.create(correlationId, match)));
         matches.forEach(match -> events.add(ConceptMatchEvaluatedEvent.create(
             correlationId,
-            match,
             autoCreateDecision(match.requirementElement())
         )));
 
@@ -131,7 +130,10 @@ class WorkflowStateTest {
 
         // Assert
         assertThat(state.isComplete()).isTrue();
-        assertThat(state.conceptMatchResults()).hasSize(3);
+        assertThat(state.conceptMatchDecisions())
+            .containsExactlyElementsOf(matches.stream()
+                .map(match -> autoCreateDecision(match.requirementElement()))
+                .toList());
     }
 
     @Test
@@ -148,7 +150,6 @@ class WorkflowStateTest {
         matches.forEach(match -> events.add(ConceptCandidatesRetrievedEvent.create(correlationId, match)));
         events.add(ConceptMatchEvaluatedEvent.create(
             correlationId,
-            matches.getFirst(),
             autoCreateDecision(matches.getFirst().requirementElement())
         ));
 
@@ -158,7 +159,75 @@ class WorkflowStateTest {
         // Assert
         assertThat(state.isComplete()).isFalse();
         assertThat(state.expectedMatchDecisionCount()).isEqualTo(3);
-        assertThat(state.conceptMatchResults()).hasSize(1);
+        assertThat(state.conceptMatchDecisions()).hasSize(1);
+    }
+
+    @Test
+    void ignoresMatchDecisions_whenRequirementElementWasNotRetrieved() {
+        // Arrange
+        RequirementIngestedEvent ingestedEvent = ingestedEvent();
+        CorrelationId correlationId = ingestedEvent.correlationId();
+        List<CandidateConceptMatch> matches = requiredMatches();
+        RequirementElement unexpectedElement =
+            new RequirementElement(RequirementElementType.CONDITION, "after logout");
+        List<ApplicationEvent> events = new ArrayList<>();
+        events.add(ingestedEvent);
+        events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
+        events.add(RequirementElementsExtractedEvent.create(
+            correlationId,
+            RAW_TEXT,
+            actionWithoutOptionalElements()
+        ));
+        matches.forEach(match -> events.add(
+            ConceptCandidatesRetrievedEvent.create(correlationId, match)
+        ));
+        events.add(ConceptMatchEvaluatedEvent.create(
+            correlationId,
+            autoCreateDecision(unexpectedElement)
+        ));
+
+        // Act
+        WorkflowState state = WorkflowState.replay(events);
+
+        // Assert
+        assertThat(state.isComplete()).isFalse();
+        assertThat(state.expectedMatchDecisionCount()).isEqualTo(3);
+        assertThat(state.conceptMatchDecisions()).isEmpty();
+    }
+
+    @Test
+    void deduplicatesEquivalentMatchDecisions_whenEventsAreRedeliveredWithNewEventId() {
+        // Arrange
+        RequirementIngestedEvent ingestedEvent = ingestedEvent();
+        CorrelationId correlationId = ingestedEvent.correlationId();
+        List<CandidateConceptMatch> matches = requiredMatches();
+        List<ConceptMatchDecision> decisions = matches.stream()
+            .map(match -> autoCreateDecision(match.requirementElement()))
+            .toList();
+        List<ApplicationEvent> events = new ArrayList<>();
+        events.add(ingestedEvent);
+        events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
+        events.add(RequirementElementsExtractedEvent.create(
+            correlationId,
+            RAW_TEXT,
+            actionWithoutOptionalElements()
+        ));
+        matches.forEach(match -> events.add(
+            ConceptCandidatesRetrievedEvent.create(correlationId, match)
+        ));
+        decisions.forEach(decision ->
+            events.add(ConceptMatchEvaluatedEvent.create(correlationId, decision))
+        );
+        decisions.forEach(decision ->
+            events.add(ConceptMatchEvaluatedEvent.create(correlationId, decision))
+        );
+
+        // Act
+        WorkflowState state = WorkflowState.replay(events);
+
+        // Assert
+        assertThat(state.isComplete()).isTrue();
+        assertThat(state.conceptMatchDecisions()).containsExactlyElementsOf(decisions);
     }
 
     private RequirementIngestedEvent ingestedEvent() {

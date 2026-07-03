@@ -61,8 +61,7 @@ class EvaluateConceptMatchCommandHandlerTest {
 
         // Then
         assertThat(result.correlationId()).isEqualTo(correlationId);
-        assertThat(result.match()).isEqualTo(match);
-        assertThat(result.decision().selectedTerm())
+        assertThat(result.decision().requirementElement())
             .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(result.decision().status())
             .isEqualTo(ConceptMatchDecisionStatus.PROPOSE_EXISTING);
@@ -99,7 +98,7 @@ class EvaluateConceptMatchCommandHandlerTest {
             handler.handle(new EvaluateConceptMatchCommand(match));
 
         // Then
-        assertThat(result.match()).isEqualTo(match);
+        assertThat(result.decision().requirementElement()).isEqualTo(match.requirementElement());
         assertThat(result.decision().status())
             .isEqualTo(ConceptMatchDecisionStatus.AUTO_CREATE_NEW);
         assertThat(result.decision().candidates()).isEmpty();

@@ -153,7 +153,7 @@ public class RequirementWorkflowOrchestrator {
                 completedState.provenance().orElseThrow(),
                 completedState.classification().orElseThrow(),
                 completedState.action().orElseThrow(),
-                completedState.conceptMatchResults()
+                completedState.conceptMatchDecisions()
             ));
         }
     }

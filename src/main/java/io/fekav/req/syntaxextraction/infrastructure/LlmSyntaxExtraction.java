@@ -140,7 +140,8 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
         CONDITION:
 
         Normalize extracted values with these rules:
-        - SUBJECT and OBJECT omit leading articles or determiners such as "a", "an", and "the".
+        - SUBJECT and OBJECT omit leading articles or determiners or prepositional complements such as "a", "an", "the", "for".
+        - CONSTRAINT keep temporal adjuncts such as "for"
         - CONDITION omits leading condition markers such as "if", "when", and "whenever".
         - CONDITION omits trailing commas.
 

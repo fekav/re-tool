@@ -87,7 +87,6 @@ class RequirementWorkflowIntegrationTest {
             .stream()
             .map(command -> ConceptMatchEvaluatedEvent.create(
                 correlationId,
-                command.match(),
                 autoCreateDecision(command.match().requirementElement())
             ))
             .toList();
@@ -112,7 +111,7 @@ class RequirementWorkflowIntegrationTest {
             .isInstanceOfSatisfying(RequirementAnalysisCompletedEvent.class, completion -> {
                 assertThat(completion.correlationId()).isEqualTo(correlationId);
                 assertThat(completion.provenance()).isEqualTo(ingestedEvent.provenance());
-                assertThat(completion.conceptMatchResults()).hasSize(3);
+                assertThat(completion.conceptMatchDecisions()).hasSize(3);
             });
     }
 

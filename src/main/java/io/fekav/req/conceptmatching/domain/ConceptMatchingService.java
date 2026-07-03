@@ -18,9 +18,9 @@ public class ConceptMatchingService {
     public ConceptMatchDecision evaluateMatch(CandidateConceptMatch match) {
         Objects.requireNonNull(match, "match must not be null");
         ConceptMatchDecision decision = matchingPolicy.decide(match);
-        if (!match.requirementElement().equals(decision.selectedTerm())) {
+        if (!match.requirementElement().equals(decision.requirementElement())) {
             throw new IllegalStateException(
-                "matching policy returned a decision for a different selected term"
+                "matching policy returned a decision for a different requirement element"
             );
         }
         return decision;

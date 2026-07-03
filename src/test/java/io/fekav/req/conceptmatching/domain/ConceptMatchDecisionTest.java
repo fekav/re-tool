@@ -30,7 +30,7 @@ class ConceptMatchDecisionTest {
         );
 
         // Then
-        assertThat(decision.selectedTerm())
+        assertThat(decision.requirementElement())
             .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(decision.rationale()).isEqualTo("unique exact candidate");
     }
@@ -71,6 +71,19 @@ class ConceptMatchDecisionTest {
         ))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("concept match decision rationale must not be blank");
+    }
+
+    @Test
+    void rejectsDecision_whenRequirementElementIsNull() {
+        // Given / When / Then
+        assertThatThrownBy(() -> new ConceptMatchDecision(
+            null,
+            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+            List.of(),
+            "No existing candidates found"
+        ))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("requirementElement must not be null");
     }
 
     @Test

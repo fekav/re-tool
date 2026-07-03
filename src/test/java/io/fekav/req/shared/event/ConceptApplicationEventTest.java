@@ -3,6 +3,7 @@ package io.fekav.req.shared.event;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.RecordComponent;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -61,17 +62,13 @@ class ConceptApplicationEventTest {
     }
 
     @Test
-    void createConceptMatchEvaluatedEvent_preservesMatchAndDecisionWithMetadata() {
+    void createConceptMatchEvaluatedEvent_preservesDecisionWithMetadata() {
         // Given
         CorrelationId correlationId = CorrelationId.create();
-        CandidateConceptMatch match = matchWithCandidates(
-            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
-            candidate("concept-1")
-        );
         ConceptMatchDecision decision = autoMapExistingDecision();
 
         // When
-        ConceptMatchEvaluatedEvent event = ConceptMatchEvaluatedEvent.create(correlationId, match, decision);
+        ConceptMatchEvaluatedEvent event = ConceptMatchEvaluatedEvent.create(correlationId, decision);
 
         // Then
         assertThat(event).isInstanceOf(ApplicationEvent.class);
@@ -79,8 +76,22 @@ class ConceptApplicationEventTest {
         assertThat(event.eventId()).isNotNull();
         assertThat(event.occurredAt()).isNotNull();
         assertThat(event.correlationId()).isEqualTo(correlationId);
-        assertThat(event.match()).isEqualTo(match);
         assertThat(event.decision()).isEqualTo(decision);
+    }
+
+    @Test
+    void containsNoMatch_whenConceptMatchEvaluatedEventIsCreated() {
+        // Act
+        String[] componentNames = recordComponentNames(ConceptMatchEvaluatedEvent.class);
+
+        // Assert
+        assertThat(componentNames).doesNotContain("match");
+    }
+
+    private String[] recordComponentNames(Class<? extends Record> recordType) {
+        return java.util.Arrays.stream(recordType.getRecordComponents())
+            .map(RecordComponent::getName)
+            .toArray(String[]::new);
     }
 
     private ConceptMatchDecision autoMapExistingDecision() {

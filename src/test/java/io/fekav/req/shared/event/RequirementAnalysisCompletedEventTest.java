@@ -18,8 +18,6 @@ import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
 import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
-import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.ConceptMatchResult;
 import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
@@ -40,7 +38,7 @@ class RequirementAnalysisCompletedEventTest {
         Provenance provenance = provenance();
         Classification classification = classification();
         Action action = action();
-        List<ConceptMatchResult> conceptMatchResults = List.of(conceptMatchResult());
+        List<ConceptMatchDecision> conceptMatchDecisions = List.of(conceptMatchDecision());
 
         // Act
         RequirementAnalysisCompletedEvent event = RequirementAnalysisCompletedEvent.create(
@@ -48,7 +46,7 @@ class RequirementAnalysisCompletedEventTest {
             provenance,
             classification,
             action,
-            conceptMatchResults
+            conceptMatchDecisions
         );
 
         // Assert
@@ -60,7 +58,8 @@ class RequirementAnalysisCompletedEventTest {
         assertThat(event.provenance()).isEqualTo(provenance);
         assertThat(event.classification()).isEqualTo(classification);
         assertThat(event.action()).isEqualTo(action);
-        assertThat(event.conceptMatchResults()).containsExactlyElementsOf(conceptMatchResults);
+        assertThat(event.conceptMatchDecisions())
+            .containsExactlyElementsOf(conceptMatchDecisions);
     }
 
     @Test
@@ -70,6 +69,24 @@ class RequirementAnalysisCompletedEventTest {
 
         // Assert
         assertThat(componentNames).doesNotContain("requirementId");
+    }
+
+    @Test
+    void containsNoConceptMatchResults_whenRequirementAnalysisCompletes() {
+        // Act
+        String[] componentNames = recordComponentNames(RequirementAnalysisCompletedEvent.class);
+
+        // Assert
+        assertThat(componentNames).doesNotContain("conceptMatchResults");
+    }
+
+    @Test
+    void containsNoMatch_whenRequirementAnalysisCompletes() {
+        // Act
+        String[] componentNames = recordComponentNames(RequirementAnalysisCompletedEvent.class);
+
+        // Assert
+        assertThat(componentNames).doesNotContain("match");
     }
 
     private String[] recordComponentNames(Class<? extends Record> recordType) {
@@ -107,16 +124,14 @@ class RequirementAnalysisCompletedEventTest {
         );
     }
 
-    private ConceptMatchResult conceptMatchResult() {
+    private ConceptMatchDecision conceptMatchDecision() {
         RequirementElement element =
             new RequirementElement(RequirementElementType.SUBJECT, "login form");
-        CandidateConceptMatch match = new CandidateConceptMatch(element, List.of());
-        ConceptMatchDecision decision = new ConceptMatchDecision(
+        return new ConceptMatchDecision(
             element,
             ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             "No existing candidates found"
         );
-        return new ConceptMatchResult(match, decision);
     }
 }

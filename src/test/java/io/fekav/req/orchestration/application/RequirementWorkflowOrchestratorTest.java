@@ -243,6 +243,9 @@ class RequirementWorkflowOrchestratorTest {
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
         List<CandidateConceptMatch> matches = requiredMatches();
+        List<ConceptMatchDecision> decisions = matches.stream()
+            .map(match -> autoCreateDecision(match.requirementElement()))
+            .toList();
         eventStore.appendIfAbsent(ingestedEvent);
         eventStore.appendIfAbsent(
             RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action)
@@ -252,12 +255,11 @@ class RequirementWorkflowOrchestratorTest {
                 ConceptCandidatesRetrievedEvent.create(correlationId, match)
             )
         );
-        matches.forEach(match ->
+        decisions.forEach(decision ->
             eventStore.appendIfAbsent(
                 ConceptMatchEvaluatedEvent.create(
                     correlationId,
-                    match,
-                    autoCreateDecision(match.requirementElement())
+                    decision
                 )
             )
         );
@@ -276,7 +278,8 @@ class RequirementWorkflowOrchestratorTest {
                 assertThat(completion.provenance()).isEqualTo(ingestedEvent.provenance());
                 assertThat(completion.classification()).isEqualTo(event.classification());
                 assertThat(completion.action()).isEqualTo(action);
-                assertThat(completion.conceptMatchResults()).hasSize(3);
+                assertThat(completion.conceptMatchDecisions())
+                    .containsExactlyElementsOf(decisions);
             });
     }
 

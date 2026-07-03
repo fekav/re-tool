@@ -30,7 +30,6 @@ public class EvaluateConceptMatchCommandHandler
         ConceptMatchEvaluatedEvent event =
             ConceptMatchEvaluatedEvent.create(
                 command.correlationId(),
-                command.match(),
                 decision
             );
 
