@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.fekav.platform.cqrs.Command;
 import io.fekav.platform.cqrs.CommandBus;
 import io.fekav.platform.messaging.ApplicationEvent;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.classification.application.ClassifyRequirementCommand;
@@ -20,19 +21,15 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
-import io.fekav.req.conceptmatching.application.EvaluateConceptMatchCommand;
-import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
-import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
-import io.fekav.req.conceptretrieval.application.RetrieveCandidateConceptsCommand;
 import io.fekav.req.orchestration.infrastructure.InMemoryEventStore;
-import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
-import io.fekav.req.shared.event.ConceptMatchEvaluatedEvent;
+import io.fekav.req.resolution.application.ResolveConceptCommand;
+import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
-import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.platform.messaging.CorrelationId;
+import io.fekav.req.shared.model.ConceptMatchDecision;
+import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -116,7 +113,7 @@ class RequirementWorkflowOrchestratorTest {
     }
 
     @Test
-    void dispatchesRetrievalForEveryExtractedRequirementElement() {
+    void dispatchesResolutionForEveryExtractedRequirementElement() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
         Action action = actionWithConditionAndConstraint();
@@ -133,10 +130,10 @@ class RequirementWorkflowOrchestratorTest {
         assertThat(commandBus.commands()).hasSize(5);
         assertThat(commandBus.commands())
             .allSatisfy(command ->
-                assertThat(command).isInstanceOf(RetrieveCandidateConceptsCommand.class)
+                assertThat(command).isInstanceOf(ResolveConceptCommand.class)
             )
             .extracting(command ->
-                ((RetrieveCandidateConceptsCommand) command).requirementElement()
+                ((ResolveConceptCommand) command).requirementElement()
             )
             .containsExactly(
                 new RequirementElement(RequirementElementType.SUBJECT, "login form"),
@@ -146,12 +143,12 @@ class RequirementWorkflowOrchestratorTest {
                 new RequirementElement(RequirementElementType.CONSTRAINT, "within 200 milliseconds")
             );
         assertThat(commandBus.commands())
-            .extracting(command -> ((RetrieveCandidateConceptsCommand) command).correlationId())
+            .extracting(command -> ((ResolveConceptCommand) command).correlationId())
             .containsOnly(correlationId);
     }
 
     @Test
-    void doesNotDispatchRetrievalAgain_whenEquivalentExtractionEventIsRedeliveredWithNewEventId() {
+    void doesNotDispatchResolutionAgain_whenEquivalentExtractionEventIsRedeliveredWithNewEventId() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
         Action action = actionWithConditionAndConstraint();
@@ -173,94 +170,19 @@ class RequirementWorkflowOrchestratorTest {
     }
 
     @Test
-    void dispatchesMatchingForRetrievedCandidateMatch() {
-        // Arrange
-        CorrelationId correlationId = CorrelationId.create();
-        CandidateConceptMatch match = noCandidates(
-            new RequirementElement(RequirementElementType.SUBJECT, "login form")
-        );
-        ConceptCandidatesRetrievedEvent event =
-            ConceptCandidatesRetrievedEvent.create(correlationId, match);
-
-        // Act
-        orchestrator.onConceptCandidatesRetrieved(event);
-
-        // Assert
-        assertThat(commandBus.commands())
-            .singleElement()
-            .isInstanceOfSatisfying(EvaluateConceptMatchCommand.class, command -> {
-                assertThat(command.correlationId()).isEqualTo(correlationId);
-                assertThat(command.match()).isEqualTo(match);
-            });
-    }
-
-    @Test
-    void doesNotDispatchMatchingAgain_whenEquivalentRetrievalEventIsRedeliveredWithNewEventId() {
-        // Arrange
-        CorrelationId correlationId = CorrelationId.create();
-        CandidateConceptMatch match = noCandidates(
-            new RequirementElement(RequirementElementType.SUBJECT, "login form")
-        );
-
-        // Act
-        orchestrator.onConceptCandidatesRetrieved(
-            ConceptCandidatesRetrievedEvent.create(correlationId, match)
-        );
-        orchestrator.onConceptCandidatesRetrieved(
-            ConceptCandidatesRetrievedEvent.create(correlationId, match)
-        );
-
-        // Assert
-        assertThat(commandBus.commands()).hasSize(1);
-    }
-
-    @Test
-    void doesNotDispatchMatching_whenRetrievedCandidateMatchIsNotExpected() {
-        // Arrange
-        CorrelationId correlationId = CorrelationId.create();
-        eventStore.appendIfAbsent(RequirementElementsExtractedEvent.create(
-            correlationId,
-            RAW_TEXT,
-            actionWithoutOptionalElements()
-        ));
-        CandidateConceptMatch unexpectedMatch = noCandidates(
-            new RequirementElement(RequirementElementType.CONDITION, "after logout")
-        );
-
-        // Act
-        orchestrator.onConceptCandidatesRetrieved(
-            ConceptCandidatesRetrievedEvent.create(correlationId, unexpectedMatch)
-        );
-
-        // Assert
-        assertThat(commandBus.commands()).isEmpty();
-    }
-
-    @Test
     void publishesCompletionOnce_whenClassifiedEventCompletesWorkflow() {
         // Arrange
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
-        List<CandidateConceptMatch> matches = requiredMatches();
-        List<ConceptMatchDecision> decisions = matches.stream()
-            .map(match -> autoCreateDecision(match.requirementElement()))
-            .toList();
+        List<ConceptMatchDecision> decisions = requiredDecisions();
         eventStore.appendIfAbsent(ingestedEvent);
         eventStore.appendIfAbsent(
             RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action)
         );
-        matches.forEach(match ->
-            eventStore.appendIfAbsent(
-                ConceptCandidatesRetrievedEvent.create(correlationId, match)
-            )
-        );
         decisions.forEach(decision ->
             eventStore.appendIfAbsent(
-                ConceptMatchEvaluatedEvent.create(
-                    correlationId,
-                    decision
-                )
+                ConceptResolutionDecidedEvent.create(correlationId, decision)
             )
         );
         RequirementClassifiedEvent event =
@@ -281,6 +203,41 @@ class RequirementWorkflowOrchestratorTest {
                 assertThat(completion.conceptMatchDecisions())
                     .containsExactlyElementsOf(decisions);
             });
+    }
+
+    @Test
+    void publishesCompletionOnce_whenResolutionDecisionCompletesWorkflow() {
+        // Arrange
+        RequirementIngestedEvent ingestedEvent = ingestedEvent();
+        CorrelationId correlationId = ingestedEvent.correlationId();
+        Action action = actionWithoutOptionalElements();
+        List<ConceptMatchDecision> decisions = requiredDecisions();
+        eventStore.appendIfAbsent(ingestedEvent);
+        eventStore.appendIfAbsent(
+            RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification())
+        );
+        eventStore.appendIfAbsent(
+            RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action)
+        );
+        eventStore.appendIfAbsent(
+            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(0))
+        );
+        eventStore.appendIfAbsent(
+            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(1))
+        );
+        ConceptResolutionDecidedEvent event =
+            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(2));
+
+        // Act
+        orchestrator.onConceptResolutionDecided(event);
+        orchestrator.onConceptResolutionDecided(event);
+
+        // Assert
+        assertThat(eventPublisher.applicationEvents())
+            .singleElement()
+            .isInstanceOfSatisfying(RequirementAnalysisCompletedEvent.class, completion ->
+                assertThat(completion.conceptMatchDecisions()).containsExactlyElementsOf(decisions)
+            );
     }
 
     private RequirementIngestedEvent ingestedEvent() {
@@ -323,16 +280,12 @@ class RequirementWorkflowOrchestratorTest {
         );
     }
 
-    private List<CandidateConceptMatch> requiredMatches() {
+    private List<ConceptMatchDecision> requiredDecisions() {
         return List.of(
-            noCandidates(new RequirementElement(RequirementElementType.SUBJECT, "login form")),
-            noCandidates(new RequirementElement(RequirementElementType.ACTION, "must validate")),
-            noCandidates(new RequirementElement(RequirementElementType.OBJECT, "credentials"))
+            autoCreateDecision(new RequirementElement(RequirementElementType.SUBJECT, "login form")),
+            autoCreateDecision(new RequirementElement(RequirementElementType.ACTION, "must validate")),
+            autoCreateDecision(new RequirementElement(RequirementElementType.OBJECT, "credentials"))
         );
-    }
-
-    private CandidateConceptMatch noCandidates(RequirementElement element) {
-        return new CandidateConceptMatch(element, List.of());
     }
 
     private ConceptMatchDecision autoCreateDecision(RequirementElement element) {

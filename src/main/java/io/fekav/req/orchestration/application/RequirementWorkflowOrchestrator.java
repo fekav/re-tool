@@ -8,16 +8,13 @@ import io.fekav.platform.cqrs.CommandBus;
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.classification.application.ClassifyRequirementCommand;
-import io.fekav.req.conceptmatching.application.EvaluateConceptMatchCommand;
-import io.fekav.req.conceptretrieval.application.RetrieveCandidateConceptsCommand;
 import io.fekav.req.orchestration.domain.WorkflowState;
-import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
-import io.fekav.req.shared.event.ConceptMatchEvaluatedEvent;
+import io.fekav.req.resolution.application.ResolveConceptCommand;
+import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
-import io.fekav.req.shared.model.CandidateConceptMatch;
 import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.syntaxextraction.application.ExtractSyntaxCommand;
@@ -92,30 +89,12 @@ public class RequirementWorkflowOrchestrator {
         if (transition.stored()) {
             newlyExpectedRequirementElements(transition)
                 .forEach(element -> commandBus.dispatch(
-                    new RetrieveCandidateConceptsCommand(event.correlationId(), element)
+                    new ResolveConceptCommand(event.correlationId(), element)
                 ));
         }
     }
 
-    public void onConceptCandidatesRetrieved(
-        @Observes ConceptCandidatesRetrievedEvent event
-    ) {
-        if (!enabled) {
-            return;
-        }
-
-        WorkflowTransition transition = remember(event.correlationId(), event);
-
-        if (transition.stored()) {
-            newlyRetrievedCandidateMatches(transition)
-                .forEach(match -> commandBus.dispatch(new EvaluateConceptMatchCommand(
-                    event.correlationId(),
-                    match
-                )));
-        }
-    }
-
-    public void onConceptMatchEvaluated(@Observes ConceptMatchEvaluatedEvent event) {
+    public void onConceptResolutionDecided(@Observes ConceptResolutionDecidedEvent event) {
         if (!enabled) {
             return;
         }
@@ -164,15 +143,6 @@ public class RequirementWorkflowOrchestrator {
         return valuesAdded(
             transition.before().expectedRequirementElements(),
             transition.after().expectedRequirementElements()
-        );
-    }
-
-    private List<CandidateConceptMatch> newlyRetrievedCandidateMatches(
-        WorkflowTransition transition
-    ) {
-        return valuesAdded(
-            transition.before().retrievedCandidateMatches(),
-            transition.after().retrievedCandidateMatches()
         );
     }
 

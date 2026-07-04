@@ -16,14 +16,12 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
-import io.fekav.req.conceptmatching.domain.ConceptMatchDecision;
-import io.fekav.req.conceptmatching.domain.ConceptMatchDecisionStatus;
-import io.fekav.req.shared.event.ConceptCandidatesRetrievedEvent;
-import io.fekav.req.shared.event.ConceptMatchEvaluatedEvent;
+import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
-import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.ConceptMatchDecision;
+import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -61,34 +59,39 @@ class WorkflowStateTest {
             new RequirementElement(RequirementElementType.CONDITION, "before authentication"),
             new RequirementElement(RequirementElementType.CONSTRAINT, "within 200 milliseconds")
         );
-        assertThat(state.expectedRetrievalCount()).isEqualTo(5);
+        assertThat(state.expectedResolutionDecisionCount()).isEqualTo(5);
         assertThat(state.isComplete()).isFalse();
     }
 
     @Test
-    void derivesExpectedMatchDecisionsFromRecordedRetrievalResults() {
+    void keepsRelevantResolutionDecisions_whenRequirementElementWasExpected() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
-        List<CandidateConceptMatch> matches = requiredMatches();
+        List<ConceptMatchDecision> decisions = requiredDecisions();
 
         // Act
         WorkflowState state = WorkflowState.replay(List.of(
-            ConceptCandidatesRetrievedEvent.create(correlationId, matches.get(0)),
-            ConceptCandidatesRetrievedEvent.create(correlationId, matches.get(1)),
-            ConceptCandidatesRetrievedEvent.create(correlationId, matches.get(2))
+            RequirementElementsExtractedEvent.create(
+                correlationId,
+                RAW_TEXT,
+                actionWithoutOptionalElements()
+            ),
+            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(0)),
+            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(1)),
+            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(2))
         ));
 
         // Assert
-        assertThat(state.retrievedCandidateMatches()).containsExactlyElementsOf(matches);
-        assertThat(state.expectedMatchDecisionCount()).isEqualTo(3);
+        assertThat(state.conceptMatchDecisions()).containsExactlyElementsOf(decisions);
+        assertThat(state.expectedResolutionDecisionCount()).isEqualTo(3);
         assertThat(state.isComplete()).isFalse();
     }
 
     @Test
-    void ignoresRetrievedCandidateMatches_whenRequirementElementWasNotExpected() {
+    void ignoresResolutionDecisions_whenRequirementElementWasNotExpected() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
-        CandidateConceptMatch unexpectedMatch = noCandidates(
+        ConceptMatchDecision unexpectedDecision = autoCreateDecision(
             new RequirementElement(RequirementElementType.CONDITION, "after logout")
         );
 
@@ -99,77 +102,66 @@ class WorkflowStateTest {
                 RAW_TEXT,
                 actionWithoutOptionalElements()
             ),
-            ConceptCandidatesRetrievedEvent.create(correlationId, unexpectedMatch)
+            ConceptResolutionDecidedEvent.create(correlationId, unexpectedDecision)
         ));
 
         // Assert
-        assertThat(state.retrievedCandidateMatches()).isEmpty();
-        assertThat(state.expectedMatchDecisionCount()).isZero();
+        assertThat(state.conceptMatchDecisions()).isEmpty();
+        assertThat(state.expectedResolutionDecisionCount()).isEqualTo(3);
         assertThat(state.isComplete()).isFalse();
     }
 
     @Test
-    void isComplete_whenIngestedClassifiedExtractedRetrievedAndMatched() {
+    void isComplete_whenIngestedClassifiedExtractedAndResolved() {
         // Arrange
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
-        List<CandidateConceptMatch> matches = requiredMatches();
+        List<ConceptMatchDecision> decisions = requiredDecisions();
         List<ApplicationEvent> events = new ArrayList<>();
         events.add(ingestedEvent);
         events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
         events.add(RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action));
-        matches.forEach(match -> events.add(ConceptCandidatesRetrievedEvent.create(correlationId, match)));
-        matches.forEach(match -> events.add(ConceptMatchEvaluatedEvent.create(
-            correlationId,
-            autoCreateDecision(match.requirementElement())
-        )));
+        decisions.forEach(decision ->
+            events.add(ConceptResolutionDecidedEvent.create(correlationId, decision))
+        );
 
         // Act
         WorkflowState state = WorkflowState.replay(events);
 
         // Assert
         assertThat(state.isComplete()).isTrue();
-        assertThat(state.conceptMatchDecisions())
-            .containsExactlyElementsOf(matches.stream()
-                .map(match -> autoCreateDecision(match.requirementElement()))
-                .toList());
+        assertThat(state.conceptMatchDecisions()).containsExactlyElementsOf(decisions);
     }
 
     @Test
-    void isNotComplete_whenOneMatchDecisionIsStillMissing() {
+    void isNotComplete_whenOneResolutionDecisionIsStillMissing() {
         // Arrange
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
-        List<CandidateConceptMatch> matches = requiredMatches();
+        List<ConceptMatchDecision> decisions = requiredDecisions();
         List<ApplicationEvent> events = new ArrayList<>();
         events.add(ingestedEvent);
         events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
         events.add(RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action));
-        matches.forEach(match -> events.add(ConceptCandidatesRetrievedEvent.create(correlationId, match)));
-        events.add(ConceptMatchEvaluatedEvent.create(
-            correlationId,
-            autoCreateDecision(matches.getFirst().requirementElement())
-        ));
+        events.add(ConceptResolutionDecidedEvent.create(correlationId, decisions.getFirst()));
 
         // Act
         WorkflowState state = WorkflowState.replay(events);
 
         // Assert
         assertThat(state.isComplete()).isFalse();
-        assertThat(state.expectedMatchDecisionCount()).isEqualTo(3);
+        assertThat(state.expectedResolutionDecisionCount()).isEqualTo(3);
         assertThat(state.conceptMatchDecisions()).hasSize(1);
     }
 
     @Test
-    void ignoresMatchDecisions_whenRequirementElementWasNotRetrieved() {
+    void deduplicatesEquivalentResolutionDecisions_whenEventsAreRedeliveredWithNewEventId() {
         // Arrange
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
-        List<CandidateConceptMatch> matches = requiredMatches();
-        RequirementElement unexpectedElement =
-            new RequirementElement(RequirementElementType.CONDITION, "after logout");
+        List<ConceptMatchDecision> decisions = requiredDecisions();
         List<ApplicationEvent> events = new ArrayList<>();
         events.add(ingestedEvent);
         events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
@@ -177,49 +169,12 @@ class WorkflowStateTest {
             correlationId,
             RAW_TEXT,
             actionWithoutOptionalElements()
-        ));
-        matches.forEach(match -> events.add(
-            ConceptCandidatesRetrievedEvent.create(correlationId, match)
-        ));
-        events.add(ConceptMatchEvaluatedEvent.create(
-            correlationId,
-            autoCreateDecision(unexpectedElement)
-        ));
-
-        // Act
-        WorkflowState state = WorkflowState.replay(events);
-
-        // Assert
-        assertThat(state.isComplete()).isFalse();
-        assertThat(state.expectedMatchDecisionCount()).isEqualTo(3);
-        assertThat(state.conceptMatchDecisions()).isEmpty();
-    }
-
-    @Test
-    void deduplicatesEquivalentMatchDecisions_whenEventsAreRedeliveredWithNewEventId() {
-        // Arrange
-        RequirementIngestedEvent ingestedEvent = ingestedEvent();
-        CorrelationId correlationId = ingestedEvent.correlationId();
-        List<CandidateConceptMatch> matches = requiredMatches();
-        List<ConceptMatchDecision> decisions = matches.stream()
-            .map(match -> autoCreateDecision(match.requirementElement()))
-            .toList();
-        List<ApplicationEvent> events = new ArrayList<>();
-        events.add(ingestedEvent);
-        events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
-        events.add(RequirementElementsExtractedEvent.create(
-            correlationId,
-            RAW_TEXT,
-            actionWithoutOptionalElements()
-        ));
-        matches.forEach(match -> events.add(
-            ConceptCandidatesRetrievedEvent.create(correlationId, match)
         ));
         decisions.forEach(decision ->
-            events.add(ConceptMatchEvaluatedEvent.create(correlationId, decision))
+            events.add(ConceptResolutionDecidedEvent.create(correlationId, decision))
         );
         decisions.forEach(decision ->
-            events.add(ConceptMatchEvaluatedEvent.create(correlationId, decision))
+            events.add(ConceptResolutionDecidedEvent.create(correlationId, decision))
         );
 
         // Act
@@ -270,16 +225,12 @@ class WorkflowStateTest {
         );
     }
 
-    private List<CandidateConceptMatch> requiredMatches() {
+    private List<ConceptMatchDecision> requiredDecisions() {
         return List.of(
-            noCandidates(new RequirementElement(RequirementElementType.SUBJECT, "login form")),
-            noCandidates(new RequirementElement(RequirementElementType.ACTION, "must validate")),
-            noCandidates(new RequirementElement(RequirementElementType.OBJECT, "credentials"))
+            autoCreateDecision(new RequirementElement(RequirementElementType.SUBJECT, "login form")),
+            autoCreateDecision(new RequirementElement(RequirementElementType.ACTION, "must validate")),
+            autoCreateDecision(new RequirementElement(RequirementElementType.OBJECT, "credentials"))
         );
-    }
-
-    private CandidateConceptMatch noCandidates(RequirementElement element) {
-        return new CandidateConceptMatch(element, List.of());
     }
 
     private ConceptMatchDecision autoCreateDecision(RequirementElement element) {
