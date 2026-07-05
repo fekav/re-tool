@@ -1,14 +1,15 @@
 package io.fekav.req.resolution.domain;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 import io.fekav.req.shared.model.CandidateNodeMatch;
 import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.req.shared.model.NodeMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchReviewRequest;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateNode;
+import io.fekav.req.shared.model.RequirementElement;
 
 public class ThresholdNodeMatchingPolicy implements NodeMatchingPolicy {
 
@@ -30,38 +31,30 @@ public class ThresholdNodeMatchingPolicy implements NodeMatchingPolicy {
     }
 
     @Override
-    public NodeMatchDecision decide(CandidateNodeMatch match) {
+    public NodeMatchingResult decide(CandidateNodeMatch match) {
         Objects.requireNonNull(match, "match must not be null");
 
         if (match.candidates().isEmpty()) {
-            return autoCreateDecision(match);
+            return autoCreateResult(match.requirementElement());
         }
 
-        double topScore = match
-            .candidates()
-            .stream()
-            .mapToDouble(this::bestScore)
-            .max()
-            .orElseThrow();
-        List<RetrievedCandidateNode> topCandidates = match
-            .candidates()
-            .stream()
-            .filter(candidate -> Double.compare(bestScore(candidate), topScore) == 0)
-            .toList();
+        List<CandidateScore> candidateScores = scoreCandidates(match.candidates());
+        double topScore = topScore(candidateScores);
+        List<RetrievedCandidateNode> topCandidates = topCandidates(
+            candidateScores,
+            topScore
+        );
 
         if (topScore >= autoMapThreshold) {
             if (topCandidates.size() == 1) {
-                return new NodeMatchDecision(
+                return autoMapExistingResult(
                     match.requirementElement(),
-                    NodeMatchDecisionStatus.AUTO_MAP_EXISTING,
                     topCandidates,
-                    "Unique top candidate reached auto-map threshold " +
-                        autoMapThreshold + " with score " + topScore + "."
+                    topScore
                 );
             }
-            return new NodeMatchDecision(
+            return reviewRequiredResult(
                 match.requirementElement(),
-                NodeMatchDecisionStatus.REVIEW_REQUIRED,
                 topCandidates,
                 "Multiple top candidates share score " + topScore +
                     " at auto-map threshold " + autoMapThreshold +
@@ -69,27 +62,77 @@ public class ThresholdNodeMatchingPolicy implements NodeMatchingPolicy {
             );
         }
 
-        RetrievedCandidateNode bestCandidate = match
-            .candidates()
-            .stream()
-            .max(Comparator.comparingDouble(this::bestScore))
-            .orElseThrow();
-        return new NodeMatchDecision(
+        return reviewRequiredResult(
             match.requirementElement(),
-            NodeMatchDecisionStatus.PROPOSE_EXISTING,
-            List.of(bestCandidate),
+            topCandidates,
             "Top candidate score " + topScore + " is below auto-map threshold " +
-                autoMapThreshold + "; proposing best existing candidate."
+                autoMapThreshold + "; human review is required before mapping."
         );
     }
 
-    private NodeMatchDecision autoCreateDecision(CandidateNodeMatch match) {
-        return new NodeMatchDecision(
-            match.requirementElement(),
+    private List<CandidateScore> scoreCandidates(
+        List<RetrievedCandidateNode> candidates
+    ) {
+        return candidates
+            .stream()
+            .map(candidate -> new CandidateScore(candidate, bestScore(candidate)))
+            .toList();
+    }
+
+    private double topScore(List<CandidateScore> candidateScores) {
+        return candidateScores
+            .stream()
+            .mapToDouble(CandidateScore::score)
+            .max()
+            .orElseThrow();
+    }
+
+    private List<RetrievedCandidateNode> topCandidates(
+        List<CandidateScore> candidateScores,
+        double topScore
+    ) {
+        return candidateScores
+            .stream()
+            .filter(candidateScore ->
+                Double.compare(candidateScore.score(), topScore) == 0
+            )
+            .map(CandidateScore::candidate)
+            .toList();
+    }
+
+    private NodeMatchingResult autoMapExistingResult(
+        RequirementElement requirementElement,
+        List<RetrievedCandidateNode> candidates,
+        double topScore
+    ) {
+        return NodeMatchingResult.decided(new NodeMatchDecision(
+            requirementElement,
+            NodeMatchDecisionStatus.AUTO_MAP_EXISTING,
+            candidates,
+            "Unique top candidate reached auto-map threshold " +
+                autoMapThreshold + " with score " + topScore + "."
+        ));
+    }
+
+    private NodeMatchingResult reviewRequiredResult(
+        RequirementElement requirementElement,
+        List<RetrievedCandidateNode> candidates,
+        String rationale
+    ) {
+        return NodeMatchingResult.reviewRequired(new NodeMatchReviewRequest(
+            requirementElement,
+            candidates,
+            rationale
+        ));
+    }
+
+    private NodeMatchingResult autoCreateResult(RequirementElement requirementElement) {
+        return NodeMatchingResult.decided(new NodeMatchDecision(
+            requirementElement,
             NodeMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             "No existing candidates found; auto-creating node from selected term."
-        );
+        ));
     }
 
     private double bestScore(RetrievedCandidateNode candidate) {
@@ -99,5 +142,8 @@ public class ThresholdNodeMatchingPolicy implements NodeMatchingPolicy {
             .mapToDouble(RetrievalEvidence::score)
             .max()
             .orElseThrow();
+    }
+
+    private record CandidateScore(RetrievedCandidateNode candidate, double score) {
     }
 }

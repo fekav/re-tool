@@ -19,11 +19,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.fekav.req.resolution.domain.NodeMatchingService;
+import io.fekav.req.resolution.domain.NodeMatchingResult;
 import io.fekav.req.resolution.domain.NodeRetrievalService;
 import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.shared.model.CandidateNodeMatch;
 import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.req.shared.model.NodeMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchReviewRequest;
 import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateNode;
@@ -80,7 +82,7 @@ class ResolveNodeCommandRestControllerTestIT {
         when(nodeRetrievalService.retrieveCandidates(any(RequirementElement.class)))
             .thenReturn(candidateMatch);
         when(nodeMatchingService.evaluateMatch(any(CandidateNodeMatch.class)))
-            .thenReturn(autoMapDecision());
+            .thenReturn(NodeMatchingResult.decided(autoMapDecision()));
         requestBody = selectedTermCommandRequest(objectMapper, COMMAND, SUBJECT_ELEMENT);
     }
 
@@ -128,6 +130,27 @@ class ResolveNodeCommandRestControllerTestIT {
 
         assertThat(responseJson.at("/decision/rationale").asText())
             .isEqualTo(AUTO_MAP_RATIONALE);
+    }
+
+    @Test
+    void serializesReviewRequest_whenResolveNodeCommandRequiresReview()
+        throws Exception {
+        when(nodeMatchingService.evaluateMatch(any(CandidateNodeMatch.class)))
+            .thenReturn(NodeMatchingResult.reviewRequired(new NodeMatchReviewRequest(
+                SUBJECT_ELEMENT,
+                List.of(retrievedSubjectCandidate),
+                "Candidate needs review before mapping"
+            )));
+
+        JsonNode responseJson = executeCommandAsJson(objectMapper, requestBody);
+
+        assertThat(responseJson.at("/decision").isMissingNode()).isTrue();
+        assertThat(responseJson.at("/reviewRequest/requirementElement/type").asText())
+            .isEqualTo(SUBJECT_ELEMENT.type().name());
+        assertThat(responseJson.at("/reviewRequest/candidates/0/candidate/candidateKey").asText())
+            .isEqualTo(SUBJECT_CANDIDATE.candidateKey());
+        assertThat(responseJson.at("/reviewRequest/rationale").asText())
+            .isEqualTo("Candidate needs review before mapping");
     }
 
     @Test

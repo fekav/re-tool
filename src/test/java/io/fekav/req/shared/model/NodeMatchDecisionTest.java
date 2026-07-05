@@ -113,32 +113,19 @@ class NodeMatchDecisionTest {
     }
 
     @Test
-    void rejectsDecision_whenProposeExistingHasMultipleCandidates() {
+    void rejectsDecision_whenAutoMapHasMultipleCandidates() {
         // Given / When / Then
         assertThatThrownBy(() -> new NodeMatchDecision(
             new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
-            NodeMatchDecisionStatus.PROPOSE_EXISTING,
+            NodeMatchDecisionStatus.AUTO_MAP_EXISTING,
             List.of(
                 candidate("concept-1", 0.8),
                 candidate("concept-2", 0.7)
             ),
-            "best existing candidate"
+            "ambiguous exact candidates"
         ))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("propose-existing decisions must contain exactly one candidate");
-    }
-
-    @Test
-    void rejectsDecision_whenReviewRequiredHasSingleCandidate() {
-        // Given / When / Then
-        assertThatThrownBy(() -> new NodeMatchDecision(
-            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
-            NodeMatchDecisionStatus.REVIEW_REQUIRED,
-            List.of(candidate("concept-1", 1.0)),
-            "ambiguous top candidates"
-        ))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("review-required decisions must contain at least two candidates");
+            .hasMessage("auto-map decisions must contain exactly one candidate");
     }
 
     @Test

@@ -13,14 +13,18 @@ import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.resolution.domain.NodeMatchingPolicy;
+import io.fekav.req.resolution.domain.NodeMatchingResult;
 import io.fekav.req.resolution.domain.NodeMatchingService;
 import io.fekav.req.resolution.domain.NodeRetrievalPolicy;
 import io.fekav.req.resolution.domain.NodeRetrievalService;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
+import io.fekav.req.shared.event.NodeResolutionEvent;
+import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
 import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.shared.model.CandidateNodeMatch;
 import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.req.shared.model.NodeMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchReviewRequest;
 import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateNode;
@@ -41,12 +45,12 @@ class ResolveNodeCommandHandlerTest {
             requirementElement -> new CandidateNodeMatch(requirementElement, List.of(candidate));
         NodeMatchingPolicy matchingPolicy = match -> {
             handledMatches.add(match);
-            return new NodeMatchDecision(
+            return NodeMatchingResult.decided(new NodeMatchDecision(
                 match.requirementElement(),
-                NodeMatchDecisionStatus.PROPOSE_EXISTING,
+                NodeMatchDecisionStatus.AUTO_MAP_EXISTING,
                 List.of(candidate),
-                "Top candidate is proposed"
-            );
+                "Unique candidate is mapped"
+            ));
         };
         RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
         ResolveNodeCommandHandler handler = handlerWith(
@@ -57,12 +61,16 @@ class ResolveNodeCommandHandlerTest {
         ResolveNodeCommand command = new ResolveNodeCommand(correlationId, element);
 
         // When
-        NodeResolutionDecidedEvent result = handler.handle(command);
+        NodeResolutionEvent result = handler.handle(command);
 
         // Then
-        assertThat(result.correlationId()).isEqualTo(correlationId);
-        assertThat(result.decision().requirementElement()).isEqualTo(element);
-        assertThat(result.decision().status()).isEqualTo(NodeMatchDecisionStatus.PROPOSE_EXISTING);
+        assertThat(result)
+            .isInstanceOfSatisfying(NodeResolutionDecidedEvent.class, event -> {
+                assertThat(event.correlationId()).isEqualTo(correlationId);
+                assertThat(event.decision().requirementElement()).isEqualTo(element);
+                assertThat(event.decision().status())
+                    .isEqualTo(NodeMatchDecisionStatus.AUTO_MAP_EXISTING);
+            });
         assertThat(handledMatches)
             .singleElement()
             .satisfies(match -> {
@@ -73,24 +81,63 @@ class ResolveNodeCommandHandlerTest {
     }
 
     @Test
+    void returnsNodeResolutionReviewRequiredEventAndPublishesSameEvent_whenReviewIsRequired() {
+        // Given
+        CorrelationId correlationId = CorrelationId.create();
+        RequirementElement element =
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service");
+        RetrievedCandidateNode candidate = candidate();
+        NodeRetrievalPolicy retrievalPolicy =
+            requirementElement -> new CandidateNodeMatch(requirementElement, List.of(candidate));
+        NodeMatchingPolicy matchingPolicy = match ->
+            NodeMatchingResult.reviewRequired(new NodeMatchReviewRequest(
+                match.requirementElement(),
+                List.of(candidate),
+                "Candidate needs review before mapping"
+            ));
+        RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
+        ResolveNodeCommandHandler handler = handlerWith(
+            eventPublisher,
+            retrievalPolicy,
+            matchingPolicy
+        );
+
+        // When
+        NodeResolutionEvent result =
+            handler.handle(new ResolveNodeCommand(correlationId, element));
+
+        // Then
+        assertThat(result)
+            .isInstanceOfSatisfying(NodeResolutionReviewRequiredEvent.class, event -> {
+                assertThat(event.correlationId()).isEqualTo(correlationId);
+                assertThat(event.reviewRequest().requirementElement()).isEqualTo(element);
+                assertThat(event.reviewRequest().candidates()).containsExactly(candidate);
+            });
+        assertThat(eventPublisher.applicationEvents()).containsExactly(result);
+    }
+
+    @Test
     void assignsCorrelationId_whenCommandIsCreatedWithoutOne() {
         // Given
         ResolveNodeCommandHandler handler = handlerWith(
             new RecordingEventPublisher(),
             requirementElement -> new CandidateNodeMatch(requirementElement, List.of()),
-            match -> autoCreateDecision(match.requirementElement())
+            match -> NodeMatchingResult.decided(autoCreateDecision(match.requirementElement()))
         );
         RequirementElement element =
             new RequirementElement(RequirementElementType.OBJECT, "invoice");
 
         // When
-        NodeResolutionDecidedEvent result =
-            handler.handle(new ResolveNodeCommand(element));
+        NodeResolutionEvent result = handler.handle(new ResolveNodeCommand(element));
 
         // Then
-        assertThat(result.correlationId()).isNotNull();
-        assertThat(result.decision().requirementElement()).isEqualTo(element);
-        assertThat(result.decision().status()).isEqualTo(NodeMatchDecisionStatus.AUTO_CREATE_NEW);
+        assertThat(result)
+            .isInstanceOfSatisfying(NodeResolutionDecidedEvent.class, event -> {
+                assertThat(event.correlationId()).isNotNull();
+                assertThat(event.decision().requirementElement()).isEqualTo(element);
+                assertThat(event.decision().status())
+                    .isEqualTo(NodeMatchDecisionStatus.AUTO_CREATE_NEW);
+            });
     }
 
     @Test
@@ -107,7 +154,7 @@ class ResolveNodeCommandHandlerTest {
         ResolveNodeCommandHandler handler = handlerWith(
             new RecordingEventPublisher(),
             requirementElement -> new CandidateNodeMatch(requirementElement, List.of()),
-            match -> autoCreateDecision(match.requirementElement())
+            match -> NodeMatchingResult.decided(autoCreateDecision(match.requirementElement()))
         );
 
         // When

@@ -11,18 +11,20 @@ import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.shared.model.CandidateNodeMatch;
 import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.req.shared.model.NodeMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchReviewRequest;
 import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateNode;
-import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
+import io.fekav.req.shared.model.RequirementElementType;
 
 class ThresholdNodeMatchingPolicyTest {
 
     private static final double AUTO_MAP_THRESHOLD = 0.75;
     private static final double BELOW_THRESHOLD_SCORE = 0.65;
 
-    private final RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
+    private final RequirementElement selectedTerm =
+        new RequirementElement(RequirementElementType.SUBJECT, "billing service");
     private final ThresholdNodeMatchingPolicy policy =
         new ThresholdNodeMatchingPolicy(AUTO_MAP_THRESHOLD);
 
@@ -38,7 +40,7 @@ class ThresholdNodeMatchingPolicyTest {
         );
 
         // When
-        NodeMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = decided(policy.decide(match));
 
         // Then
         assertThat(decision.requirementElement()).isEqualTo(selectedTerm);
@@ -64,20 +66,20 @@ class ThresholdNodeMatchingPolicyTest {
         );
 
         // When
-        NodeMatchDecision decision = policy.decide(match);
+        NodeMatchReviewRequest reviewRequest = reviewRequired(policy.decide(match));
 
         // Then
-        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.REVIEW_REQUIRED);
-        assertThat(decision.candidates())
+        assertThat(reviewRequest.requirementElement()).isEqualTo(selectedTerm);
+        assertThat(reviewRequest.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-2", "concept-1");
-        assertThat(decision.rationale())
+        assertThat(reviewRequest.rationale())
             .contains("Multiple top candidates share score " + AUTO_MAP_THRESHOLD)
             .contains("auto-map threshold " + AUTO_MAP_THRESHOLD);
     }
 
     @Test
-    void returnsProposeExisting_whenBestCandidateIsBelowThreshold() {
+    void returnsReviewRequiredWithBestCandidate_whenBestCandidateIsBelowThreshold() {
         // Given
         CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
@@ -88,16 +90,16 @@ class ThresholdNodeMatchingPolicyTest {
         );
 
         // When
-        NodeMatchDecision decision = policy.decide(match);
+        NodeMatchReviewRequest reviewRequest = reviewRequired(policy.decide(match));
 
         // Then
-        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.PROPOSE_EXISTING);
-        assertThat(decision.candidates())
+        assertThat(reviewRequest.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-1");
-        assertThat(decision.rationale())
+        assertThat(reviewRequest.rationale())
             .contains("Top candidate score " + BELOW_THRESHOLD_SCORE)
-            .contains("auto-map threshold " + AUTO_MAP_THRESHOLD);
+            .contains("auto-map threshold " + AUTO_MAP_THRESHOLD)
+            .contains("human review is required");
     }
 
     @Test
@@ -106,7 +108,7 @@ class ThresholdNodeMatchingPolicyTest {
         CandidateNodeMatch match = new CandidateNodeMatch(selectedTerm, List.of());
 
         // When
-        NodeMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = decided(policy.decide(match));
 
         // Then
         assertThat(decision.requirementElement()).isEqualTo(selectedTerm);
@@ -128,7 +130,7 @@ class ThresholdNodeMatchingPolicyTest {
         );
 
         // When
-        NodeMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = decided(policy.decide(match));
 
         // Then
         assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.AUTO_MAP_EXISTING);
@@ -138,24 +140,24 @@ class ThresholdNodeMatchingPolicyTest {
     }
 
     @Test
-    void keepsRetrievalOrder_whenBelowThresholdCandidatesTie() {
+    void returnsReviewRequestWithAllTopCandidates_whenBelowThresholdCandidatesTie() {
         // Given
         CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of(
                 candidate("concept-2", "Billing API", BELOW_THRESHOLD_SCORE),
-                candidate("concept-1", "Billing Service", BELOW_THRESHOLD_SCORE)
+                candidate("concept-1", "Billing Service", BELOW_THRESHOLD_SCORE),
+                candidate("concept-3", "Billing Job", BELOW_THRESHOLD_SCORE - 0.1)
             )
         );
 
         // When
-        NodeMatchDecision decision = policy.decide(match);
+        NodeMatchReviewRequest reviewRequest = reviewRequired(policy.decide(match));
 
         // Then
-        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.PROPOSE_EXISTING);
-        assertThat(decision.candidates())
+        assertThat(reviewRequest.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
-            .containsExactly("concept-2");
+            .containsExactly("concept-2", "concept-1");
     }
 
     @Test
@@ -180,7 +182,7 @@ class ThresholdNodeMatchingPolicyTest {
         );
 
         // When
-        NodeMatchDecision decision = defaultPolicy.decide(match);
+        NodeMatchDecision decision = decided(defaultPolicy.decide(match));
 
         // Then
         assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.AUTO_MAP_EXISTING);
@@ -213,6 +215,16 @@ class ThresholdNodeMatchingPolicyTest {
         assertThatThrownBy(() -> new ThresholdNodeMatchingPolicy(Double.NaN))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("auto-map threshold must be between 0.0 and 1.0");
+    }
+
+    private NodeMatchDecision decided(NodeMatchingResult result) {
+        assertThat(result).isInstanceOf(NodeMatchingResult.Decided.class);
+        return ((NodeMatchingResult.Decided) result).decision();
+    }
+
+    private NodeMatchReviewRequest reviewRequired(NodeMatchingResult result) {
+        assertThat(result).isInstanceOf(NodeMatchingResult.ReviewRequired.class);
+        return ((NodeMatchingResult.ReviewRequired) result).reviewRequest();
     }
 
     private RetrievedCandidateNode candidate(

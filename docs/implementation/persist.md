@@ -8,7 +8,7 @@ extraction-shaped node model.
 ## Current Contract
 
 - `RequirementAnalysisCompletedEvent` carries the domain `Action` result and
-  `NodeMatchDecision` values.
+  final `NodeMatchDecision` values.
 - Graph writes translate the domain result into `Mention`, `Concept`,
   `Predicate`, `Qualifier`, and `Assertion` nodes.
 - Semantic identity is the base subject-predicate-object triple:
@@ -17,14 +17,16 @@ extraction-shaped node model.
 - Qualifiers enrich the base assertion and do not participate in assertion
   identity.
 - Candidate resolution uses `CandidateNode`, `RetrievedCandidateNode`,
-  `CandidateNodeMatch`, and `NodeMatchDecision`.
+  `CandidateNodeMatch`, `NodeMatchDecision`, and `NodeMatchReviewRequest`.
 
 ## Persistence Slice Implications
 
 - Technical idempotency can still use `Provenance.id`.
 - Semantic idempotency should use the deterministic `Assertion.assertionKey`.
-- `AUTO_MAP_EXISTING` and `AUTO_CREATE_NEW` remain final decisions.
-- `PROPOSE_EXISTING` and `REVIEW_REQUIRED` still require reviewer actions before
+- `AUTO_MAP_EXISTING` and `AUTO_CREATE_NEW` remain final decisions and are
+  emitted through `NodeResolutionDecidedEvent`.
+- Non-final candidate proposals and ambiguous matches are emitted through
+  `NodeResolutionReviewRequiredEvent` and still require reviewer actions before
   persistence.
 - The Neo4j adapter should commit the target graph relationships documented in
   `docs/graph-model.md`.

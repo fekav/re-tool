@@ -22,9 +22,10 @@
 | CandidateNodeMatch | Term retrieval result | `RETRIEVE_CANDIDATE_NODES` | Pairing of one `SelectedTerm` with zero or more `RetrievedCandidateNode` values. |
 | RetrievedCandidateNode | Retrieved candidate | `RETRIEVE_CANDIDATE_NODES` | Candidate node after retrieval policy processing, carrying non-empty candidate-specific retrieval evidence. |
 | RetrievalEvidence | Candidate evidence | `RETRIEVE_CANDIDATE_NODES` | Evidence produced for a retrieved candidate. Current node-name retrieval records `policyName`, evidence text, and score `1.0`. |
-| NodeMatchDecisionSet | Matching decisions | `DECIDE_NODE_MATCHES`; `REQUEST_HUMAN_REVIEW`; `PERSIST_GRAPH_CHANGES` | Decision result containing one `NodeMatchDecision` per selected term. |
-| NodeMatchDecision | Selected-term node decision | `DECIDE_NODE_MATCHES`; `REQUEST_HUMAN_REVIEW`; `PERSIST_GRAPH_CHANGES` | Decision payload with selected term, enum `status`, non-null `candidates`, and non-blank `rationale`. |
-| NodeMatchDecisionStatus | Matching decision status | `DECIDE_NODE_MATCHES` | Enum outcome for one selected term: `AUTO_MAP_EXISTING`, `PROPOSE_EXISTING`, `REVIEW_REQUIRED`, or `AUTO_CREATE_NEW`. |
+| NodeMatchDecisionSet | Matching decisions | `DECIDE_NODE_MATCHES`; `PERSIST_GRAPH_CHANGES` | Final decision result containing one `NodeMatchDecision` per selected term. |
+| NodeMatchDecision | Selected-term node decision | `DECIDE_NODE_MATCHES`; `PERSIST_GRAPH_CHANGES` | Final decision payload with selected term, enum `status`, non-null `candidates`, and non-blank `rationale`. |
+| NodeMatchDecisionStatus | Matching decision status | `DECIDE_NODE_MATCHES` | Enum outcome for final node decisions: `AUTO_MAP_EXISTING` or `AUTO_CREATE_NEW`. |
+| NodeMatchReviewRequest | Node match review request | `DECIDE_NODE_MATCHES`; `REQUEST_HUMAN_REVIEW` | Non-final resolution payload with selected term, review candidates, and rationale. |
 | NewNodeProposal | New node proposal | `DECIDE_NODE_MATCHES`; `PERSIST_GRAPH_CHANGES` | Proposed new KG node with label and selected term. In v1, lookup misses create one proposal from `selectedTerm.text` and the selected term type. |
 | Raw Requirement Text | Source text; RawText | `INTAKE_REQUIREMENT` | Original textual software requirement preserved for provenance and auditability. |
 | Provenance | Source metadata; traceability | `INTAKE_REQUIREMENT`; `PERSIST_GRAPH_CHANGES` | Metadata linking KG facts back to the raw requirement source, submitter, and ingestion event. |
@@ -62,10 +63,10 @@
 | CandidateLookup | Node-name lookup port | `RETRIEVE_CANDIDATE_NODES` | Domain port used by `NodeNameRetrievalPolicy` to find KG candidate nodes for one selected term. It does not assign matching outcomes or concept creation decisions. |
 | Neo4jNodeNameLookup | Neo4j node-name lookup | `RETRIEVE_CANDIDATE_NODES` | Neo4j adapter for `CandidateLookup`. It maps `SUBJECT`/`OBJECT` to `Concept`, `ACTION` to `Predicate`, and `CONDITION`/`CONSTRAINT` to `Qualifier`, using exact stripped name text. |
 | nodeName | Node-name evidence policy name | `RETRIEVE_CANDIDATE_NODES`; `NODE_RETRIEVAL_POLICY` | Retrieval evidence policy name emitted for node-name matches. |
-| node-matching | Node matching slice | `DECIDE_NODE_MATCHES` | Slice that consumes `CandidateNodeMatchSet` data and emits a `NodeMatchDecisionSet` without writing graph changes. |
-| NodeMatchingService | Matching domain service | `DECIDE_NODE_MATCHES` | Domain service that applies the active `NodeMatchingPolicy` to each retrieved candidate match and returns one decision per selected term. |
-| NodeMatchingPolicy | Matching policy port | `DECIDE_NODE_MATCHES`; `MATCHING_POLICY` | Domain policy interface that converts one `CandidateNodeMatch` into one `NodeMatchDecision`. |
-| ThresholdNodeMatchingPolicy | V1 matching policy | `DECIDE_NODE_MATCHES`; `MATCHING_POLICY` | Current policy with hardcoded `auto_map_threshold = 1.0`; it auto-maps a unique top candidate at threshold, requires review for tied top candidates at threshold, proposes the best below-threshold existing candidate, and auto-creates a new node for lookup misses. |
+| node-matching | Node matching slice | `DECIDE_NODE_MATCHES` | Slice that consumes `CandidateNodeMatchSet` data and emits final decisions or review requests without writing graph changes. |
+| NodeMatchingService | Matching domain service | `DECIDE_NODE_MATCHES` | Domain service that applies the active `NodeMatchingPolicy` to each retrieved candidate match and returns one matching result per selected term. |
+| NodeMatchingPolicy | Matching policy port | `DECIDE_NODE_MATCHES`; `MATCHING_POLICY` | Domain policy interface that converts one `CandidateNodeMatch` into one `NodeMatchingResult`. |
+| ThresholdNodeMatchingPolicy | V1 matching policy | `DECIDE_NODE_MATCHES`; `MATCHING_POLICY` | Current policy with hardcoded `auto_map_threshold = 1.0`; it auto-maps a unique top candidate at threshold, requests review for tied top candidates or below-threshold candidates, and auto-creates a new node for lookup misses. |
 | Subject | Actor; grammatical subject | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying who or what performs or owns an action. |
 | TargetObject | Object; target | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying what an action affects. |
 | Action | Behavior; verb | `EXTRACT_REQUIREMENT_SYNTAX` | Domain entity identifying required behavior or operation and owning its subject, target object, conditions, and constraints. |

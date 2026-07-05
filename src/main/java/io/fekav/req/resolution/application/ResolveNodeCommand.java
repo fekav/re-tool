@@ -4,13 +4,13 @@ import java.util.Objects;
 
 import io.fekav.platform.cqrs.Command;
 import io.fekav.platform.messaging.CorrelationId;
-import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
+import io.fekav.req.shared.event.NodeResolutionEvent;
 import io.fekav.req.shared.model.RequirementElement;
 
 public record ResolveNodeCommand(
     CorrelationId correlationId,
     RequirementElement requirementElement
-) implements Command<NodeResolutionDecidedEvent> {
+) implements Command<NodeResolutionEvent> {
 
     public ResolveNodeCommand {
         correlationId = correlationId == null

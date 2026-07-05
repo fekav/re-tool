@@ -34,36 +34,17 @@ public record NodeMatchDecision(
         List<RetrievedCandidateNode> candidates
     ) {
         switch (status) {
-            case AUTO_MAP_EXISTING -> validateExistingCandidateDecision(
-                candidates,
-                "auto-map decisions"
-            );
-            case PROPOSE_EXISTING -> validateExistingCandidateDecision(
-                candidates,
-                "propose-existing decisions"
-            );
-            case REVIEW_REQUIRED -> validateReviewRequiredDecision(candidates);
+            case AUTO_MAP_EXISTING -> validateAutoMapDecision(candidates);
             case AUTO_CREATE_NEW -> validateAutoCreateDecision(candidates);
         }
     }
 
-    private static void validateExistingCandidateDecision(
-        List<RetrievedCandidateNode> candidates,
-        String decisionName
+    private static void validateAutoMapDecision(
+        List<RetrievedCandidateNode> candidates
     ) {
         if (candidates.size() != 1) {
             throw new IllegalArgumentException(
-                decisionName + " must contain exactly one candidate"
-            );
-        }
-    }
-
-    private static void validateReviewRequiredDecision(
-        List<RetrievedCandidateNode> candidates
-    ) {
-        if (candidates.size() < 2) {
-            throw new IllegalArgumentException(
-                "review-required decisions must contain at least two candidates"
+                "auto-map decisions must contain exactly one candidate"
             );
         }
     }

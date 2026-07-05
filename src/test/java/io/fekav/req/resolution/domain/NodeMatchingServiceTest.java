@@ -17,31 +17,32 @@ import io.fekav.req.shared.model.RequirementElement;
 class NodeMatchingServiceTest {
 
     @Test
-    void returnsDecisionForCandidateMatch() {
+    void returnsResultForCandidateMatch() {
         // Given
         List<CandidateNodeMatch> handledMatches = new ArrayList<>();
         NodeMatchingPolicy policy = match -> {
             handledMatches.add(match);
-            return autoCreateDecision(match.requirementElement());
+            return NodeMatchingResult.decided(autoCreateDecision(match.requirementElement()));
         };
         NodeMatchingService service = new NodeMatchingService(policy);
         CandidateNodeMatch match =
             noMatch(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
 
         // When
-        NodeMatchDecision result = service.evaluateMatch(match);
+        NodeMatchingResult result = service.evaluateMatch(match);
 
         // Then
         assertThat(handledMatches).containsExactly(match);
-        assertThat(result.requirementElement())
+        assertThat(result).isInstanceOf(NodeMatchingResult.Decided.class);
+        assertThat(((NodeMatchingResult.Decided) result).decision().requirementElement())
             .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
     }
 
     @Test
-    void rejectsDecisionRequest_whenMatchIsNull() {
+    void rejectsMatchEvaluation_whenMatchIsNull() {
         // Given
         NodeMatchingService service = new NodeMatchingService(
-            match -> autoCreateDecision(match.requirementElement())
+            match -> NodeMatchingResult.decided(autoCreateDecision(match.requirementElement()))
         );
 
         // When / Then
@@ -51,10 +52,12 @@ class NodeMatchingServiceTest {
     }
 
     @Test
-    void rejectsDecisionRequest_whenPolicyDoesNotReturnMatchingTerm() {
+    void rejectsMatchEvaluation_whenPolicyDoesNotReturnMatchingElement() {
         // Given
         NodeMatchingService service = new NodeMatchingService(
-            match -> autoCreateDecision(new RequirementElement(RequirementElementType.ACTION, "must refund"))
+            match -> NodeMatchingResult.decided(autoCreateDecision(
+                new RequirementElement(RequirementElementType.ACTION, "must refund")
+            ))
         );
         CandidateNodeMatch match =
             noMatch(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
@@ -62,7 +65,20 @@ class NodeMatchingServiceTest {
         // When / Then
         assertThatThrownBy(() -> service.evaluateMatch(match))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessage("matching policy returned a decision for a different requirement element");
+            .hasMessage("matching policy returned a result for a different requirement element");
+    }
+
+    @Test
+    void rejectsMatchEvaluation_whenPolicyReturnsNull() {
+        // Given
+        NodeMatchingService service = new NodeMatchingService(match -> null);
+        CandidateNodeMatch match =
+            noMatch(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
+
+        // When / Then
+        assertThatThrownBy(() -> service.evaluateMatch(match))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("matching policy result must not be null");
     }
 
     @Test

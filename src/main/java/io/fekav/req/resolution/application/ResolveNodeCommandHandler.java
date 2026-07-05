@@ -2,17 +2,17 @@ package io.fekav.req.resolution.application;
 
 import io.fekav.platform.cqrs.CommandHandler;
 import io.fekav.platform.messaging.EventPublisher;
+import io.fekav.req.resolution.domain.NodeMatchingResult;
 import io.fekav.req.resolution.domain.NodeMatchingService;
 import io.fekav.req.resolution.domain.NodeRetrievalService;
-import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
+import io.fekav.req.shared.event.NodeResolutionEvent;
 import io.fekav.req.shared.model.CandidateNodeMatch;
-import io.fekav.req.shared.model.NodeMatchDecision;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class ResolveNodeCommandHandler
-        implements CommandHandler<NodeResolutionDecidedEvent, ResolveNodeCommand> {
+        implements CommandHandler<NodeResolutionEvent, ResolveNodeCommand> {
 
     private final EventPublisher eventPublisher;
     private final NodeRetrievalService nodeRetrievalService;
@@ -30,12 +30,14 @@ public class ResolveNodeCommandHandler
     }
 
     @Override
-    public NodeResolutionDecidedEvent handle(ResolveNodeCommand command) {
+    public NodeResolutionEvent handle(ResolveNodeCommand command) {
         CandidateNodeMatch match =
             nodeRetrievalService.retrieveCandidates(command.requirementElement());
-        NodeMatchDecision decision = nodeMatchingService.evaluateMatch(match);
-        NodeResolutionDecidedEvent event =
-            NodeResolutionDecidedEvent.create(command.correlationId(), decision);
+        NodeMatchingResult result = nodeMatchingService.evaluateMatch(match);
+        NodeResolutionEvent event = NodeResolutionEventFactory.from(
+            command.correlationId(),
+            result
+        );
 
         eventPublisher.publish(event);
 
