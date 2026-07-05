@@ -1,9 +1,3 @@
-## Workflows
-
-| Term | Aliases | Used In | Description |
-|---|---|---|---|
-| Requirement KG Persistence | Requirement-to-KG ingestion | `docs/workflows/requirement-kg-persistence.md` | Workflow for persisting textual software requirements into a knowledge graph with provenance, extracted terms, concept-name candidate retrieval, concept match decisions, and policy-governed concept creation. |
-
 ## Roles
 
 | Term | Aliases | Used In | Description |
