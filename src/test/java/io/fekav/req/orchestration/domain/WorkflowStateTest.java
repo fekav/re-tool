@@ -16,12 +16,12 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
-import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
+import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
-import io.fekav.req.shared.model.ConceptMatchDecision;
-import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecisionStatus;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -67,7 +67,7 @@ class WorkflowStateTest {
     void keepsRelevantResolutionDecisions_whenRequirementElementWasExpected() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
-        List<ConceptMatchDecision> decisions = requiredDecisions();
+        List<NodeMatchDecision> decisions = requiredDecisions();
 
         // Act
         WorkflowState state = WorkflowState.replay(List.of(
@@ -76,13 +76,13 @@ class WorkflowStateTest {
                 RAW_TEXT,
                 actionWithoutOptionalElements()
             ),
-            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(0)),
-            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(1)),
-            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(2))
+            NodeResolutionDecidedEvent.create(correlationId, decisions.get(0)),
+            NodeResolutionDecidedEvent.create(correlationId, decisions.get(1)),
+            NodeResolutionDecidedEvent.create(correlationId, decisions.get(2))
         ));
 
         // Assert
-        assertThat(state.conceptMatchDecisions()).containsExactlyElementsOf(decisions);
+        assertThat(state.nodeMatchDecisions()).containsExactlyElementsOf(decisions);
         assertThat(state.expectedResolutionDecisionCount()).isEqualTo(3);
         assertThat(state.isComplete()).isFalse();
     }
@@ -91,7 +91,7 @@ class WorkflowStateTest {
     void ignoresResolutionDecisions_whenRequirementElementWasNotExpected() {
         // Arrange
         CorrelationId correlationId = CorrelationId.create();
-        ConceptMatchDecision unexpectedDecision = autoCreateDecision(
+        NodeMatchDecision unexpectedDecision = autoCreateDecision(
             new RequirementElement(RequirementElementType.CONDITION, "after logout")
         );
 
@@ -102,11 +102,11 @@ class WorkflowStateTest {
                 RAW_TEXT,
                 actionWithoutOptionalElements()
             ),
-            ConceptResolutionDecidedEvent.create(correlationId, unexpectedDecision)
+            NodeResolutionDecidedEvent.create(correlationId, unexpectedDecision)
         ));
 
         // Assert
-        assertThat(state.conceptMatchDecisions()).isEmpty();
+        assertThat(state.nodeMatchDecisions()).isEmpty();
         assertThat(state.expectedResolutionDecisionCount()).isEqualTo(3);
         assertThat(state.isComplete()).isFalse();
     }
@@ -117,13 +117,13 @@ class WorkflowStateTest {
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
-        List<ConceptMatchDecision> decisions = requiredDecisions();
+        List<NodeMatchDecision> decisions = requiredDecisions();
         List<ApplicationEvent> events = new ArrayList<>();
         events.add(ingestedEvent);
         events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
         events.add(RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action));
         decisions.forEach(decision ->
-            events.add(ConceptResolutionDecidedEvent.create(correlationId, decision))
+            events.add(NodeResolutionDecidedEvent.create(correlationId, decision))
         );
 
         // Act
@@ -131,7 +131,7 @@ class WorkflowStateTest {
 
         // Assert
         assertThat(state.isComplete()).isTrue();
-        assertThat(state.conceptMatchDecisions()).containsExactlyElementsOf(decisions);
+        assertThat(state.nodeMatchDecisions()).containsExactlyElementsOf(decisions);
     }
 
     @Test
@@ -140,12 +140,12 @@ class WorkflowStateTest {
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
-        List<ConceptMatchDecision> decisions = requiredDecisions();
+        List<NodeMatchDecision> decisions = requiredDecisions();
         List<ApplicationEvent> events = new ArrayList<>();
         events.add(ingestedEvent);
         events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
         events.add(RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action));
-        events.add(ConceptResolutionDecidedEvent.create(correlationId, decisions.getFirst()));
+        events.add(NodeResolutionDecidedEvent.create(correlationId, decisions.getFirst()));
 
         // Act
         WorkflowState state = WorkflowState.replay(events);
@@ -153,7 +153,7 @@ class WorkflowStateTest {
         // Assert
         assertThat(state.isComplete()).isFalse();
         assertThat(state.expectedResolutionDecisionCount()).isEqualTo(3);
-        assertThat(state.conceptMatchDecisions()).hasSize(1);
+        assertThat(state.nodeMatchDecisions()).hasSize(1);
     }
 
     @Test
@@ -161,7 +161,7 @@ class WorkflowStateTest {
         // Arrange
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
-        List<ConceptMatchDecision> decisions = requiredDecisions();
+        List<NodeMatchDecision> decisions = requiredDecisions();
         List<ApplicationEvent> events = new ArrayList<>();
         events.add(ingestedEvent);
         events.add(RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification()));
@@ -171,10 +171,10 @@ class WorkflowStateTest {
             actionWithoutOptionalElements()
         ));
         decisions.forEach(decision ->
-            events.add(ConceptResolutionDecidedEvent.create(correlationId, decision))
+            events.add(NodeResolutionDecidedEvent.create(correlationId, decision))
         );
         decisions.forEach(decision ->
-            events.add(ConceptResolutionDecidedEvent.create(correlationId, decision))
+            events.add(NodeResolutionDecidedEvent.create(correlationId, decision))
         );
 
         // Act
@@ -182,7 +182,7 @@ class WorkflowStateTest {
 
         // Assert
         assertThat(state.isComplete()).isTrue();
-        assertThat(state.conceptMatchDecisions()).containsExactlyElementsOf(decisions);
+        assertThat(state.nodeMatchDecisions()).containsExactlyElementsOf(decisions);
     }
 
     private RequirementIngestedEvent ingestedEvent() {
@@ -225,7 +225,7 @@ class WorkflowStateTest {
         );
     }
 
-    private List<ConceptMatchDecision> requiredDecisions() {
+    private List<NodeMatchDecision> requiredDecisions() {
         return List.of(
             autoCreateDecision(new RequirementElement(RequirementElementType.SUBJECT, "login form")),
             autoCreateDecision(new RequirementElement(RequirementElementType.ACTION, "must validate")),
@@ -233,10 +233,10 @@ class WorkflowStateTest {
         );
     }
 
-    private ConceptMatchDecision autoCreateDecision(RequirementElement element) {
-        return new ConceptMatchDecision(
+    private NodeMatchDecision autoCreateDecision(RequirementElement element) {
+        return new NodeMatchDecision(
             element,
-            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+            NodeMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             "No existing candidates found"
         );

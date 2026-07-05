@@ -4,22 +4,22 @@ import java.util.Objects;
 
 import io.fekav.platform.cqrs.Command;
 import io.fekav.platform.messaging.CorrelationId;
-import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
+import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.model.RequirementElement;
 
-public record ResolveConceptCommand(
+public record ResolveNodeCommand(
     CorrelationId correlationId,
     RequirementElement requirementElement
-) implements Command<ConceptResolutionDecidedEvent> {
+) implements Command<NodeResolutionDecidedEvent> {
 
-    public ResolveConceptCommand {
+    public ResolveNodeCommand {
         correlationId = correlationId == null
             ? CorrelationId.create()
             : correlationId;
         Objects.requireNonNull(requirementElement, "requirementElement must not be null");
     }
 
-    public ResolveConceptCommand(RequirementElement requirementElement) {
+    public ResolveNodeCommand(RequirementElement requirementElement) {
         this(CorrelationId.create(), requirementElement);
     }
 }

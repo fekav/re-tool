@@ -10,12 +10,13 @@ import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
-import io.fekav.req.shared.model.CandidateConcept;
-import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CandidateNode;
+import io.fekav.req.shared.model.CandidateNodeMatch;
+import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
 
-class ConceptNameRetrievalPolicyTest {
+class NodeNameRetrievalPolicyTest {
 
     private final RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
 
@@ -23,7 +24,7 @@ class ConceptNameRetrievalPolicyTest {
     void returnsNameCandidatesWithFullScore_whenLookupMatches() {
         // Given
         List<RequirementElement> lookupTerms = new ArrayList<>();
-        ConceptNameRetrievalPolicy policy = new ConceptNameRetrievalPolicy(
+        NodeNameRetrievalPolicy policy = new NodeNameRetrievalPolicy(
             lookup(
                 lookupTerms,
                 term -> List.of(
@@ -34,7 +35,7 @@ class ConceptNameRetrievalPolicyTest {
         );
 
         // When
-        CandidateConceptMatch match = policy.retrieveCandidates(selectedTerm);
+        CandidateNodeMatch match = policy.retrieveCandidates(selectedTerm);
 
         // Then
         assertThat(lookupTerms).containsExactly(selectedTerm);
@@ -51,15 +52,15 @@ class ConceptNameRetrievalPolicyTest {
                 tuple(
                     "concept-2",
                     "Billing API",
-                    "conceptName",
-                    "Matched concept name 'billing service' to graph candidate 'Billing API'",
+                    "nodeName",
+                    "Matched node name 'billing service' to graph candidate 'Billing API'",
                     1.0
                 ),
                 tuple(
                     "concept-1",
                     "Billing Service",
-                    "conceptName",
-                    "Matched concept name 'billing service' to graph candidate 'Billing Service'",
+                    "nodeName",
+                    "Matched node name 'billing service' to graph candidate 'Billing Service'",
                     1.0
                 )
             );
@@ -69,12 +70,12 @@ class ConceptNameRetrievalPolicyTest {
     void returnsEmptyCandidates_whenLookupMisses() {
         // Given
         List<RequirementElement> lookupTerms = new ArrayList<>();
-        ConceptNameRetrievalPolicy policy = new ConceptNameRetrievalPolicy(
+        NodeNameRetrievalPolicy policy = new NodeNameRetrievalPolicy(
             lookup(lookupTerms, term -> List.of())
         );
 
         // When
-        CandidateConceptMatch match = policy.retrieveCandidates(selectedTerm);
+        CandidateNodeMatch match = policy.retrieveCandidates(selectedTerm);
 
         // Then
         assertThat(lookupTerms).containsExactly(selectedTerm);
@@ -85,7 +86,7 @@ class ConceptNameRetrievalPolicyTest {
     @Test
     void keepsFirstCandidate_whenLookupReturnsDuplicateCandidateKeys() {
         // Given
-        ConceptNameRetrievalPolicy policy = new ConceptNameRetrievalPolicy(
+        NodeNameRetrievalPolicy policy = new NodeNameRetrievalPolicy(
             lookup(
                 new ArrayList<>(),
                 term -> List.of(
@@ -97,7 +98,7 @@ class ConceptNameRetrievalPolicyTest {
         );
 
         // When
-        CandidateConceptMatch match = policy.retrieveCandidates(selectedTerm);
+        CandidateNodeMatch match = policy.retrieveCandidates(selectedTerm);
 
         // Then
         assertThat(match.candidates())
@@ -110,12 +111,12 @@ class ConceptNameRetrievalPolicyTest {
                 tuple(
                     "concept-1",
                     "Billing Service",
-                    "Matched concept name 'billing service' to graph candidate 'Billing Service'"
+                    "Matched node name 'billing service' to graph candidate 'Billing Service'"
                 ),
                 tuple(
                     "concept-2",
                     "Billing API",
-                    "Matched concept name 'billing service' to graph candidate 'Billing API'"
+                    "Matched node name 'billing service' to graph candidate 'Billing API'"
                 )
             );
     }
@@ -123,7 +124,7 @@ class ConceptNameRetrievalPolicyTest {
     @Test
     void rejectsRetrieval_whenSelectedTermIsNull() {
         // Given
-        ConceptNameRetrievalPolicy policy = new ConceptNameRetrievalPolicy(
+        NodeNameRetrievalPolicy policy = new NodeNameRetrievalPolicy(
             lookup(new ArrayList<>(), term -> List.of())
         );
 
@@ -136,18 +137,18 @@ class ConceptNameRetrievalPolicyTest {
     @Test
     void rejectsPolicyConfiguration_whenLookupPortIsNull() {
         // When / Then
-        assertThatThrownBy(() -> new ConceptNameRetrievalPolicy(null))
+        assertThatThrownBy(() -> new NodeNameRetrievalPolicy(null))
             .isInstanceOf(NullPointerException.class)
             .hasMessage("candidateLookup must not be null");
     }
 
-    private CandidateConcept candidate(String candidateKey, String label) {
-        return new CandidateConcept(candidateKey, label, "SystemComponent");
+    private CandidateNode candidate(String candidateKey, String label) {
+        return new CandidateNode(candidateKey, label, NodeType.CONCEPT);
     }
 
     private CandidateLookup lookup(
         List<RequirementElement> lookupTerms,
-        Function<RequirementElement, List<CandidateConcept>> candidates
+        Function<RequirementElement, List<CandidateNode>> candidates
     ) {
         return term -> {
             lookupTerms.add(term);

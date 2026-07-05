@@ -8,25 +8,25 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import io.fekav.req.shared.model.CandidateConceptMatch;
+import io.fekav.req.shared.model.CandidateNodeMatch;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
 
-class ConceptRetrievalServiceTest {
+class NodeRetrievalServiceTest {
 
     @Test
     void returnsMatchForSelectedTerm() {
         // Given
         List<RequirementElement> retrievedTerms = new ArrayList<>();
-        ConceptRetrievalPolicy policy = selectedTerm -> {
+        NodeRetrievalPolicy policy = selectedTerm -> {
             retrievedTerms.add(selectedTerm);
             return noMatch(selectedTerm);
         };
-        ConceptRetrievalService service = new ConceptRetrievalService(policy);
+        NodeRetrievalService service = new NodeRetrievalService(policy);
         RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
 
         // When
-        CandidateConceptMatch match = service.retrieveCandidates(selectedTerm);
+        CandidateNodeMatch match = service.retrieveCandidates(selectedTerm);
 
         // Then
         assertThat(retrievedTerms).containsExactly(selectedTerm);
@@ -36,7 +36,7 @@ class ConceptRetrievalServiceTest {
     @Test
     void rejectsRetrievalRequest_whenSelectedTermIsNull() {
         // Given
-        ConceptRetrievalService service = new ConceptRetrievalService(this::noMatch);
+        NodeRetrievalService service = new NodeRetrievalService(this::noMatch);
 
         // When / Then
         assertThatThrownBy(() -> service.retrieveCandidates(null))
@@ -47,7 +47,7 @@ class ConceptRetrievalServiceTest {
     @Test
     void rejectsRetrievalRequest_whenPolicyDoesNotReturnMatchingTerm() {
         // Given
-        ConceptRetrievalService service = new ConceptRetrievalService(
+        NodeRetrievalService service = new NodeRetrievalService(
             selectedTerm -> noMatch(new RequirementElement(RequirementElementType.ACTION, "refund"))
         );
         RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
@@ -58,8 +58,8 @@ class ConceptRetrievalServiceTest {
             .hasMessage("retrieval policy returned a match for a different selected term");
     }
 
-    private CandidateConceptMatch noMatch(RequirementElement selectedTerm) {
-        return new CandidateConceptMatch(
+    private CandidateNodeMatch noMatch(RequirementElement selectedTerm) {
+        return new CandidateNodeMatch(
             selectedTerm,
             List.of()
         );

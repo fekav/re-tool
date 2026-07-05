@@ -22,14 +22,14 @@ import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.orchestration.infrastructure.InMemoryEventStore;
-import io.fekav.req.resolution.application.ResolveConceptCommand;
-import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
+import io.fekav.req.resolution.application.ResolveNodeCommand;
+import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
-import io.fekav.req.shared.model.ConceptMatchDecision;
-import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecisionStatus;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -71,18 +71,18 @@ class RequirementWorkflowIntegrationTest {
             RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action());
         orchestrator.onRequirementElementsExtracted(extractedEvent);
 
-        List<ConceptResolutionDecidedEvent> resolutionEvents = resolutionCommands()
+        List<NodeResolutionDecidedEvent> resolutionEvents = resolutionCommands()
             .stream()
-            .map(command -> ConceptResolutionDecidedEvent.create(
+            .map(command -> NodeResolutionDecidedEvent.create(
                 correlationId,
                 autoCreateDecision(command.requirementElement())
             ))
             .toList();
-        resolutionEvents.forEach(orchestrator::onConceptResolutionDecided);
+        resolutionEvents.forEach(orchestrator::onNodeResolutionDecided);
 
         orchestrator.onRequirementIngested(ingestedEvent);
         orchestrator.onRequirementElementsExtracted(extractedEvent);
-        orchestrator.onConceptResolutionDecided(resolutionEvents.getFirst());
+        orchestrator.onNodeResolutionDecided(resolutionEvents.getFirst());
 
         // Assert
         assertThat(commandBus.commands())
@@ -97,15 +97,15 @@ class RequirementWorkflowIntegrationTest {
             .isInstanceOfSatisfying(RequirementAnalysisCompletedEvent.class, completion -> {
                 assertThat(completion.correlationId()).isEqualTo(correlationId);
                 assertThat(completion.provenance()).isEqualTo(ingestedEvent.provenance());
-                assertThat(completion.conceptMatchDecisions()).hasSize(3);
+                assertThat(completion.nodeMatchDecisions()).hasSize(3);
             });
     }
 
-    private List<ResolveConceptCommand> resolutionCommands() {
+    private List<ResolveNodeCommand> resolutionCommands() {
         return commandBus.commands()
             .stream()
-            .filter(ResolveConceptCommand.class::isInstance)
-            .map(ResolveConceptCommand.class::cast)
+            .filter(ResolveNodeCommand.class::isInstance)
+            .map(ResolveNodeCommand.class::cast)
             .toList();
     }
 
@@ -138,10 +138,10 @@ class RequirementWorkflowIntegrationTest {
         );
     }
 
-    private ConceptMatchDecision autoCreateDecision(RequirementElement element) {
-        return new ConceptMatchDecision(
+    private NodeMatchDecision autoCreateDecision(RequirementElement element) {
+        return new NodeMatchDecision(
             element,
-            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+            NodeMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             "No existing candidates found"
         );

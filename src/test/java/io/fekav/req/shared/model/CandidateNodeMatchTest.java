@@ -10,40 +10,40 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class CandidateConceptMatchTest {
+class CandidateNodeMatchTest {
 
     @Test
     void trimsDomainStrings_whenValuesAreCreated() {
         // Given
         RetrievalEvidence evidence = new RetrievalEvidence(
-            " conceptName ",
-            " matched concept name ",
+            " nodeName ",
+            " matched node name ",
             1.0
         );
 
         // When
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             new RequirementElement(RequirementElementType.SUBJECT, " billing service "),
-            List.of(new RetrievedCandidateConcept(
-                new CandidateConcept(
+            List.of(new RetrievedCandidateNode(
+                new CandidateNode(
                     " concept-1 ",
                     " Billing Service ",
-                    " SystemComponent "
+                    NodeType.CONCEPT
                 ),
                 List.of(evidence)
             ))
         );
 
         // Then
-        RetrievedCandidateConcept retrievedCandidate = match.candidates().getFirst();
+        RetrievedCandidateNode retrievedCandidate = match.candidates().getFirst();
         assertThat(match.requirementElement())
             .isEqualTo(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
         assertThat(retrievedCandidate.candidate())
-            .isEqualTo(new CandidateConcept("concept-1", "Billing Service", "SystemComponent"));
+            .isEqualTo(new CandidateNode("concept-1", "Billing Service", NodeType.CONCEPT));
         assertThat(retrievedCandidate.evidence().getFirst().policyName())
-            .isEqualTo("conceptName");
+            .isEqualTo("nodeName");
         assertThat(retrievedCandidate.evidence().getFirst().evidenceText())
-            .isEqualTo("matched concept name");
+            .isEqualTo("matched node name");
     }
 
     @Test
@@ -76,39 +76,48 @@ class CandidateConceptMatchTest {
     }
 
     @Test
-    void rejectsCandidateConcept_whenCandidateKeyIsBlank() {
+    void rejectsCandidateNode_whenCandidateKeyIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new CandidateConcept(" ", "billing service", null))
+        assertThatThrownBy(() -> new CandidateNode(" ", "billing service", NodeType.CONCEPT))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("candidate concept key must not be blank");
+            .hasMessage("candidate node key must not be blank");
     }
 
     @Test
-    void rejectsCandidateConcept_whenLabelIsBlank() {
+    void rejectsCandidateNode_whenLabelIsBlank() {
         // Given / When / Then
-        assertThatThrownBy(() -> new CandidateConcept("concept-1", " ", null))
+        assertThatThrownBy(() -> new CandidateNode("concept-1", " ", NodeType.CONCEPT))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("candidate concept label must not be blank");
+            .hasMessage("candidate node label must not be blank");
     }
 
     @Test
-    void rejectsRetrievedCandidateConcept_whenEvidenceIsEmpty() {
+    void rejectsCandidateNode_whenNodeTypeIsNull() {
+        // Given / When / Then
+        assertThatThrownBy(() -> new CandidateNode("concept-1", "billing service", null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("candidate node type must not be null");
+    }
+
+    @Test
+    void rejectsRetrievedCandidateNode_whenEvidenceIsEmpty() {
         // Given
-        CandidateConcept candidate = new CandidateConcept("concept-1", "billing service", null);
+        CandidateNode candidate =
+            new CandidateNode("concept-1", "billing service", NodeType.CONCEPT);
 
         // When / Then
-        assertThatThrownBy(() -> new RetrievedCandidateConcept(candidate, List.of()))
+        assertThatThrownBy(() -> new RetrievedCandidateNode(candidate, List.of()))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("retrieved candidate evidence must not be empty");
     }
 
     @Test
-    void acceptsCandidateConceptMatch_whenCandidatesAreEmpty() {
+    void acceptsCandidateNodeMatch_whenCandidatesAreEmpty() {
         // Given
         RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
 
         // When
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of()
         );
@@ -121,11 +130,11 @@ class CandidateConceptMatchTest {
     @Test
     void defensivelyCopiesCollections_whenMatchIsCreated() {
         // Given
-        List<RetrievedCandidateConcept> candidates = new ArrayList<>();
+        List<RetrievedCandidateNode> candidates = new ArrayList<>();
         candidates.add(candidate("concept-1"));
 
         // When
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             candidates
         );
@@ -142,13 +151,13 @@ class CandidateConceptMatchTest {
     }
 
     @Test
-    void rejectsCandidateConceptMatch_whenCandidatesContainNull() {
+    void rejectsCandidateNodeMatch_whenCandidatesContainNull() {
         // Given
-        List<RetrievedCandidateConcept> candidates = new ArrayList<>();
+        List<RetrievedCandidateNode> candidates = new ArrayList<>();
         candidates.add(null);
 
         // When / Then
-        assertThatThrownBy(() -> new CandidateConceptMatch(
+        assertThatThrownBy(() -> new CandidateNodeMatch(
             new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
             candidates
         ))
@@ -156,10 +165,10 @@ class CandidateConceptMatchTest {
             .hasMessage("candidates must not contain null");
     }
 
-    private RetrievedCandidateConcept candidate(String candidateKey) {
-        return new RetrievedCandidateConcept(
-            new CandidateConcept(candidateKey, "Billing Service", "SystemComponent"),
-            List.of(new RetrievalEvidence("conceptName", "matched concept name", 1.0))
+    private RetrievedCandidateNode candidate(String candidateKey) {
+        return new RetrievedCandidateNode(
+            new CandidateNode(candidateKey, "Billing Service", NodeType.CONCEPT),
+            List.of(new RetrievalEvidence("nodeName", "matched node name", 1.0))
         );
     }
 }

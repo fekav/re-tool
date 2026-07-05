@@ -7,28 +7,29 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import io.fekav.req.shared.model.CandidateConcept;
-import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.ConceptMatchDecision;
-import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
+import io.fekav.req.shared.model.CandidateNode;
+import io.fekav.req.shared.model.CandidateNodeMatch;
+import io.fekav.req.shared.model.NodeMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RetrievalEvidence;
-import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RetrievedCandidateNode;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
 
-class ThresholdConceptMatchingPolicyTest {
+class ThresholdNodeMatchingPolicyTest {
 
     private static final double AUTO_MAP_THRESHOLD = 0.75;
     private static final double BELOW_THRESHOLD_SCORE = 0.65;
 
     private final RequirementElement selectedTerm = new RequirementElement(RequirementElementType.SUBJECT, "billing service");
-    private final ThresholdConceptMatchingPolicy policy =
-        new ThresholdConceptMatchingPolicy(AUTO_MAP_THRESHOLD);
+    private final ThresholdNodeMatchingPolicy policy =
+        new ThresholdNodeMatchingPolicy(AUTO_MAP_THRESHOLD);
 
     @Test
     void returnsAutoMapExisting_whenUniqueCandidateReachesThreshold() {
         // Given
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of(
                 candidate("concept-1", "Billing Service", AUTO_MAP_THRESHOLD),
@@ -37,11 +38,11 @@ class ThresholdConceptMatchingPolicyTest {
         );
 
         // When
-        ConceptMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = policy.decide(match);
 
         // Then
         assertThat(decision.requirementElement()).isEqualTo(selectedTerm);
-        assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.AUTO_MAP_EXISTING);
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.AUTO_MAP_EXISTING);
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-1");
@@ -53,7 +54,7 @@ class ThresholdConceptMatchingPolicyTest {
     @Test
     void returnsReviewRequired_whenTopThresholdCandidatesTie() {
         // Given
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of(
                 candidate("concept-2", "Billing API", AUTO_MAP_THRESHOLD),
@@ -63,10 +64,10 @@ class ThresholdConceptMatchingPolicyTest {
         );
 
         // When
-        ConceptMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = policy.decide(match);
 
         // Then
-        assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.REVIEW_REQUIRED);
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.REVIEW_REQUIRED);
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-2", "concept-1");
@@ -78,7 +79,7 @@ class ThresholdConceptMatchingPolicyTest {
     @Test
     void returnsProposeExisting_whenBestCandidateIsBelowThreshold() {
         // Given
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of(
                 candidate("concept-1", "Billing Service", BELOW_THRESHOLD_SCORE),
@@ -87,10 +88,10 @@ class ThresholdConceptMatchingPolicyTest {
         );
 
         // When
-        ConceptMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = policy.decide(match);
 
         // Then
-        assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.PROPOSE_EXISTING);
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.PROPOSE_EXISTING);
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-1");
@@ -102,23 +103,23 @@ class ThresholdConceptMatchingPolicyTest {
     @Test
     void returnsAutoCreateNew_whenCandidatesAreEmpty() {
         // Given
-        CandidateConceptMatch match = new CandidateConceptMatch(selectedTerm, List.of());
+        CandidateNodeMatch match = new CandidateNodeMatch(selectedTerm, List.of());
 
         // When
-        ConceptMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = policy.decide(match);
 
         // Then
         assertThat(decision.requirementElement()).isEqualTo(selectedTerm);
-        assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.AUTO_CREATE_NEW);
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.AUTO_CREATE_NEW);
         assertThat(decision.candidates()).isEmpty();
         assertThat(decision.rationale())
-            .isEqualTo("No existing candidates found; auto-creating concept from selected term.");
+            .isEqualTo("No existing candidates found; auto-creating node from selected term.");
     }
 
     @Test
     void usesHighestEvidenceScorePerCandidate_whenChoosingDecision() {
         // Given
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of(
                 candidate("concept-1", "Billing Service", 0.4, 1.0),
@@ -127,10 +128,10 @@ class ThresholdConceptMatchingPolicyTest {
         );
 
         // When
-        ConceptMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = policy.decide(match);
 
         // Then
-        assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.AUTO_MAP_EXISTING);
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.AUTO_MAP_EXISTING);
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-1");
@@ -139,7 +140,7 @@ class ThresholdConceptMatchingPolicyTest {
     @Test
     void keepsRetrievalOrder_whenBelowThresholdCandidatesTie() {
         // Given
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of(
                 candidate("concept-2", "Billing API", BELOW_THRESHOLD_SCORE),
@@ -148,10 +149,10 @@ class ThresholdConceptMatchingPolicyTest {
         );
 
         // When
-        ConceptMatchDecision decision = policy.decide(match);
+        NodeMatchDecision decision = policy.decide(match);
 
         // Then
-        assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.PROPOSE_EXISTING);
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.PROPOSE_EXISTING);
         assertThat(decision.candidates())
             .extracting(retrieved -> retrieved.candidate().candidateKey())
             .containsExactly("concept-2");
@@ -168,32 +169,32 @@ class ThresholdConceptMatchingPolicyTest {
     @Test
     void usesDefaultAutoMapThreshold_whenNoThresholdIsProvided() {
         // Given
-        ThresholdConceptMatchingPolicy defaultPolicy = new ThresholdConceptMatchingPolicy();
-        CandidateConceptMatch match = new CandidateConceptMatch(
+        ThresholdNodeMatchingPolicy defaultPolicy = new ThresholdNodeMatchingPolicy();
+        CandidateNodeMatch match = new CandidateNodeMatch(
             selectedTerm,
             List.of(candidate(
                 "concept-1",
                 "Billing Service",
-                ThresholdConceptMatchingPolicy.DEFAULT_AUTO_MAP_THRESHOLD
+                ThresholdNodeMatchingPolicy.DEFAULT_AUTO_MAP_THRESHOLD
             ))
         );
 
         // When
-        ConceptMatchDecision decision = defaultPolicy.decide(match);
+        NodeMatchDecision decision = defaultPolicy.decide(match);
 
         // Then
-        assertThat(decision.status()).isEqualTo(ConceptMatchDecisionStatus.AUTO_MAP_EXISTING);
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.AUTO_MAP_EXISTING);
         assertThat(decision.rationale())
             .contains(
                 "auto-map threshold " +
-                    ThresholdConceptMatchingPolicy.DEFAULT_AUTO_MAP_THRESHOLD
+                    ThresholdNodeMatchingPolicy.DEFAULT_AUTO_MAP_THRESHOLD
             );
     }
 
     @Test
     void rejectsConfiguration_whenAutoMapThresholdIsNegative() {
         // Given / When / Then
-        assertThatThrownBy(() -> new ThresholdConceptMatchingPolicy(-0.01))
+        assertThatThrownBy(() -> new ThresholdNodeMatchingPolicy(-0.01))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("auto-map threshold must be between 0.0 and 1.0");
     }
@@ -201,7 +202,7 @@ class ThresholdConceptMatchingPolicyTest {
     @Test
     void rejectsConfiguration_whenAutoMapThresholdIsAboveOne() {
         // Given / When / Then
-        assertThatThrownBy(() -> new ThresholdConceptMatchingPolicy(1.01))
+        assertThatThrownBy(() -> new ThresholdNodeMatchingPolicy(1.01))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("auto-map threshold must be between 0.0 and 1.0");
     }
@@ -209,21 +210,21 @@ class ThresholdConceptMatchingPolicyTest {
     @Test
     void rejectsConfiguration_whenAutoMapThresholdIsNaN() {
         // Given / When / Then
-        assertThatThrownBy(() -> new ThresholdConceptMatchingPolicy(Double.NaN))
+        assertThatThrownBy(() -> new ThresholdNodeMatchingPolicy(Double.NaN))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("auto-map threshold must be between 0.0 and 1.0");
     }
 
-    private RetrievedCandidateConcept candidate(
+    private RetrievedCandidateNode candidate(
         String candidateKey,
         String label,
         double... scores
     ) {
         List<RetrievalEvidence> evidence = java.util.Arrays.stream(scores)
-            .mapToObj(score -> new RetrievalEvidence("conceptName", "matched concept name", score))
+            .mapToObj(score -> new RetrievalEvidence("nodeName", "matched node name", score))
             .toList();
-        return new RetrievedCandidateConcept(
-            new CandidateConcept(candidateKey, label, "SystemComponent"),
+        return new RetrievedCandidateNode(
+            new CandidateNode(candidateKey, label, NodeType.CONCEPT),
             evidence
         );
     }

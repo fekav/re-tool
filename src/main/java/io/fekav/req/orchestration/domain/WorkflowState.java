@@ -9,11 +9,11 @@ import java.util.Set;
 
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.req.classification.domain.Classification;
-import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
+import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
-import io.fekav.req.shared.model.ConceptMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.req.shared.model.Provenance;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.syntaxextraction.domain.Action;
@@ -24,14 +24,14 @@ public final class WorkflowState {
     private final Optional<Classification> classification;
     private final Optional<Action> action;
     private final List<RequirementElement> expectedRequirementElements;
-    private final List<ConceptMatchDecision> conceptMatchDecisions;
+    private final List<NodeMatchDecision> nodeMatchDecisions;
 
     private WorkflowState(
         Optional<Provenance> provenance,
         Optional<Classification> classification,
         Optional<Action> action,
         List<RequirementElement> expectedRequirementElements,
-        List<ConceptMatchDecision> conceptMatchDecisions
+        List<NodeMatchDecision> nodeMatchDecisions
     ) {
         this.provenance = Objects.requireNonNull(provenance, "provenance must not be null");
         this.classification = Objects.requireNonNull(
@@ -40,7 +40,7 @@ public final class WorkflowState {
         );
         this.action = Objects.requireNonNull(action, "action must not be null");
         this.expectedRequirementElements = List.copyOf(expectedRequirementElements);
-        this.conceptMatchDecisions = List.copyOf(conceptMatchDecisions);
+        this.nodeMatchDecisions = List.copyOf(nodeMatchDecisions);
     }
 
     public static WorkflowState replay(List<ApplicationEvent> events) {
@@ -51,7 +51,7 @@ public final class WorkflowState {
         Classification classification = null;
         Action action = null;
         List<RequirementElement> expectedRequirementElements = List.of();
-        List<ConceptMatchDecision> allConceptMatchDecisions = new ArrayList<>();
+        List<NodeMatchDecision> allNodeMatchDecisions = new ArrayList<>();
 
         for (ApplicationEvent event : events) {
             Objects.requireNonNull(event, "events must not contain null");
@@ -66,15 +66,15 @@ public final class WorkflowState {
                 action = extractedEvent.action();
                 expectedRequirementElements = collector.collectFrom(extractedEvent.action());
             }
-            if (event instanceof ConceptResolutionDecidedEvent decidedEvent) {
-                allConceptMatchDecisions.add(decidedEvent.decision());
+            if (event instanceof NodeResolutionDecidedEvent decidedEvent) {
+                allNodeMatchDecisions.add(decidedEvent.decision());
             }
         }
 
-        List<ConceptMatchDecision> relevantConceptMatchDecisions =
-            filterRelevantConceptMatchDecisions(
+        List<NodeMatchDecision> relevantNodeMatchDecisions =
+            filterRelevantNodeMatchDecisions(
                 expectedRequirementElements,
-                allConceptMatchDecisions
+                allNodeMatchDecisions
             );
 
         return new WorkflowState(
@@ -82,21 +82,21 @@ public final class WorkflowState {
             Optional.ofNullable(classification),
             Optional.ofNullable(action),
             expectedRequirementElements,
-            relevantConceptMatchDecisions
+            relevantNodeMatchDecisions
         );
     }
 
-    private static List<ConceptMatchDecision> filterRelevantConceptMatchDecisions(
+    private static List<NodeMatchDecision> filterRelevantNodeMatchDecisions(
         List<RequirementElement> expectedRequirementElements,
-        List<ConceptMatchDecision> conceptMatchDecisions
+        List<NodeMatchDecision> nodeMatchDecisions
     ) {
         if (expectedRequirementElements.isEmpty()) {
-            return distinctValues(conceptMatchDecisions);
+            return distinctValues(nodeMatchDecisions);
         }
 
         Set<RequirementElement> relevantRequirementElements =
             new LinkedHashSet<>(expectedRequirementElements);
-        return distinctValues(conceptMatchDecisions.stream()
+        return distinctValues(nodeMatchDecisions.stream()
             .filter(decision ->
                 relevantRequirementElements.contains(decision.requirementElement())
             )
@@ -129,14 +129,14 @@ public final class WorkflowState {
         return expectedRequirementElements.size();
     }
 
-    public List<ConceptMatchDecision> conceptMatchDecisions() {
-        return conceptMatchDecisions;
+    public List<NodeMatchDecision> nodeMatchDecisions() {
+        return nodeMatchDecisions;
     }
 
     public boolean isComplete() {
         return provenance.isPresent() &&
             classification.isPresent() &&
             action.isPresent() &&
-            conceptMatchDecisions.size() == expectedResolutionDecisionCount();
+            nodeMatchDecisions.size() == expectedResolutionDecisionCount();
     }
 }

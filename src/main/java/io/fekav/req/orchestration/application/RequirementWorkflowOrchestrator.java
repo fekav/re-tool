@@ -9,8 +9,8 @@ import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.classification.application.ClassifyRequirementCommand;
 import io.fekav.req.orchestration.domain.WorkflowState;
-import io.fekav.req.resolution.application.ResolveConceptCommand;
-import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
+import io.fekav.req.resolution.application.ResolveNodeCommand;
+import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
@@ -89,12 +89,12 @@ public class RequirementWorkflowOrchestrator {
         if (transition.stored()) {
             newlyExpectedRequirementElements(transition)
                 .forEach(element -> commandBus.dispatch(
-                    new ResolveConceptCommand(event.correlationId(), element)
+                    new ResolveNodeCommand(event.correlationId(), element)
                 ));
         }
     }
 
-    public void onConceptResolutionDecided(@Observes ConceptResolutionDecidedEvent event) {
+    public void onNodeResolutionDecided(@Observes NodeResolutionDecidedEvent event) {
         if (!enabled) {
             return;
         }
@@ -132,7 +132,7 @@ public class RequirementWorkflowOrchestrator {
                 completedState.provenance().orElseThrow(),
                 completedState.classification().orElseThrow(),
                 completedState.action().orElseThrow(),
-                completedState.conceptMatchDecisions()
+                completedState.nodeMatchDecisions()
             ));
         }
     }

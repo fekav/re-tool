@@ -4,23 +4,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-import io.fekav.req.shared.model.CandidateConceptMatch;
-import io.fekav.req.shared.model.ConceptMatchDecision;
-import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
+import io.fekav.req.shared.model.CandidateNodeMatch;
+import io.fekav.req.shared.model.NodeMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecisionStatus;
 import io.fekav.req.shared.model.RetrievalEvidence;
-import io.fekav.req.shared.model.RetrievedCandidateConcept;
+import io.fekav.req.shared.model.RetrievedCandidateNode;
 
-public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
+public class ThresholdNodeMatchingPolicy implements NodeMatchingPolicy {
 
     public static final double DEFAULT_AUTO_MAP_THRESHOLD = 1.0;
 
     private final double autoMapThreshold;
 
-    public ThresholdConceptMatchingPolicy() {
+    public ThresholdNodeMatchingPolicy() {
         this(DEFAULT_AUTO_MAP_THRESHOLD);
     }
 
-    public ThresholdConceptMatchingPolicy(double autoMapThreshold) {
+    public ThresholdNodeMatchingPolicy(double autoMapThreshold) {
         if (Double.isNaN(autoMapThreshold) || autoMapThreshold < 0.0 || autoMapThreshold > 1.0) {
             throw new IllegalArgumentException(
                 "auto-map threshold must be between 0.0 and 1.0"
@@ -30,7 +30,7 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
     }
 
     @Override
-    public ConceptMatchDecision decide(CandidateConceptMatch match) {
+    public NodeMatchDecision decide(CandidateNodeMatch match) {
         Objects.requireNonNull(match, "match must not be null");
 
         if (match.candidates().isEmpty()) {
@@ -43,7 +43,7 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
             .mapToDouble(this::bestScore)
             .max()
             .orElseThrow();
-        List<RetrievedCandidateConcept> topCandidates = match
+        List<RetrievedCandidateNode> topCandidates = match
             .candidates()
             .stream()
             .filter(candidate -> Double.compare(bestScore(candidate), topScore) == 0)
@@ -51,17 +51,17 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
 
         if (topScore >= autoMapThreshold) {
             if (topCandidates.size() == 1) {
-                return new ConceptMatchDecision(
+                return new NodeMatchDecision(
                     match.requirementElement(),
-                    ConceptMatchDecisionStatus.AUTO_MAP_EXISTING,
+                    NodeMatchDecisionStatus.AUTO_MAP_EXISTING,
                     topCandidates,
                     "Unique top candidate reached auto-map threshold " +
                         autoMapThreshold + " with score " + topScore + "."
                 );
             }
-            return new ConceptMatchDecision(
+            return new NodeMatchDecision(
                 match.requirementElement(),
-                ConceptMatchDecisionStatus.REVIEW_REQUIRED,
+                NodeMatchDecisionStatus.REVIEW_REQUIRED,
                 topCandidates,
                 "Multiple top candidates share score " + topScore +
                     " at auto-map threshold " + autoMapThreshold +
@@ -69,30 +69,30 @@ public class ThresholdConceptMatchingPolicy implements ConceptMatchingPolicy {
             );
         }
 
-        RetrievedCandidateConcept bestCandidate = match
+        RetrievedCandidateNode bestCandidate = match
             .candidates()
             .stream()
             .max(Comparator.comparingDouble(this::bestScore))
             .orElseThrow();
-        return new ConceptMatchDecision(
+        return new NodeMatchDecision(
             match.requirementElement(),
-            ConceptMatchDecisionStatus.PROPOSE_EXISTING,
+            NodeMatchDecisionStatus.PROPOSE_EXISTING,
             List.of(bestCandidate),
             "Top candidate score " + topScore + " is below auto-map threshold " +
                 autoMapThreshold + "; proposing best existing candidate."
         );
     }
 
-    private ConceptMatchDecision autoCreateDecision(CandidateConceptMatch match) {
-        return new ConceptMatchDecision(
+    private NodeMatchDecision autoCreateDecision(CandidateNodeMatch match) {
+        return new NodeMatchDecision(
             match.requirementElement(),
-            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+            NodeMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
-            "No existing candidates found; auto-creating concept from selected term."
+            "No existing candidates found; auto-creating node from selected term."
         );
     }
 
-    private double bestScore(RetrievedCandidateConcept candidate) {
+    private double bestScore(RetrievedCandidateNode candidate) {
         return candidate
             .evidence()
             .stream()

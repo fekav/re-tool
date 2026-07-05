@@ -10,22 +10,22 @@ import org.junit.jupiter.api.Test;
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.platform.messaging.DomainEvent;
-import io.fekav.req.shared.model.ConceptMatchDecision;
-import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecisionStatus;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.RequirementElementType;
 
-class ConceptApplicationEventTest {
+class NodeApplicationEventTest {
 
     @Test
-    void createConceptResolutionDecidedEvent_preservesDecisionWithMetadata() {
+    void createNodeResolutionDecidedEvent_preservesDecisionWithMetadata() {
         // Given
         CorrelationId correlationId = CorrelationId.create();
-        ConceptMatchDecision decision = autoCreateNewDecision();
+        NodeMatchDecision decision = autoCreateNewDecision();
 
         // When
-        ConceptResolutionDecidedEvent event =
-            ConceptResolutionDecidedEvent.create(correlationId, decision);
+        NodeResolutionDecidedEvent event =
+            NodeResolutionDecidedEvent.create(correlationId, decision);
 
         // Then
         assertThat(event).isInstanceOf(ApplicationEvent.class);
@@ -37,9 +37,9 @@ class ConceptApplicationEventTest {
     }
 
     @Test
-    void containsNoMatch_whenConceptResolutionDecidedEventIsCreated() {
+    void containsNoMatch_whenNodeResolutionDecidedEventIsCreated() {
         // Act
-        String[] componentNames = recordComponentNames(ConceptResolutionDecidedEvent.class);
+        String[] componentNames = recordComponentNames(NodeResolutionDecidedEvent.class);
 
         // Assert
         assertThat(componentNames).doesNotContain("match");
@@ -51,10 +51,10 @@ class ConceptApplicationEventTest {
             .toArray(String[]::new);
     }
 
-    private ConceptMatchDecision autoCreateNewDecision() {
-        return new ConceptMatchDecision(
+    private NodeMatchDecision autoCreateNewDecision() {
+        return new NodeMatchDecision(
             new RequirementElement(RequirementElementType.CONDITION, "after timeout"),
-            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+            NodeMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             "No existing candidates found"
         );

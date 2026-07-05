@@ -7,7 +7,7 @@ import java.util.Objects;
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventId;
 import io.fekav.req.classification.domain.Classification;
-import io.fekav.req.shared.model.ConceptMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.Provenance;
 import io.fekav.req.syntaxextraction.domain.Action;
@@ -19,7 +19,7 @@ public record RequirementAnalysisCompletedEvent(
     Provenance provenance,
     Classification classification,
     Action action,
-    List<ConceptMatchDecision> conceptMatchDecisions
+    List<NodeMatchDecision> nodeMatchDecisions
 ) implements ApplicationEvent {
 
     public RequirementAnalysisCompletedEvent {
@@ -30,13 +30,13 @@ public record RequirementAnalysisCompletedEvent(
         Objects.requireNonNull(classification, "classification must not be null");
         Objects.requireNonNull(action, "action must not be null");
         Objects.requireNonNull(
-            conceptMatchDecisions,
-            "conceptMatchDecisions must not be null"
+            nodeMatchDecisions,
+            "nodeMatchDecisions must not be null"
         );
-        if (conceptMatchDecisions.stream().anyMatch(Objects::isNull)) {
-            throw new NullPointerException("conceptMatchDecisions must not contain null");
+        if (nodeMatchDecisions.stream().anyMatch(Objects::isNull)) {
+            throw new NullPointerException("nodeMatchDecisions must not contain null");
         }
-        conceptMatchDecisions = List.copyOf(conceptMatchDecisions);
+        nodeMatchDecisions = List.copyOf(nodeMatchDecisions);
     }
 
     public static RequirementAnalysisCompletedEvent create(
@@ -44,7 +44,7 @@ public record RequirementAnalysisCompletedEvent(
         Provenance provenance,
         Classification classification,
         Action action,
-        List<ConceptMatchDecision> conceptMatchDecisions
+        List<NodeMatchDecision> nodeMatchDecisions
     ) {
         return new RequirementAnalysisCompletedEvent(
             EventId.create(),
@@ -53,7 +53,7 @@ public record RequirementAnalysisCompletedEvent(
             provenance,
             classification,
             action,
-            conceptMatchDecisions
+            nodeMatchDecisions
         );
     }
 }

@@ -22,14 +22,14 @@ import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.orchestration.infrastructure.InMemoryEventStore;
-import io.fekav.req.resolution.application.ResolveConceptCommand;
-import io.fekav.req.shared.event.ConceptResolutionDecidedEvent;
+import io.fekav.req.resolution.application.ResolveNodeCommand;
+import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
-import io.fekav.req.shared.model.ConceptMatchDecision;
-import io.fekav.req.shared.model.ConceptMatchDecisionStatus;
+import io.fekav.req.shared.model.NodeMatchDecision;
+import io.fekav.req.shared.model.NodeMatchDecisionStatus;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
@@ -130,10 +130,10 @@ class RequirementWorkflowOrchestratorTest {
         assertThat(commandBus.commands()).hasSize(5);
         assertThat(commandBus.commands())
             .allSatisfy(command ->
-                assertThat(command).isInstanceOf(ResolveConceptCommand.class)
+                assertThat(command).isInstanceOf(ResolveNodeCommand.class)
             )
             .extracting(command ->
-                ((ResolveConceptCommand) command).requirementElement()
+                ((ResolveNodeCommand) command).requirementElement()
             )
             .containsExactly(
                 new RequirementElement(RequirementElementType.SUBJECT, "login form"),
@@ -143,7 +143,7 @@ class RequirementWorkflowOrchestratorTest {
                 new RequirementElement(RequirementElementType.CONSTRAINT, "within 200 milliseconds")
             );
         assertThat(commandBus.commands())
-            .extracting(command -> ((ResolveConceptCommand) command).correlationId())
+            .extracting(command -> ((ResolveNodeCommand) command).correlationId())
             .containsOnly(correlationId);
     }
 
@@ -175,14 +175,14 @@ class RequirementWorkflowOrchestratorTest {
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
-        List<ConceptMatchDecision> decisions = requiredDecisions();
+        List<NodeMatchDecision> decisions = requiredDecisions();
         eventStore.appendIfAbsent(ingestedEvent);
         eventStore.appendIfAbsent(
             RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action)
         );
         decisions.forEach(decision ->
             eventStore.appendIfAbsent(
-                ConceptResolutionDecidedEvent.create(correlationId, decision)
+                NodeResolutionDecidedEvent.create(correlationId, decision)
             )
         );
         RequirementClassifiedEvent event =
@@ -200,7 +200,7 @@ class RequirementWorkflowOrchestratorTest {
                 assertThat(completion.provenance()).isEqualTo(ingestedEvent.provenance());
                 assertThat(completion.classification()).isEqualTo(event.classification());
                 assertThat(completion.action()).isEqualTo(action);
-                assertThat(completion.conceptMatchDecisions())
+                assertThat(completion.nodeMatchDecisions())
                     .containsExactlyElementsOf(decisions);
             });
     }
@@ -211,7 +211,7 @@ class RequirementWorkflowOrchestratorTest {
         RequirementIngestedEvent ingestedEvent = ingestedEvent();
         CorrelationId correlationId = ingestedEvent.correlationId();
         Action action = actionWithoutOptionalElements();
-        List<ConceptMatchDecision> decisions = requiredDecisions();
+        List<NodeMatchDecision> decisions = requiredDecisions();
         eventStore.appendIfAbsent(ingestedEvent);
         eventStore.appendIfAbsent(
             RequirementClassifiedEvent.create(correlationId, RAW_TEXT, classification())
@@ -220,23 +220,23 @@ class RequirementWorkflowOrchestratorTest {
             RequirementElementsExtractedEvent.create(correlationId, RAW_TEXT, action)
         );
         eventStore.appendIfAbsent(
-            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(0))
+            NodeResolutionDecidedEvent.create(correlationId, decisions.get(0))
         );
         eventStore.appendIfAbsent(
-            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(1))
+            NodeResolutionDecidedEvent.create(correlationId, decisions.get(1))
         );
-        ConceptResolutionDecidedEvent event =
-            ConceptResolutionDecidedEvent.create(correlationId, decisions.get(2));
+        NodeResolutionDecidedEvent event =
+            NodeResolutionDecidedEvent.create(correlationId, decisions.get(2));
 
         // Act
-        orchestrator.onConceptResolutionDecided(event);
-        orchestrator.onConceptResolutionDecided(event);
+        orchestrator.onNodeResolutionDecided(event);
+        orchestrator.onNodeResolutionDecided(event);
 
         // Assert
         assertThat(eventPublisher.applicationEvents())
             .singleElement()
             .isInstanceOfSatisfying(RequirementAnalysisCompletedEvent.class, completion ->
-                assertThat(completion.conceptMatchDecisions()).containsExactlyElementsOf(decisions)
+                assertThat(completion.nodeMatchDecisions()).containsExactlyElementsOf(decisions)
             );
     }
 
@@ -280,7 +280,7 @@ class RequirementWorkflowOrchestratorTest {
         );
     }
 
-    private List<ConceptMatchDecision> requiredDecisions() {
+    private List<NodeMatchDecision> requiredDecisions() {
         return List.of(
             autoCreateDecision(new RequirementElement(RequirementElementType.SUBJECT, "login form")),
             autoCreateDecision(new RequirementElement(RequirementElementType.ACTION, "must validate")),
@@ -288,10 +288,10 @@ class RequirementWorkflowOrchestratorTest {
         );
     }
 
-    private ConceptMatchDecision autoCreateDecision(RequirementElement element) {
-        return new ConceptMatchDecision(
+    private NodeMatchDecision autoCreateDecision(RequirementElement element) {
+        return new NodeMatchDecision(
             element,
-            ConceptMatchDecisionStatus.AUTO_CREATE_NEW,
+            NodeMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             "No existing candidates found"
         );

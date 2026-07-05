@@ -1,11 +1,9 @@
 package io.fekav.req.shared.kg;
 
-import io.fekav.req.shared.model.RequirementElementType;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.neo4j.driver.Driver;
@@ -14,15 +12,31 @@ import org.neo4j.driver.Session;
 @ApplicationScoped
 public class Neo4jSchemaInitializer {
 
-    private static final String SAMPLE_GOAL_ID = "sample-goal-1";
-    private static final String SAMPLE_NEED_ID = "sample-need-1";
-    private static final String SAMPLE_REQUIREMENT_ID = "sample-requirement-1";
-    private static final String SAMPLE_REASON_CATEGORY_REQUIREMENT_ID =
-        "sample-requirement-2";
+    private static final String SAMPLE_GOAL_ID = "sample-goal-payment-support";
+    private static final String SAMPLE_SUPPORT_NEED_ID =
+        "sample-need-support-visibility";
+    private static final String SAMPLE_AUDIT_NEED_ID = "sample-need-audit-evidence";
+    private static final String SAMPLE_RECORD_FAILURE_REQUIREMENT_ID =
+        "sample-requirement-record-failure";
+    private static final String SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID =
+        "sample-requirement-normalize-codes";
     private static final String SAMPLE_DASHBOARD_REQUIREMENT_ID =
-        "sample-requirement-3";
+        "sample-requirement-support-dashboard";
+    private static final String SAMPLE_NOTIFICATION_REQUIREMENT_ID =
+        "sample-requirement-support-alert";
     private static final String SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID =
-        "sample-requirement-4";
+        "sample-requirement-audit-retention";
+    private static final String SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID =
+        "sample-requirement-audit-export";
+    private static final String SAMPLE_AUDIT_RECORD_REQUIREMENT_ID =
+        "sample-requirement-audit-record";
+    private static final String SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID =
+        "sample-requirement-retry-suppression";
+    private static final String SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID =
+        "sample-requirement-dashboard-masking";
+
+    private static final String RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY =
+        assertionKey("billing service", "record", "failed payment attempts");
 
     private static final List<String> SCHEMA_STATEMENTS = List.of(
         """
@@ -34,16 +48,24 @@ public class Neo4jSchemaInitializer {
         FOR (p:Provenance) REQUIRE p.id IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT requirement_element_id IF NOT EXISTS
-        FOR (e:RequirementElement) REQUIRE e.id IS UNIQUE
+        CREATE CONSTRAINT mention_id IF NOT EXISTS
+        FOR (m:Mention) REQUIRE m.id IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT action_id IF NOT EXISTS
-        FOR (a:Action) REQUIRE a.id IS UNIQUE
+        CREATE CONSTRAINT concept_canonical_name IF NOT EXISTS
+        FOR (c:Concept) REQUIRE c.canonicalName IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT action_requirement_id IF NOT EXISTS
-        FOR (a:Action) REQUIRE a.requirementId IS UNIQUE
+        CREATE CONSTRAINT predicate_canonical_name IF NOT EXISTS
+        FOR (p:Predicate) REQUIRE p.canonicalName IS UNIQUE
+        """,
+        """
+        CREATE CONSTRAINT qualifier_identity IF NOT EXISTS
+        FOR (q:Qualifier) REQUIRE (q.qualifierKind, q.canonicalText) IS UNIQUE
+        """,
+        """
+        CREATE CONSTRAINT assertion_key IF NOT EXISTS
+        FOR (a:Assertion) REQUIRE a.assertionKey IS UNIQUE
         """,
         """
         CREATE CONSTRAINT requirement_type_code IF NOT EXISTS
@@ -60,14 +82,6 @@ public class Neo4jSchemaInitializer {
         """
         CREATE CONSTRAINT requirement_property_label IF NOT EXISTS
         FOR (p:RequirementProperty) REQUIRE p.label IS UNIQUE
-        """,
-        """
-        CREATE CONSTRAINT requirement_element_type_code IF NOT EXISTS
-        FOR (e:RequirementElementType) REQUIRE e.code IS UNIQUE
-        """,
-        """
-        CREATE CONSTRAINT requirement_element_type_label IF NOT EXISTS
-        FOR (e:RequirementElementType) REQUIRE e.label IS UNIQUE
         """,
         """
         CREATE CONSTRAINT requirement_relation_type_code IF NOT EXISTS
@@ -95,12 +109,12 @@ public class Neo4jSchemaInitializer {
         FOR (r:Requirement) ON (r.rawText)
         """,
         """
-        CREATE INDEX action_text IF NOT EXISTS
-        FOR (a:Action) ON (a.actionText)
+        CREATE INDEX mention_text IF NOT EXISTS
+        FOR (m:Mention) ON (m.text)
         """,
         """
-        CREATE INDEX requirement_element_text IF NOT EXISTS
-        FOR (e:RequirementElement) ON (e.text)
+        CREATE INDEX qualifier_canonical_text IF NOT EXISTS
+        FOR (q:Qualifier) ON (q.canonicalText)
         """
     );
 
@@ -114,11 +128,6 @@ public class Neo4jSchemaInitializer {
         Map.of("code", "FUNCTIONAL", "label", "Functional"),
         Map.of("code", "QUALITY", "label", "Quality")
     );
-
-    private static final List<Map<String, String>> REQUIREMENT_ELEMENT_TYPES =
-        Arrays.stream(RequirementElementType.values())
-            .map(element -> Map.of("code", element.name(), "label", element.label()))
-            .toList();
 
     private static final List<Map<String, String>> REQUIREMENT_RELATION_TYPES = List.of(
         Map.of("code", "REFINES", "label", "Refines"),
@@ -163,289 +172,555 @@ public class Neo4jSchemaInitializer {
     );
 
     private static final List<Map<String, String>> SAMPLE_REQUIREMENTS = List.of(
-        Map.of(
-            "id",
+        sampleRequirement(
             SAMPLE_GOAL_ID,
-            "rawText",
-            "Reduce failed customer onboarding by 30%.",
-            "type",
+            "Reduce payment-support escalations caused by failed payments by 25% in Q3.",
             "GOAL",
-            "property",
             "QUALITY",
-            "provenanceId",
-            "sample-provenance-goal-1"
+            "sample-provenance-goal-payment-support"
         ),
-        Map.of(
-            "id",
-            SAMPLE_NEED_ID,
-            "rawText",
-            "Support agents need visibility into failed payment attempts.",
-            "type",
+        sampleRequirement(
+            SAMPLE_SUPPORT_NEED_ID,
+            "Support agents need near-real-time visibility into failed payment attempts and decline reasons.",
             "NEED",
-            "property",
             "FUNCTIONAL",
-            "provenanceId",
-            "sample-provenance-need-1"
+            "sample-provenance-need-support-visibility"
         ),
-        Map.of(
-            "id",
-            SAMPLE_REQUIREMENT_ID,
-            "rawText",
-            "The billing service must log failed payment attempts with reason codes.",
-            "type",
-            "REQUIREMENT",
-            "property",
-            "FUNCTIONAL",
-            "provenanceId",
-            "sample-provenance-requirement-1"
-        ),
-        Map.of(
-            "id",
-            SAMPLE_REASON_CATEGORY_REQUIREMENT_ID,
-            "rawText",
-            "The payment adapter must normalize provider decline codes into standard reason categories before the billing service logs a failed payment attempt.",
-            "type",
-            "REQUIREMENT",
-            "property",
-            "FUNCTIONAL",
-            "provenanceId",
-            "sample-provenance-requirement-2"
-        ),
-        Map.of(
-            "id",
-            SAMPLE_DASHBOARD_REQUIREMENT_ID,
-            "rawText",
-            "The support dashboard must display failed payment attempts with customer account, timestamp, and standard reason category within five seconds.",
-            "type",
-            "REQUIREMENT",
-            "property",
-            "FUNCTIONAL",
-            "provenanceId",
-            "sample-provenance-requirement-3"
-        ),
-        Map.of(
-            "id",
-            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-            "rawText",
-            "The billing audit store must retain failed payment attempt records for 90 days in encrypted storage.",
-            "type",
-            "REQUIREMENT",
-            "property",
+        sampleRequirement(
+            SAMPLE_AUDIT_NEED_ID,
+            "Finance auditors need complete evidence for failed payment attempts that affect customer invoices.",
+            "NEED",
             "QUALITY",
-            "provenanceId",
-            "sample-provenance-requirement-4"
-        )
-    );
-
-    private static final List<Map<String, String>> SAMPLE_ACTIONS = List.of(
-        Map.of(
-            "id",
-            "sample-action-1",
-            "requirementId",
-            SAMPLE_REQUIREMENT_ID,
-            "actionText",
-            "log"
+            "sample-provenance-need-audit-evidence"
         ),
-        Map.of(
-            "id",
-            "sample-action-2",
-            "requirementId",
-            SAMPLE_REASON_CATEGORY_REQUIREMENT_ID,
-            "actionText",
-            "normalize"
+        sampleRequirement(
+            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+            "The billing service must record failed payment attempts with provider code, decline reason, payment method, and customer account.",
+            "REQUIREMENT",
+            "FUNCTIONAL",
+            "sample-provenance-requirement-record-failure"
         ),
-        Map.of(
-            "id",
-            "sample-action-3",
-            "requirementId",
+        sampleRequirement(
+            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+            "The payment adapter must normalize provider decline codes into standard reason categories before failed payment attempts are recorded.",
+            "REQUIREMENT",
+            "FUNCTIONAL",
+            "sample-provenance-requirement-normalize-codes"
+        ),
+        sampleRequirement(
             SAMPLE_DASHBOARD_REQUIREMENT_ID,
-            "actionText",
-            "display"
+            "The support dashboard must display failed payment attempts for a customer account within five seconds.",
+            "REQUIREMENT",
+            "FUNCTIONAL",
+            "sample-provenance-requirement-support-dashboard"
         ),
-        Map.of(
-            "id",
-            "sample-action-4",
-            "requirementId",
+        sampleRequirement(
+            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+            "The notification service must alert support agents when three failed payment attempts occur for the same account within ten minutes.",
+            "REQUIREMENT",
+            "FUNCTIONAL",
+            "sample-provenance-requirement-support-alert"
+        ),
+        sampleRequirement(
             SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-            "actionText",
-            "retain"
+            "The billing audit store must retain failed payment attempt records for 90 days in encrypted storage.",
+            "REQUIREMENT",
+            "QUALITY",
+            "sample-provenance-requirement-audit-retention"
+        ),
+        sampleRequirement(
+            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+            "The audit exporter must produce a daily exception report for failed payment attempts with missing reason categories.",
+            "REQUIREMENT",
+            "FUNCTIONAL",
+            "sample-provenance-requirement-audit-export"
+        ),
+        sampleRequirement(
+            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
+            "The billing service must record failed payment attempts for audit review.",
+            "REQUIREMENT",
+            "FUNCTIONAL",
+            "sample-provenance-requirement-audit-record"
+        ),
+        sampleRequirement(
+            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+            "The retry scheduler must suppress automatic payment retries when the decline category is hard decline.",
+            "REQUIREMENT",
+            "FUNCTIONAL",
+            "sample-provenance-requirement-retry-suppression"
+        ),
+        sampleRequirement(
+            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+            "The support dashboard must mask payment instrument identifiers unless the agent has billing-admin permission.",
+            "REQUIREMENT",
+            "QUALITY",
+            "sample-provenance-requirement-dashboard-masking"
         )
     );
 
-    private static final List<Map<String, String>> SAMPLE_REQUIREMENT_ELEMENTS = List.of(
-        Map.of(
-            "id",
-            "sample-requirement-element-1-subject",
-            "actionId",
-            "sample-action-1",
-            "type",
-            "SUBJECT",
-            "text",
-            "billing service"
-        ),
-        Map.of(
-            "id",
-            "sample-requirement-element-1-object",
-            "actionId",
-            "sample-action-1",
-            "type",
-            "OBJECT",
-            "text",
+    private static final List<Map<String, String>> SAMPLE_ASSERTIONS = List.of(
+        assertion(
+            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+            "billing service",
+            "record",
             "failed payment attempts"
         ),
-        Map.of(
-            "id",
-            "sample-requirement-element-1-constraint",
-            "actionId",
-            "sample-action-1",
-            "type",
-            "CONSTRAINT",
-            "text",
-            "with reason codes"
-        ),
-        Map.of(
-            "id",
-            "sample-requirement-element-2-subject",
-            "actionId",
-            "sample-action-2",
-            "type",
-            "SUBJECT",
-            "text",
-            "payment adapter"
-        ),
-        Map.of(
-            "id",
-            "sample-requirement-element-2-object",
-            "actionId",
-            "sample-action-2",
-            "type",
-            "OBJECT",
-            "text",
+        assertion(
+            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+            "payment adapter",
+            "normalize",
             "provider decline codes"
         ),
-        Map.of(
-            "id",
-            "sample-requirement-element-2-condition",
-            "actionId",
-            "sample-action-2",
-            "type",
-            "CONDITION",
-            "text",
-            "before the billing service logs a failed payment attempt"
-        ),
-        Map.of(
-            "id",
-            "sample-requirement-element-2-constraint",
-            "actionId",
-            "sample-action-2",
-            "type",
-            "CONSTRAINT",
-            "text",
-            "into standard reason categories"
-        ),
-        Map.of(
-            "id",
-            "sample-requirement-element-3-subject",
-            "actionId",
-            "sample-action-3",
-            "type",
-            "SUBJECT",
-            "text",
-            "support dashboard"
-        ),
-        Map.of(
-            "id",
-            "sample-requirement-element-3-object",
-            "actionId",
-            "sample-action-3",
-            "type",
-            "OBJECT",
-            "text",
+        assertion(
+            SAMPLE_DASHBOARD_REQUIREMENT_ID,
+            "support dashboard",
+            "display",
             "failed payment attempts"
         ),
-        Map.of(
-            "id",
-            "sample-requirement-element-3-constraint",
-            "actionId",
-            "sample-action-3",
-            "type",
-            "CONSTRAINT",
-            "text",
-            "with customer account, timestamp, and standard reason category within five seconds"
+        assertion(
+            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+            "notification service",
+            "alert",
+            "support agents"
         ),
-        Map.of(
-            "id",
-            "sample-requirement-element-4-subject",
-            "actionId",
-            "sample-action-4",
-            "type",
-            "SUBJECT",
-            "text",
-            "billing audit store"
-        ),
-        Map.of(
-            "id",
-            "sample-requirement-element-4-object",
-            "actionId",
-            "sample-action-4",
-            "type",
-            "OBJECT",
-            "text",
+        assertion(
+            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+            "billing audit store",
+            "retain",
             "failed payment attempt records"
         ),
-        Map.of(
-            "id",
-            "sample-requirement-element-4-constraint",
-            "actionId",
-            "sample-action-4",
-            "type",
-            "CONSTRAINT",
-            "text",
-            "for 90 days in encrypted storage"
+        assertion(
+            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+            "audit exporter",
+            "produce",
+            "exception report"
+        ),
+        assertion(
+            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
+            "billing service",
+            "record",
+            "failed payment attempts"
+        ),
+        assertion(
+            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+            "retry scheduler",
+            "suppress",
+            "automatic payment retries"
+        ),
+        assertion(
+            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+            "support dashboard",
+            "mask",
+            "payment instrument identifiers"
         )
     );
+
+    private static final List<Map<String, String>> SAMPLE_ASSERTION_QUALIFIERS =
+        List.of(
+            assertionQualifier(
+                RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY,
+                "CONSTRAINT",
+                "with provider code, decline reason, payment method, and customer account"
+            ),
+            assertionQualifier(
+                assertionKey("payment adapter", "normalize", "provider decline codes"),
+                "CONDITION",
+                "before failed payment attempts are recorded"
+            ),
+            assertionQualifier(
+                assertionKey("payment adapter", "normalize", "provider decline codes"),
+                "CONSTRAINT",
+                "into standard reason categories"
+            ),
+            assertionQualifier(
+                assertionKey("support dashboard", "display", "failed payment attempts"),
+                "CONSTRAINT",
+                "for a customer account within five seconds"
+            ),
+            assertionQualifier(
+                assertionKey("notification service", "alert", "support agents"),
+                "CONDITION",
+                "when three failed payment attempts occur for the same account within ten minutes"
+            ),
+            assertionQualifier(
+                assertionKey(
+                    "billing audit store",
+                    "retain",
+                    "failed payment attempt records"
+                ),
+                "CONSTRAINT",
+                "for 90 days in encrypted storage"
+            ),
+            assertionQualifier(
+                assertionKey("audit exporter", "produce", "exception report"),
+                "CONSTRAINT",
+                "daily"
+            ),
+            assertionQualifier(
+                assertionKey("audit exporter", "produce", "exception report"),
+                "CONSTRAINT",
+                "for failed payment attempts with missing reason categories"
+            ),
+            assertionQualifier(
+                RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY,
+                "CONSTRAINT",
+                "for audit review"
+            ),
+            assertionQualifier(
+                assertionKey("retry scheduler", "suppress", "automatic payment retries"),
+                "CONDITION",
+                "when the decline category is hard decline"
+            ),
+            assertionQualifier(
+                assertionKey(
+                    "support dashboard",
+                    "mask",
+                    "payment instrument identifiers"
+                ),
+                "CONDITION",
+                "unless the agent has billing-admin permission"
+            )
+        );
+
+    private static final List<Map<String, String>> SAMPLE_CONCEPT_MENTIONS = List.of(
+        conceptMention(
+            "sample-mention-record-subject",
+            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+            "SUBJECT",
+            "billing service",
+            "billing service"
+        ),
+        conceptMention(
+            "sample-mention-record-object",
+            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+            "OBJECT",
+            "failed payment attempts",
+            "failed payment attempts"
+        ),
+        conceptMention(
+            "sample-mention-normalize-subject",
+            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+            "SUBJECT",
+            "payment adapter",
+            "payment adapter"
+        ),
+        conceptMention(
+            "sample-mention-normalize-object",
+            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+            "OBJECT",
+            "provider decline codes",
+            "provider decline codes"
+        ),
+        conceptMention(
+            "sample-mention-dashboard-subject",
+            SAMPLE_DASHBOARD_REQUIREMENT_ID,
+            "SUBJECT",
+            "support dashboard",
+            "support dashboard"
+        ),
+        conceptMention(
+            "sample-mention-dashboard-object",
+            SAMPLE_DASHBOARD_REQUIREMENT_ID,
+            "OBJECT",
+            "failed payment attempts",
+            "failed payment attempts"
+        ),
+        conceptMention(
+            "sample-mention-alert-subject",
+            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+            "SUBJECT",
+            "notification service",
+            "notification service"
+        ),
+        conceptMention(
+            "sample-mention-alert-object",
+            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+            "OBJECT",
+            "support agents",
+            "support agents"
+        ),
+        conceptMention(
+            "sample-mention-retention-subject",
+            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+            "SUBJECT",
+            "billing audit store",
+            "billing audit store"
+        ),
+        conceptMention(
+            "sample-mention-retention-object",
+            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+            "OBJECT",
+            "failed payment attempt records",
+            "failed payment attempt records"
+        ),
+        conceptMention(
+            "sample-mention-export-subject",
+            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+            "SUBJECT",
+            "audit exporter",
+            "audit exporter"
+        ),
+        conceptMention(
+            "sample-mention-export-object",
+            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+            "OBJECT",
+            "exception report",
+            "exception report"
+        ),
+        conceptMention(
+            "sample-mention-audit-record-subject",
+            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
+            "SUBJECT",
+            "billing service",
+            "billing service"
+        ),
+        conceptMention(
+            "sample-mention-audit-record-object",
+            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
+            "OBJECT",
+            "failed payment attempts",
+            "failed payment attempts"
+        ),
+        conceptMention(
+            "sample-mention-retry-subject",
+            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+            "SUBJECT",
+            "retry scheduler",
+            "retry scheduler"
+        ),
+        conceptMention(
+            "sample-mention-retry-object",
+            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+            "OBJECT",
+            "automatic payment retries",
+            "automatic payment retries"
+        ),
+        conceptMention(
+            "sample-mention-masking-subject",
+            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+            "SUBJECT",
+            "support dashboard",
+            "support dashboard"
+        ),
+        conceptMention(
+            "sample-mention-masking-object",
+            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+            "OBJECT",
+            "payment instrument identifiers",
+            "payment instrument identifiers"
+        )
+    );
+
+    private static final List<Map<String, String>> SAMPLE_PREDICATE_MENTIONS = List.of(
+        predicateMention(
+            "sample-mention-record-predicate",
+            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+            "record"
+        ),
+        predicateMention(
+            "sample-mention-normalize-predicate",
+            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+            "normalize"
+        ),
+        predicateMention(
+            "sample-mention-dashboard-predicate",
+            SAMPLE_DASHBOARD_REQUIREMENT_ID,
+            "display"
+        ),
+        predicateMention(
+            "sample-mention-alert-predicate",
+            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+            "alert"
+        ),
+        predicateMention(
+            "sample-mention-retention-predicate",
+            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+            "retain"
+        ),
+        predicateMention(
+            "sample-mention-export-predicate",
+            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+            "produce"
+        ),
+        predicateMention(
+            "sample-mention-audit-record-predicate",
+            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
+            "record"
+        ),
+        predicateMention(
+            "sample-mention-retry-predicate",
+            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+            "suppress"
+        ),
+        predicateMention(
+            "sample-mention-masking-predicate",
+            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+            "mask"
+        )
+    );
+
+    private static final List<Map<String, String>> SAMPLE_QUALIFIER_MENTIONS =
+        List.of(
+            qualifierMention(
+                "sample-mention-record-constraint",
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "with provider code, decline reason, payment method, and customer account",
+                "with provider code, decline reason, payment method, and customer account"
+            ),
+            qualifierMention(
+                "sample-mention-normalize-condition",
+                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+                "CONDITION",
+                "before failed payment attempts are recorded",
+                "before failed payment attempts are recorded"
+            ),
+            qualifierMention(
+                "sample-mention-normalize-constraint",
+                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "into standard reason categories",
+                "into standard reason categories"
+            ),
+            qualifierMention(
+                "sample-mention-dashboard-constraint",
+                SAMPLE_DASHBOARD_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "for a customer account within five seconds",
+                "for a customer account within five seconds"
+            ),
+            qualifierMention(
+                "sample-mention-alert-condition",
+                SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+                "CONDITION",
+                "when three failed payment attempts occur for the same account within ten minutes",
+                "when three failed payment attempts occur for the same account within ten minutes"
+            ),
+            qualifierMention(
+                "sample-mention-retention-constraint",
+                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "for 90 days in encrypted storage",
+                "for 90 days in encrypted storage"
+            ),
+            qualifierMention(
+                "sample-mention-export-daily-constraint",
+                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "daily",
+                "daily"
+            ),
+            qualifierMention(
+                "sample-mention-export-scope-constraint",
+                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "for failed payment attempts with missing reason categories",
+                "for failed payment attempts with missing reason categories"
+            ),
+            qualifierMention(
+                "sample-mention-audit-record-constraint",
+                SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "for audit review",
+                "for audit review"
+            ),
+            qualifierMention(
+                "sample-mention-retry-condition",
+                SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+                "CONDITION",
+                "when the decline category is hard decline",
+                "when the decline category is hard decline"
+            ),
+            qualifierMention(
+                "sample-mention-masking-condition",
+                SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+                "CONDITION",
+                "unless the agent has billing-admin permission",
+                "unless the agent has billing-admin permission"
+            )
+        );
+
+    private static final List<Map<String, String>> SAMPLE_SATISFIES_RELATIONS =
+        List.of(
+            requirementRelation(SAMPLE_SUPPORT_NEED_ID, SAMPLE_GOAL_ID),
+            requirementRelation(SAMPLE_AUDIT_NEED_ID, SAMPLE_GOAL_ID)
+        );
 
     private static final List<Map<String, String>> SAMPLE_REFINES_RELATIONS =
         List.of(
-            Map.of(
-                "sourceRequirementId",
-                SAMPLE_REQUIREMENT_ID,
-                "targetRequirementId",
-                SAMPLE_NEED_ID
+            requirementRelation(
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+                SAMPLE_SUPPORT_NEED_ID
             ),
-            Map.of(
-                "sourceRequirementId",
-                SAMPLE_DASHBOARD_REQUIREMENT_ID,
-                "targetRequirementId",
-                SAMPLE_NEED_ID
+            requirementRelation(
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+                SAMPLE_AUDIT_NEED_ID
             ),
-            Map.of(
-                "sourceRequirementId",
+            requirementRelation(
+                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+                SAMPLE_SUPPORT_NEED_ID
+            ),
+            requirementRelation(SAMPLE_DASHBOARD_REQUIREMENT_ID, SAMPLE_SUPPORT_NEED_ID),
+            requirementRelation(
+                SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+                SAMPLE_SUPPORT_NEED_ID
+            ),
+            requirementRelation(
+                SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+                SAMPLE_SUPPORT_NEED_ID
+            ),
+            requirementRelation(
+                SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+                SAMPLE_SUPPORT_NEED_ID
+            ),
+            requirementRelation(
                 SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-                "targetRequirementId",
-                SAMPLE_NEED_ID
-            )
+                SAMPLE_AUDIT_NEED_ID
+            ),
+            requirementRelation(
+                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+                SAMPLE_AUDIT_NEED_ID
+            ),
+            requirementRelation(SAMPLE_AUDIT_RECORD_REQUIREMENT_ID, SAMPLE_AUDIT_NEED_ID)
         );
 
     private static final List<Map<String, String>> SAMPLE_DEPENDS_ON_RELATIONS =
         List.of(
-            Map.of(
-                "sourceRequirementId",
-                SAMPLE_REQUIREMENT_ID,
-                "targetRequirementId",
-                SAMPLE_REASON_CATEGORY_REQUIREMENT_ID
+            requirementRelation(
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID
             ),
-            Map.of(
-                "sourceRequirementId",
+            requirementRelation(
                 SAMPLE_DASHBOARD_REQUIREMENT_ID,
-                "targetRequirementId",
-                SAMPLE_REQUIREMENT_ID
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
             ),
-            Map.of(
-                "sourceRequirementId",
+            requirementRelation(
+                SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
+            ),
+            requirementRelation(
                 SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-                "targetRequirementId",
-                SAMPLE_REQUIREMENT_ID
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
+            ),
+            requirementRelation(
+                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID
+            ),
+            requirementRelation(
+                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
+            ),
+            requirementRelation(
+                SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
+                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
+            ),
+            requirementRelation(
+                SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID
+            ),
+            requirementRelation(
+                SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+                SAMPLE_DASHBOARD_REQUIREMENT_ID
             )
         );
 
@@ -488,15 +763,6 @@ public class Neo4jSchemaInitializer {
                 SET p.label = property.label
                 """,
                 parameters("properties", REQUIREMENT_PROPERTIES)
-            );
-
-            tx.run(
-                """
-                UNWIND $requirementElementTypes AS requirementElementType
-                MERGE (e:RequirementElementType {code: requirementElementType.code})
-                SET e.label = requirementElementType.label
-                """,
-                parameters("requirementElementTypes", REQUIREMENT_ELEMENT_TYPES)
             );
 
             tx.run(
@@ -544,37 +810,97 @@ public class Neo4jSchemaInitializer {
 
             tx.run(
                 """
-                UNWIND $actions AS action
-                MATCH (r:Requirement {id: action.requirementId})
-                MERGE (a:Action {id: action.id})
-                SET a.actionText = action.actionText,
-                    a.requirementId = action.requirementId,
+                UNWIND $assertions AS assertion
+                MATCH (r:Requirement {id: assertion.requirementId})
+                MERGE (subject:Concept {canonicalName: assertion.subjectName})
+                SET subject.sample = true
+                MERGE (predicate:Predicate {canonicalName: assertion.predicateName})
+                SET predicate.sample = true
+                MERGE (object:Concept {canonicalName: assertion.objectName})
+                SET object.sample = true
+                MERGE (a:Assertion {assertionKey: assertion.assertionKey})
+                SET a.subjectCanonicalName = assertion.subjectName,
+                    a.predicateCanonicalName = assertion.predicateName,
+                    a.objectCanonicalName = assertion.objectName,
                     a.sample = true
-                MERGE (r)-[:HAS_ACTION]->(a)
+                MERGE (r)-[:ASSERTS]->(a)
+                MERGE (a)-[:HAS_SUBJECT]->(subject)
+                MERGE (a)-[:HAS_PREDICATE]->(predicate)
+                MERGE (a)-[:HAS_OBJECT]->(object)
                 """,
-                parameters("actions", SAMPLE_ACTIONS)
+                parameters("assertions", SAMPLE_ASSERTIONS)
             );
 
             tx.run(
                 """
-                UNWIND $requirementElements AS element
-                MATCH (a:Action {id: element.actionId})
-                MERGE (e:RequirementElement {id: element.id})
-                SET e.type = element.type,
-                    e.text = element.text,
-                    e.sample = true
-                MERGE (a)-[:HAS_REQUIREMENT_ELEMENT]->(e)
+                UNWIND $assertionQualifiers AS qualifier
+                MATCH (a:Assertion {assertionKey: qualifier.assertionKey})
+                MERGE (q:Qualifier {
+                    qualifierKind: qualifier.qualifierKind,
+                    canonicalText: qualifier.canonicalText
+                })
+                SET q.sample = true
+                MERGE (a)-[:HAS_QUALIFIER]->(q)
                 """,
-                parameters("requirementElements", SAMPLE_REQUIREMENT_ELEMENTS)
+                parameters("assertionQualifiers", SAMPLE_ASSERTION_QUALIFIERS)
             );
 
             tx.run(
                 """
-                MATCH (need:Requirement {id: $needId})
-                MATCH (goal:Requirement {id: $goalId})
+                UNWIND $conceptMentions AS mention
+                MATCH (r:Requirement {id: mention.requirementId})
+                MATCH (c:Concept {canonicalName: mention.canonicalName})
+                MERGE (m:Mention {id: mention.id})
+                SET m.text = mention.text,
+                    m.role = mention.role,
+                    m.sample = true
+                MERGE (r)-[:HAS_MENTION]->(m)
+                MERGE (m)-[:DENOTES]->(c)
+                """,
+                parameters("conceptMentions", SAMPLE_CONCEPT_MENTIONS)
+            );
+
+            tx.run(
+                """
+                UNWIND $predicateMentions AS mention
+                MATCH (r:Requirement {id: mention.requirementId})
+                MATCH (p:Predicate {canonicalName: mention.canonicalName})
+                MERGE (m:Mention {id: mention.id})
+                SET m.text = mention.text,
+                    m.role = 'ACTION',
+                    m.sample = true
+                MERGE (r)-[:HAS_MENTION]->(m)
+                MERGE (m)-[:DENOTES]->(p)
+                """,
+                parameters("predicateMentions", SAMPLE_PREDICATE_MENTIONS)
+            );
+
+            tx.run(
+                """
+                UNWIND $qualifierMentions AS mention
+                MATCH (r:Requirement {id: mention.requirementId})
+                MATCH (q:Qualifier {
+                    qualifierKind: mention.qualifierKind,
+                    canonicalText: mention.canonicalText
+                })
+                MERGE (m:Mention {id: mention.id})
+                SET m.text = mention.text,
+                    m.role = mention.qualifierKind,
+                    m.sample = true
+                MERGE (r)-[:HAS_MENTION]->(m)
+                MERGE (m)-[:DENOTES]->(q)
+                """,
+                parameters("qualifierMentions", SAMPLE_QUALIFIER_MENTIONS)
+            );
+
+            tx.run(
+                """
+                UNWIND $satisfiesRelations AS relation
+                MATCH (need:Requirement {id: relation.sourceRequirementId})
+                MATCH (goal:Requirement {id: relation.targetRequirementId})
                 MERGE (need)-[:SATISFIES]->(goal)
                 """,
-                Map.of("needId", SAMPLE_NEED_ID, "goalId", SAMPLE_GOAL_ID)
+                parameters("satisfiesRelations", SAMPLE_SATISFIES_RELATIONS)
             );
 
             tx.run(
@@ -599,6 +925,137 @@ public class Neo4jSchemaInitializer {
 
             return null;
         });
+    }
+
+    private static Map<String, String> assertion(
+        String requirementId,
+        String subjectName,
+        String predicateName,
+        String objectName
+    ) {
+        return Map.of(
+            "requirementId",
+            requirementId,
+            "assertionKey",
+            assertionKey(subjectName, predicateName, objectName),
+            "subjectName",
+            subjectName.strip(),
+            "predicateName",
+            predicateName.strip(),
+            "objectName",
+            objectName.strip()
+        );
+    }
+
+    private static Map<String, String> sampleRequirement(
+        String id,
+        String rawText,
+        String type,
+        String property,
+        String provenanceId
+    ) {
+        return Map.of(
+            "id",
+            id.strip(),
+            "rawText",
+            rawText.strip(),
+            "type",
+            type.strip(),
+            "property",
+            property.strip(),
+            "provenanceId",
+            provenanceId.strip()
+        );
+    }
+
+    private static Map<String, String> requirementRelation(
+        String sourceRequirementId,
+        String targetRequirementId
+    ) {
+        return Map.of(
+            "sourceRequirementId",
+            sourceRequirementId.strip(),
+            "targetRequirementId",
+            targetRequirementId.strip()
+        );
+    }
+
+    private static Map<String, String> assertionQualifier(
+        String assertionKey,
+        String qualifierKind,
+        String canonicalText
+    ) {
+        return Map.of(
+            "assertionKey",
+            assertionKey,
+            "qualifierKind",
+            qualifierKind.strip(),
+            "canonicalText",
+            canonicalText.strip()
+        );
+    }
+
+    private static Map<String, String> conceptMention(
+        String id,
+        String requirementId,
+        String role,
+        String text,
+        String canonicalName
+    ) {
+        return Map.of(
+            "id",
+            id,
+            "requirementId",
+            requirementId,
+            "role",
+            role,
+            "text",
+            text.strip(),
+            "canonicalName",
+            canonicalName.strip()
+        );
+    }
+
+    private static Map<String, String> predicateMention(
+        String id,
+        String requirementId,
+        String canonicalName
+    ) {
+        return Map.of(
+            "id",
+            id,
+            "requirementId",
+            requirementId,
+            "text",
+            canonicalName.strip(),
+            "canonicalName",
+            canonicalName.strip()
+        );
+    }
+
+    private static Map<String, String> qualifierMention(
+        String id,
+        String requirementId,
+        String qualifierKind,
+        String text,
+        String canonicalText
+    ) {
+        return Map.of(
+            "id",
+            id,
+            "requirementId",
+            requirementId,
+            "qualifierKind",
+            qualifierKind.strip(),
+            "text",
+            text.strip(),
+            "canonicalText",
+            canonicalText.strip()
+        );
+    }
+
+    private static String assertionKey(String subjectName, String predicateName, String objectName) {
+        return subjectName.strip() + "|" + predicateName.strip() + "|" + objectName.strip();
     }
 
     private Map<String, Object> parameters(String key, Object value) {

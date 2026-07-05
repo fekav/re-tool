@@ -1,147 +1,63 @@
-# Graph Model
+# Neo4j Graph Model
 
-## Intent
+## Purpose
 
-The requirement knowledge graph uses a lightweight ontology, not a full OWL/RDF
-reasoning layer. The ontology defines the vocabulary the app is allowed to use;
-the instance graph stores real requirements and their derived artifacts. Neo4j
-constraints protect structural integrity, while the Java domain/application
-layer validates semantic rules that Neo4j constraints cannot express.
+The graph model separates requirement-domain language from generic graph
+language. `Requirement` remains the source of a statement. Extracted domain
+syntax is persisted as mentions and canonical semantic nodes, not as extraction
+DTO or domain entity nodes.
 
-There is no generic `:Concept` label in the graph model. Retrieval and
-persistence must target explicit project vocabulary such as `RequirementType`,
-`RequirementProperty`, `RequirementElement`, and later configured domain concept labels
-such as `SystemComponent` or `UIComponent`.
+## Labels
 
-## Ontology Vocabulary
+| Label | Meaning | Identity |
+|---|---|---|
+| `Requirement` | Fachliche Anforderung and source of assertions | `id` |
+| `Provenance` | Source and ingestion metadata for a requirement | `id` |
+| `Mention` | Concrete text span or phrase found in a requirement | `id` |
+| `Concept` | Reusable domain object used as assertion subject or object | `canonicalName.strip()` |
+| `Predicate` | Reusable relation or action term | `canonicalName.strip()` |
+| `Qualifier` | Condition or constraint enriching an assertion | `(qualifierKind, canonicalText.strip())` |
+| `Assertion` | Canonical subject-predicate-object fact | deterministic `assertionKey` from subject concept, predicate, and object concept |
 
-The first ontology is intentionally small:
+`qualifierKind` is `CONDITION` or `CONSTRAINT`.
 
-| Vocabulary | Neo4j shape | Initial values | Purpose |
-|---|---|---|---|
-| Requirement type | `(:RequirementType {code, label})` | `GOAL`, `NEED`, `REQUIREMENT` | Classifies the intent and commitment level of a `Requirement`. |
-| Requirement property | `(:RequirementProperty {code, label})` | `FUNCTIONAL`, `QUALITY` | Defines allowed values for the cross-cutting requirement property. |
-| Requirement element | `(:RequirementElement {code, label})` | `SUBJECT`, `ACTION`, `OBJECT`, `CONDITION`, `CONSTRAINT` | Defines allowed requirement element values for extracted requirement text parts. |
-| Requirement relation type | `(:RequirementRelationType {code, label})` | `REFINES`, `SATISFIES`, `CONFLICTS_WITH`, `DEPENDS_ON` | Defines allowed relation names between requirements. |
-| Allowed requirement relation | `(:AllowedRequirementRelation {sourceTypeCode, relationTypeCode, targetTypeCode})` | curated triples | Defines which requirement relation combinations are meaningful. |
-
-`GOAL`, `NEED`, and `REQUIREMENT` are project vocabulary values, not separate
-aggregate roots. `REQUIREMENT` is the current project code for a binding
-system/product requirement; if the vocabulary later changes to
-`SYSTEM_REQUIREMENT`, code, docs, and seeded ontology data should be renamed
-together. A real goal or need is still persisted as a `Requirement` instance
-with a `type` classification.
-
-## Instance Model
-
-The aggregate root is `(:Requirement)`. It owns the raw text boundary and may
-gain classification, syntax extraction, mappings, and graph relations as the
-workflow progresses.
+## Relationships
 
 ```text
-(:Requirement {
-  id,
-  rawText,
-  type: "GOAL" | "NEED" | "REQUIREMENT",
-  property: "FUNCTIONAL" | "QUALITY"
-})
-
-(:Requirement)-[:HAS_PROVENANCE]->(:Provenance)
-(:Requirement)-[:HAS_SYNTAX_ELEMENT]->(:SyntaxElement {id, requirementElement, text})
-(:SyntaxElement)-[:MAPS_TO]->(configured domain concept node)
-(:Requirement)-[:REFINES|SATISFIES|CONFLICTS_WITH|DEPENDS_ON]->(:Requirement)
+(Requirement)-[:HAS_PROVENANCE]->(Provenance)
+(Requirement)-[:HAS_MENTION]->(Mention)
+(Mention)-[:DENOTES]->(Concept|Predicate|Qualifier)
+(Requirement)-[:ASSERTS]->(Assertion)
+(Assertion)-[:HAS_SUBJECT]->(Concept)
+(Assertion)-[:HAS_PREDICATE]->(Predicate)
+(Assertion)-[:HAS_OBJECT]->(Concept)
+(Assertion)-[:HAS_QUALIFIER]->(Qualifier)
 ```
 
-`Requirement.property` is a Neo4j scalar property because `FUNCTIONAL` and
-`QUALITY` are currently simple classification values. The corresponding
-`RequirementProperty` ontology nodes still exist to seed, document, and validate
-the allowed values.
+Qualifiers are not part of `Assertion` identity. Two requirements with the same
+subject concept, predicate, and object concept point at the same `Assertion`
+even when they add different qualifiers.
 
-## Neo4j Constraints
+## Translation
 
-The dev environment uses `neo4j:5-community`, so the baseline schema should use
-constraint features available there: uniqueness constraints and supporting
-indexes.
+| Domain/extraction source term | Graph language |
+|---|---|
+| `Requirement` aggregate | `Requirement` source node |
+| `Provenance` value | `Provenance` node |
+| `RequirementElement` | `Mention` node |
+| `Action` semantics | `Assertion` node |
+| `actionText` | `Predicate` node |
+| `Subject` / `TargetObject` | `Concept` node |
+| `Condition` / `Constraint` | `Qualifier` node |
 
-```cypher
-CREATE CONSTRAINT requirement_id IF NOT EXISTS
-FOR (r:Requirement) REQUIRE r.id IS UNIQUE;
+## Lookup Mapping
 
-CREATE CONSTRAINT provenance_id IF NOT EXISTS
-FOR (p:Provenance) REQUIRE p.id IS UNIQUE;
+Resolution uses exact stripped text in v1. It does not lowercase or casefold.
 
-CREATE CONSTRAINT syntax_element_id IF NOT EXISTS
-FOR (e:SyntaxElement) REQUIRE e.id IS UNIQUE;
-
-CREATE CONSTRAINT requirement_type_code IF NOT EXISTS
-FOR (t:RequirementType) REQUIRE t.code IS UNIQUE;
-
-CREATE CONSTRAINT requirement_type_label IF NOT EXISTS
-FOR (t:RequirementType) REQUIRE t.label IS UNIQUE;
-
-CREATE CONSTRAINT requirement_property_code IF NOT EXISTS
-FOR (p:RequirementProperty) REQUIRE p.code IS UNIQUE;
-
-CREATE CONSTRAINT requirement_property_label IF NOT EXISTS
-FOR (p:RequirementProperty) REQUIRE p.label IS UNIQUE;
-
-CREATE CONSTRAINT requirement_element_code IF NOT EXISTS
-FOR (e:RequirementElement) REQUIRE e.code IS UNIQUE;
-
-CREATE CONSTRAINT requirement_element_label IF NOT EXISTS
-FOR (e:RequirementElement) REQUIRE e.label IS UNIQUE;
-
-CREATE CONSTRAINT requirement_relation_type_code IF NOT EXISTS
-FOR (t:RequirementRelationType) REQUIRE t.code IS UNIQUE;
-
-CREATE CONSTRAINT requirement_relation_type_label IF NOT EXISTS
-FOR (t:RequirementRelationType) REQUIRE t.label IS UNIQUE;
-
-CREATE CONSTRAINT allowed_requirement_relation_key IF NOT EXISTS
-FOR (a:AllowedRequirementRelation)
-REQUIRE (a.sourceTypeCode, a.relationTypeCode, a.targetTypeCode) IS UNIQUE;
-
-CREATE INDEX requirement_type IF NOT EXISTS
-FOR (r:Requirement) ON (r.type);
-
-CREATE INDEX requirement_property IF NOT EXISTS
-FOR (r:Requirement) ON (r.property);
-
-CREATE INDEX requirement_raw_text IF NOT EXISTS
-FOR (r:Requirement) ON (r.rawText);
-
-CREATE INDEX syntax_element_text IF NOT EXISTS
-FOR (e:SyntaxElement) ON (e.text);
-```
-
-If the deployment uses Neo4j Enterprise, the schema can be strengthened with
-property existence, property type, and node key constraints. Those constraints
-should replace or extend the baseline where they do not conflict, for example:
-
-```cypher
-CREATE CONSTRAINT requirement_id_key IF NOT EXISTS
-FOR (r:Requirement) REQUIRE r.id IS NODE KEY;
-
-CREATE CONSTRAINT requirement_raw_text_required IF NOT EXISTS
-FOR (r:Requirement) REQUIRE r.rawText IS NOT NULL;
-
-CREATE CONSTRAINT requirement_type_property_type IF NOT EXISTS
-FOR (r:Requirement) REQUIRE r.type IS :: STRING;
-
-CREATE CONSTRAINT requirement_property_property_type IF NOT EXISTS
-FOR (r:Requirement) REQUIRE r.property IS :: STRING;
-```
-
-Neo4j constraints do not replace the ontology. They prevent duplicate identity
-values, missing required properties where supported, and wrong property types
-where supported. They do not prove that a requirement relation is semantically
-meaningful.
-
-## App-Side Semantic Validation
-
-Before `PERSIST_GRAPH_CHANGES`, the Java domain/application layer must validate
-the write set against the ontology vocabulary.
-
-This split gives the graph meaningful structure without depending on a reasoner:
-Neo4j rejects structurally invalid writes, and the app rejects meaningless domain
-combinations before they reach the database.
+| Selected term type | Lookup label | Candidate node type |
+|---|---|---|
+| `SUBJECT` | `Concept` | `CONCEPT` |
+| `OBJECT` | `Concept` | `CONCEPT` |
+| `ACTION` | `Predicate` | `PREDICATE` |
+| `CONDITION` | `Qualifier` with `qualifierKind = CONDITION` | `QUALIFIER` |
+| `CONSTRAINT` | `Qualifier` with `qualifierKind = CONSTRAINT` | `QUALIFIER` |

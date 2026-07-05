@@ -29,11 +29,12 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
+import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.RequirementElement;
 
 @ExtendWith(MockitoExtension.class)
-class Neo4jConceptNameLookupTest {
+class Neo4jNodeNameLookupTest {
 
     @Mock
     Driver driver;
@@ -48,7 +49,7 @@ class Neo4jConceptNameLookupTest {
     Result result;
 
     @InjectMocks
-    Neo4jConceptNameLookup lookup;
+    Neo4jNodeNameLookup lookup;
 
     @BeforeEach
     void setUp() {
@@ -61,78 +62,80 @@ class Neo4jConceptNameLookupTest {
     }
 
     @Test
-    void returnsRequirementElementCandidatesInDeterministicGraphOrder() {
+    void returnsConceptCandidatesForSubjectTerms() {
         // Given
         when(result.stream()).thenReturn(Stream.of(
-            record("sample-requirement-element-1-subject", "billing service", "SUBJECT"),
-            record("sample-requirement-element-2-subject", "payment adapter", "SUBJECT")
+            record("billing service", "billing service", "CONCEPT"),
+            record("payment adapter", "payment adapter", "CONCEPT")
         ));
 
         // When
-        var candidates = lookup.findCandidates(new RequirementElement(RequirementElementType.SUBJECT, "billing service"));
+        var candidates = lookup.findCandidates(
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service")
+        );
 
         // Then
         assertThat(candidates)
             .extracting(
                 candidate -> candidate.candidateKey(),
                 candidate -> candidate.label(),
-                candidate -> candidate.conceptType()
+                candidate -> candidate.nodeType()
             )
             .containsExactly(
-                tuple("sample-requirement-element-1-subject", "billing service", "SUBJECT"),
-                tuple("sample-requirement-element-2-subject", "payment adapter", "SUBJECT")
+                tuple("billing service", "billing service", NodeType.CONCEPT),
+                tuple("payment adapter", "payment adapter", NodeType.CONCEPT)
             );
 
         ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
         verify(transaction).run(query.capture(), parameters.capture());
         assertThat(singleLine(query.getValue()))
-            .contains("MATCH (candidate:RequirementElement)")
-            .contains("candidate.text = $text")
-            .contains("candidate.type = $requirementElement")
-            .contains("toString(coalesce(candidate.id, candidate.text)) AS candidateKey")
+            .contains("MATCH (candidate:Concept)")
+            .contains("candidate.canonicalName = $text")
+            .contains("RETURN candidateKey, candidateLabel, 'CONCEPT' AS nodeType")
             .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
-            .doesNotContain("candidate.label")
-            .doesNotContain("candidate.alias")
-            .doesNotContain("candidate.requirementElement")
             .doesNotContain("candidate.actionText")
-            .doesNotContain("$allowedConceptTypes");
+            .doesNotContain("RequirementElement")
+            .doesNotContain("toLower")
+            .doesNotContain("toLowerCase");
         assertThat(parameters.getValue())
             .containsEntry("text", "billing service")
-            .containsEntry("requirementElement", "SUBJECT")
-            .containsOnlyKeys("text", "requirementElement");
+            .containsOnlyKeys("text");
         verify(session).close();
     }
 
     @Test
-    void returnsActionCandidatesByActionText() {
+    void returnsPredicateCandidatesForActionTerms() {
         // Given
         when(result.stream()).thenReturn(Stream.of(
-            record("sample-action-1", "log", "ACTION")
+            record("log", "log", "PREDICATE")
         ));
 
         // When
-        var candidates = lookup.findCandidates(new RequirementElement(RequirementElementType.ACTION, "log"));
+        var candidates = lookup.findCandidates(
+            new RequirementElement(RequirementElementType.ACTION, "log")
+        );
 
         // Then
         assertThat(candidates)
             .extracting(
                 candidate -> candidate.candidateKey(),
                 candidate -> candidate.label(),
-                candidate -> candidate.conceptType()
+                candidate -> candidate.nodeType()
             )
-            .containsExactly(tuple("sample-action-1", "log", "ACTION"));
+            .containsExactly(tuple("log", "log", NodeType.PREDICATE));
 
         ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
         verify(transaction).run(query.capture(), parameters.capture());
         assertThat(singleLine(query.getValue()))
-            .contains("MATCH (candidate:Action)")
-            .contains("candidate.actionText = $text")
-            .contains("RETURN candidateKey, candidateLabel, 'ACTION' AS conceptType")
+            .contains("MATCH (candidate:Predicate)")
+            .contains("candidate.canonicalName = $text")
+            .contains("RETURN candidateKey, candidateLabel, 'PREDICATE' AS nodeType")
             .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
-            .doesNotContain("candidate.type = $requirementElement")
-            .doesNotContain("RequirementElement");
+            .doesNotContain("candidate.actionText")
+            .doesNotContain("RequirementElement")
+            .doesNotContain("toLower");
         assertThat(parameters.getValue())
             .containsEntry("text", "log")
             .containsOnlyKeys("text");
@@ -140,7 +143,57 @@ class Neo4jConceptNameLookupTest {
     }
 
     @Test
-    void returnsEmptyList_whenGraphHasNoConceptNameHits() {
+    void returnsQualifierCandidatesForConditionTerms() {
+        // Given
+        when(result.stream()).thenReturn(Stream.of(
+            record(
+                "CONDITION::before the billing service logs a failed payment attempt",
+                "before the billing service logs a failed payment attempt",
+                "QUALIFIER"
+            )
+        ));
+
+        // When
+        var candidates = lookup.findCandidates(new RequirementElement(
+            RequirementElementType.CONDITION,
+            "before the billing service logs a failed payment attempt"
+        ));
+
+        // Then
+        assertThat(candidates)
+            .extracting(
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.nodeType()
+            )
+            .containsExactly(tuple(
+                "CONDITION::before the billing service logs a failed payment attempt",
+                "before the billing service logs a failed payment attempt",
+                NodeType.QUALIFIER
+            ));
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
+        verify(transaction).run(query.capture(), parameters.capture());
+        assertThat(singleLine(query.getValue()))
+            .contains("MATCH (candidate:Qualifier)")
+            .contains("candidate.canonicalText = $text")
+            .contains("candidate.qualifierKind = $qualifierKind")
+            .contains("RETURN candidateKey, candidateLabel, 'QUALIFIER' AS nodeType")
+            .doesNotContain("RequirementElement")
+            .doesNotContain("Action")
+            .doesNotContain("toLower");
+        assertThat(parameters.getValue())
+            .containsEntry(
+                "text",
+                "before the billing service logs a failed payment attempt"
+            )
+            .containsEntry("qualifierKind", "CONDITION")
+            .containsOnlyKeys("text", "qualifierKind");
+    }
+
+    @Test
+    void returnsEmptyList_whenGraphHasNoNodeNameHits() {
         // Given
         when(result.stream()).thenReturn(Stream.empty());
 
@@ -151,10 +204,10 @@ class Neo4jConceptNameLookupTest {
         assertThat(candidates).isEmpty();
     }
 
-    private Record record(String candidateKey, String label, String conceptType) {
+    private Record record(String candidateKey, String label, String nodeType) {
         return new InternalRecord(
-            java.util.List.of("candidateKey", "candidateLabel", "conceptType"),
-            java.util.List.of(value(candidateKey), value(label), value(conceptType))
+            java.util.List.of("candidateKey", "candidateLabel", "nodeType"),
+            java.util.List.of(value(candidateKey), value(label), value(nodeType))
         );
     }
 
