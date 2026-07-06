@@ -1,11 +1,14 @@
 package io.fekav.req.resolution.application;
 
 import io.fekav.platform.cqrs.CommandHandler;
+import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.resolution.domain.NodeMatchingResult;
 import io.fekav.req.resolution.domain.NodeMatchingService;
 import io.fekav.req.resolution.domain.NodeRetrievalService;
+import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.NodeResolutionEvent;
+import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
 import io.fekav.req.shared.model.CandidateNodeMatch;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,7 +37,7 @@ public class ResolveNodeCommandHandler
         CandidateNodeMatch match =
             nodeRetrievalService.retrieveCandidates(command.requirementElement());
         NodeMatchingResult result = nodeMatchingService.evaluateMatch(match);
-        NodeResolutionEvent event = NodeResolutionEventFactory.from(
+        NodeResolutionEvent event = eventFrom(
             command.correlationId(),
             result
         );
@@ -47,5 +50,20 @@ public class ResolveNodeCommandHandler
     @Override
     public Class<ResolveNodeCommand> commandType() {
         return ResolveNodeCommand.class;
+    }
+
+    private static NodeResolutionEvent eventFrom(
+        CorrelationId correlationId,
+        NodeMatchingResult result
+    ) {
+        return switch (result) {
+            case NodeMatchingResult.Decided decided ->
+                NodeResolutionDecidedEvent.create(correlationId, decided.decision());
+            case NodeMatchingResult.ReviewRequired reviewRequired ->
+                NodeResolutionReviewRequiredEvent.create(
+                    correlationId,
+                    reviewRequired.reviewRequest()
+                );
+        };
     }
 }
