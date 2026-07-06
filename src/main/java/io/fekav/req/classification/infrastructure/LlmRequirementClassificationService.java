@@ -202,22 +202,6 @@ public class LlmRequirementClassificationService implements ClassificationServic
             .addFewShotExample(
                 """
                 Requirement:
-                Reduce checkout abandonment.
-                """,
-                """
-                {
-                  "classification": {
-                    "conceptType": "GOAL",
-                    "property": "FUNCTIONAL",
-                    "confidenceScore": 0.91,
-                    "rationale": "The text states a desired business outcome and does not give a quality constraint."
-                  }
-                }
-                """
-            )
-            .addFewShotExample(
-                """
-                Requirement:
                 Improve checkout response time for mobile users.
                 """,
                 """
@@ -227,22 +211,6 @@ public class LlmRequirementClassificationService implements ClassificationServic
                     "property": "QUALITY",
                     "confidenceScore": 0.9,
                     "rationale": "The text states a desired outcome focused on response time."
-                  }
-                }
-                """
-            )
-            .addFewShotExample(
-                """
-                Requirement:
-                Customers need to complete checkout without creating an account.
-                """,
-                """
-                {
-                  "classification": {
-                    "conceptType": "NEED",
-                    "property": "FUNCTIONAL",
-                    "confidenceScore": 0.92,
-                    "rationale": "The text is stakeholder-centered and describes a capability customers need."
                   }
                 }
                 """
@@ -307,22 +275,6 @@ public class LlmRequirementClassificationService implements ClassificationServic
                     "property": "FUNCTIONAL",
                     "confidenceScore": 0.58,
                     "rationale": "The wording is ambiguous and broad, so this is a forced best-fit outcome classification."
-                  }
-                }
-                """
-            )
-            .addFewShotExample(
-                """
-                Requirement:
-                The reporting service must export usage metrics within 2 seconds.
-                """,
-                """
-                {
-                  "classification": {
-                    "conceptType": "REQUIREMENT",
-                    "property": "QUALITY",
-                    "confidenceScore": 0.82,
-                    "rationale": "The text mixes a behavior with a measurable performance constraint, making quality the distinguishing obligation."
                   }
                 }
                 """
