@@ -1,11 +1,10 @@
 package io.fekav.req.ingestion.application;
 
 import io.fekav.platform.cqrs.Command;
-import io.fekav.req.shared.event.RequirementIngestedEvent;
 
 public record IngestRequirementCommand(
     String originalText
-) implements Command<RequirementIngestedEvent> {
+) implements Command<IngestRequirementResult> {
 
     public IngestRequirementCommand {
         if (originalText == null || originalText.isBlank()) {

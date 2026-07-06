@@ -3,6 +3,7 @@ package io.fekav.req.shared.kg;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.neo4j.driver.Driver;
@@ -26,8 +26,10 @@ import org.neo4j.driver.summary.ResultSummary;
 @ExtendWith(MockitoExtension.class)
 class Neo4jSchemaInitializerTest {
 
-    private static final String RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY =
-        "billing service|record|failed payment attempts";
+    private static final String AUTOMATIC_RETRY_ASSERTION_KEY =
+        "payment recovery service|schedule|payment retries";
+    private static final String QUARANTINE_ANOMALIES_ASSERTION_KEY =
+        "payment recovery service|quarantine|failed renewal payments";
 
     @Mock
     Driver driver;
@@ -44,11 +46,11 @@ class Neo4jSchemaInitializerTest {
     @Mock
     ResultSummary resultSummary;
 
-    @InjectMocks
     Neo4jSchemaInitializer initializer;
 
     @BeforeEach
     void setUp() {
+        initializer = new Neo4jSchemaInitializer(driver);
         when(driver.session()).thenReturn(session);
         when(session.run(anyString())).thenReturn(result);
         when(result.consume()).thenReturn(resultSummary);
@@ -59,16 +61,14 @@ class Neo4jSchemaInitializerTest {
     }
 
     @Test
-    void createsGraphModelConstraintsAndIndexesOnStartup() {
+    void prunesGraphAndCreatesSchemaOnStartupByDefault() {
         // When
         initializer.onStart(null);
 
         // Then
-        ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
-        verify(session, org.mockito.Mockito.atLeastOnce()).run(statements.capture());
-        assertThat(statements.getAllValues())
-            .map(this::singleLine)
+        assertThat(capturedSessionStatements())
             .containsExactly(
+                "MATCH (n) DETACH DELETE n",
                 "CREATE CONSTRAINT requirement_id IF NOT EXISTS FOR (r:Requirement) REQUIRE r.id IS UNIQUE",
                 "CREATE CONSTRAINT provenance_id IF NOT EXISTS FOR (p:Provenance) REQUIRE p.id IS UNIQUE",
                 "CREATE CONSTRAINT mention_id IF NOT EXISTS FOR (m:Mention) REQUIRE m.id IS UNIQUE",
@@ -99,6 +99,22 @@ class Neo4jSchemaInitializerTest {
     }
 
     @Test
+    void skipsGraphPruningWhenConfiguredOff() {
+        // Given
+        initializer = new Neo4jSchemaInitializer(driver, false);
+
+        // When
+        initializer.onStart(null);
+
+        // Then
+        assertThat(capturedSessionStatements())
+            .doesNotContain("MATCH (n) DETACH DELETE n")
+            .startsWith(
+                "CREATE CONSTRAINT requirement_id IF NOT EXISTS FOR (r:Requirement) REQUIRE r.id IS UNIQUE"
+            );
+    }
+
+    @Test
     void seedsOntologyAndSampleRequirementGraphOnStartup() {
         // When
         initializer.onStart(null);
@@ -106,8 +122,7 @@ class Neo4jSchemaInitializerTest {
         // Then
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
-        verify(transaction, org.mockito.Mockito.atLeastOnce())
-            .run(statements.capture(), parameters.capture());
+        verify(transaction, atLeastOnce()).run(statements.capture(), parameters.capture());
 
         assertThat(statements.getAllValues())
             .map(this::singleLine)
@@ -124,226 +139,219 @@ class Neo4jSchemaInitializerTest {
                 "UNWIND $qualifierMentions AS mention MATCH (r:Requirement {id: mention.requirementId}) MATCH (q:Qualifier { qualifierKind: mention.qualifierKind, canonicalText: mention.canonicalText }) MERGE (m:Mention {id: mention.id}) SET m.text = mention.text, m.role = mention.qualifierKind, m.sample = true MERGE (r)-[:HAS_MENTION]->(m) MERGE (m)-[:DENOTES]->(q)",
                 "UNWIND $satisfiesRelations AS relation MATCH (need:Requirement {id: relation.sourceRequirementId}) MATCH (goal:Requirement {id: relation.targetRequirementId}) MERGE (need)-[:SATISFIES]->(goal)",
                 "UNWIND $refinesRelations AS relation MATCH (requirement:Requirement {id: relation.sourceRequirementId}) MATCH (need:Requirement {id: relation.targetRequirementId}) MERGE (requirement)-[:REFINES]->(need)",
-                "UNWIND $dependsOnRelations AS relation MATCH (source:Requirement {id: relation.sourceRequirementId}) MATCH (target:Requirement {id: relation.targetRequirementId}) MERGE (source)-[:DEPENDS_ON]->(target)"
+                "UNWIND $dependsOnRelations AS relation MATCH (source:Requirement {id: relation.sourceRequirementId}) MATCH (target:Requirement {id: relation.targetRequirementId}) MERGE (source)-[:DEPENDS_ON]->(target)",
+                "UNWIND $conflictsWithRelations AS relation MATCH (source:Requirement {id: relation.sourceRequirementId}) MATCH (target:Requirement {id: relation.targetRequirementId}) MERGE (source)-[:CONFLICTS_WITH]->(target)"
             )
             .allSatisfy(statement ->
                 assertThat(statement)
                     .doesNotContain("RequirementElement")
-                    .doesNotContain(":Action")
                     .doesNotContain("HAS_ACTION")
                     .doesNotContain("actionText")
-                    .doesNotContain("[:CONFLICTS_WITH]")
             );
 
-        assertThat(parameters.getAllValues())
-            .anySatisfy(parameter ->
-                assertThat(parameter)
-                    .containsKey("types")
-                    .extractingByKey("types")
-                    .asList()
-                    .contains(
-                        Map.of("code", "GOAL", "label", "Goal"),
-                        Map.of("code", "NEED", "label", "Need"),
-                        Map.of("code", "REQUIREMENT", "label", "Requirement")
-                    )
+        List<Map<String, Object>> parameterValues = parameters.getAllValues();
+
+        assertThat(stringMapList(parameterValue(parameterValues, "types")))
+            .contains(
+                Map.of("code", "GOAL", "label", "Goal"),
+                Map.of("code", "NEED", "label", "Need"),
+                Map.of("code", "REQUIREMENT", "label", "Requirement")
+            );
+
+        List<Map<String, String>> requirements =
+            stringMapList(parameterValue(parameterValues, "requirements"));
+        assertThat(requirements).hasSize(6);
+        assertThat(requirements)
+            .extracting(requirement ->
+                requirement.get("type") + "/" + requirement.get("property")
             )
-            .anySatisfy(parameter ->
-                assertThat(parameter)
-                    .containsKey("requirements")
-                    .extractingByKey("requirements")
-                    .asList()
-                    .hasSize(12)
-                    .contains(
-                        Map.of(
-                            "id",
-                            "sample-goal-payment-support",
-                            "rawText",
-                            "Reduce payment-support escalations caused by failed payments by 25% in Q3.",
-                            "type",
-                            "GOAL",
-                            "property",
-                            "QUALITY",
-                            "provenanceId",
-                            "sample-provenance-goal-payment-support"
-                        ),
-                        Map.of(
-                            "id",
-                            "sample-need-audit-evidence",
-                            "rawText",
-                            "Finance auditors need complete evidence for failed payment attempts that affect customer invoices.",
-                            "type",
-                            "NEED",
-                            "property",
-                            "QUALITY",
-                            "provenanceId",
-                            "sample-provenance-need-audit-evidence"
-                        ),
-                        Map.of(
-                            "id",
-                            "sample-requirement-audit-record",
-                            "rawText",
-                            "The billing service must record failed payment attempts for audit review.",
-                            "type",
-                            "REQUIREMENT",
-                            "property",
-                            "FUNCTIONAL",
-                            "provenanceId",
-                            "sample-provenance-requirement-audit-record"
-                        )
-                    )
-            )
-            .anySatisfy(parameter -> {
-                assertThat(parameter).containsKey("assertions");
-                List<Map<String, String>> assertions =
-                    stringMapList(parameter.get("assertions"));
-                assertThat(assertions).hasSize(9);
-                assertThat(assertions)
-                    .filteredOn(assertion ->
-                        RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY.equals(
-                            assertion.get("assertionKey")
-                        )
-                    )
-                    .extracting(assertion -> assertion.get("requirementId"))
-                    .containsExactly(
-                        "sample-requirement-record-failure",
-                        "sample-requirement-audit-record"
-                    );
-            })
-            .anySatisfy(parameter ->
-                assertThat(parameter)
-                    .containsKey("assertionQualifiers")
-                    .extractingByKey("assertionQualifiers")
-                    .asList()
-                    .contains(
-                        Map.of(
-                            "assertionKey",
-                            RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY,
-                            "qualifierKind",
-                            "CONSTRAINT",
-                            "canonicalText",
-                            "with provider code, decline reason, payment method, and customer account"
-                        ),
-                        Map.of(
-                            "assertionKey",
-                            RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY,
-                            "qualifierKind",
-                            "CONSTRAINT",
-                            "canonicalText",
-                            "for audit review"
-                        )
-                    )
-            )
-            .anySatisfy(parameter ->
-                assertThat(parameter)
-                    .containsKey("conceptMentions")
-                    .extractingByKey("conceptMentions")
-                    .asList()
-                    .contains(Map.of(
-                        "id",
-                        "sample-mention-record-subject",
-                        "requirementId",
-                        "sample-requirement-record-failure",
-                        "role",
-                        "SUBJECT",
-                        "text",
-                        "billing service",
-                        "canonicalName",
-                        "billing service"
-                    ))
-            )
-            .anySatisfy(parameter ->
-                assertThat(parameter)
-                    .containsKey("predicateMentions")
-                    .extractingByKey("predicateMentions")
-                    .asList()
-                    .contains(Map.of(
-                        "id",
-                        "sample-mention-record-predicate",
-                        "requirementId",
-                        "sample-requirement-record-failure",
-                        "text",
-                        "record",
-                        "canonicalName",
-                        "record"
-                    ))
-            )
-            .anySatisfy(parameter ->
-                assertThat(parameter)
-                    .containsKey("qualifierMentions")
-                    .extractingByKey("qualifierMentions")
-                    .asList()
-                    .contains(Map.of(
-                        "id",
-                        "sample-mention-normalize-condition",
-                        "requirementId",
-                        "sample-requirement-normalize-codes",
-                        "qualifierKind",
-                        "CONDITION",
-                        "text",
-                        "before failed payment attempts are recorded",
-                        "canonicalText",
-                        "before failed payment attempts are recorded"
-                    ))
-            )
-            .anySatisfy(parameter -> {
-                assertThat(parameter).containsKey("satisfiesRelations");
-                List<Map<String, String>> relations =
-                    stringMapList(parameter.get("satisfiesRelations"));
-                assertThat(relations)
-                    .hasSize(2)
-                    .contains(
-                        requirementRelation(
-                            "sample-need-support-visibility",
-                            "sample-goal-payment-support"
-                        ),
-                        requirementRelation(
-                            "sample-need-audit-evidence",
-                            "sample-goal-payment-support"
-                        )
-                    );
-            })
-            .anySatisfy(parameter -> {
-                assertThat(parameter).containsKey("refinesRelations");
-                List<Map<String, String>> relations =
-                    stringMapList(parameter.get("refinesRelations"));
-                assertThat(relations)
-                    .hasSize(10)
-                    .contains(
-                        requirementRelation(
-                            "sample-requirement-record-failure",
-                            "sample-need-support-visibility"
-                        ),
-                        requirementRelation(
-                            "sample-requirement-record-failure",
-                            "sample-need-audit-evidence"
-                        ),
-                        requirementRelation(
-                            "sample-requirement-audit-retention",
-                            "sample-need-audit-evidence"
-                        )
-                    );
-            })
-            .anySatisfy(parameter -> {
-                assertThat(parameter).containsKey("dependsOnRelations");
-                List<Map<String, String>> relations =
-                    stringMapList(parameter.get("dependsOnRelations"));
-                assertThat(relations)
-                    .hasSize(9)
-                    .contains(
-                        requirementRelation(
-                            "sample-requirement-support-dashboard",
-                            "sample-requirement-record-failure"
-                        ),
-                        requirementRelation(
-                            "sample-requirement-audit-export",
-                            "sample-requirement-audit-retention"
-                        ),
-                        requirementRelation(
-                            "sample-requirement-retry-suppression",
-                            "sample-requirement-normalize-codes"
-                        )
-                    );
-            });
+            .containsExactlyInAnyOrder(
+                "GOAL/FUNCTIONAL",
+                "GOAL/QUALITY",
+                "NEED/FUNCTIONAL",
+                "NEED/QUALITY",
+                "REQUIREMENT/FUNCTIONAL",
+                "REQUIREMENT/QUALITY"
+            );
+        assertThat(requirements)
+            .contains(
+                Map.of(
+                    "id",
+                    "sample-requirement-automatic-retry",
+                    "rawText",
+                    "The payment recovery service must schedule one retry after every failed renewal payment is recorded.",
+                    "type",
+                    "REQUIREMENT",
+                    "property",
+                    "FUNCTIONAL",
+                    "provenanceId",
+                    "sample-provenance-requirement-automatic-retry"
+                ),
+                Map.of(
+                    "id",
+                    "sample-requirement-quarantine-anomalies",
+                    "rawText",
+                    "The payment recovery service must quarantine failed renewal payments that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late.",
+                    "type",
+                    "REQUIREMENT",
+                    "property",
+                    "QUALITY",
+                    "provenanceId",
+                    "sample-provenance-requirement-quarantine-anomalies"
+                )
+            );
+
+        List<Map<String, String>> assertions =
+            stringMapList(parameterValue(parameterValues, "assertions"));
+        assertThat(assertions)
+            .hasSize(2)
+            .contains(
+                Map.of(
+                    "requirementId",
+                    "sample-requirement-automatic-retry",
+                    "assertionKey",
+                    AUTOMATIC_RETRY_ASSERTION_KEY,
+                    "subjectName",
+                    "payment recovery service",
+                    "predicateName",
+                    "schedule",
+                    "objectName",
+                    "payment retries"
+                ),
+                Map.of(
+                    "requirementId",
+                    "sample-requirement-quarantine-anomalies",
+                    "assertionKey",
+                    QUARANTINE_ANOMALIES_ASSERTION_KEY,
+                    "subjectName",
+                    "payment recovery service",
+                    "predicateName",
+                    "quarantine",
+                    "objectName",
+                    "failed renewal payments"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "assertionQualifiers")))
+            .contains(
+                Map.of(
+                    "assertionKey",
+                    AUTOMATIC_RETRY_ASSERTION_KEY,
+                    "qualifierKind",
+                    "CONDITION",
+                    "canonicalText",
+                    "after every failed renewal payment is recorded"
+                ),
+                Map.of(
+                    "assertionKey",
+                    QUARANTINE_ANOMALIES_ASSERTION_KEY,
+                    "qualifierKind",
+                    "CONDITION",
+                    "canonicalText",
+                    "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "conceptMentions")))
+            .contains(
+                Map.of(
+                    "id",
+                    "sample-mention-retry-subject",
+                    "requirementId",
+                    "sample-requirement-automatic-retry",
+                    "role",
+                    "SUBJECT",
+                    "text",
+                    "payment recovery service",
+                    "canonicalName",
+                    "payment recovery service"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "predicateMentions")))
+            .contains(
+                Map.of(
+                    "id",
+                    "sample-mention-quarantine-predicate",
+                    "requirementId",
+                    "sample-requirement-quarantine-anomalies",
+                    "text",
+                    "quarantine",
+                    "canonicalName",
+                    "quarantine"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "qualifierMentions")))
+            .contains(
+                Map.of(
+                    "id",
+                    "sample-mention-quarantine-anomaly-condition",
+                    "requirementId",
+                    "sample-requirement-quarantine-anomalies",
+                    "qualifierKind",
+                    "CONDITION",
+                    "text",
+                    "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late",
+                    "canonicalText",
+                    "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "satisfiesRelations")))
+            .containsExactlyInAnyOrder(
+                requirementRelation(
+                    "sample-need-automatic-retry-decision",
+                    "sample-goal-payment-recovery-flow"
+                ),
+                requirementRelation(
+                    "sample-need-payment-anomaly-evidence",
+                    "sample-goal-payment-recovery-resilience"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "refinesRelations")))
+            .containsExactlyInAnyOrder(
+                requirementRelation(
+                    "sample-requirement-automatic-retry",
+                    "sample-need-automatic-retry-decision"
+                ),
+                requirementRelation(
+                    "sample-requirement-quarantine-anomalies",
+                    "sample-need-payment-anomaly-evidence"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "dependsOnRelations")))
+            .containsExactly(
+                requirementRelation(
+                    "sample-requirement-automatic-retry",
+                    "sample-requirement-quarantine-anomalies"
+                )
+            );
+
+        assertThat(stringMapList(parameterValue(parameterValues, "conflictsWithRelations")))
+            .containsExactly(
+                requirementRelation(
+                    "sample-requirement-quarantine-anomalies",
+                    "sample-requirement-automatic-retry"
+                )
+            );
+    }
+
+    private List<String> capturedSessionStatements() {
+        ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
+        verify(session, atLeastOnce()).run(statements.capture());
+        return statements.getAllValues().stream().map(this::singleLine).toList();
+    }
+
+    private Object parameterValue(List<Map<String, Object>> parameters, String key) {
+        return parameters
+            .stream()
+            .filter(parameter -> parameter.containsKey(key))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Missing parameter key: " + key))
+            .get(key);
     }
 
     private String singleLine(String statement) {

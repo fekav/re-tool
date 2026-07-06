@@ -21,19 +21,27 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
+import io.fekav.req.ingestion.application.IngestRequirementResult;
+import io.fekav.req.ingestion.application.IngestionOutcomeStore;
 import io.fekav.req.orchestration.infrastructure.InMemoryEventStore;
 import io.fekav.req.resolution.application.ResolveNodeCommand;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
+import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
 import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
 import io.fekav.req.shared.event.RequirementIngestedEvent;
+import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.req.shared.model.NodeMatchDecisionStatus;
 import io.fekav.req.shared.model.ElementId;
+import io.fekav.req.shared.model.NodeMatchReviewRequest;
+import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
 import io.fekav.req.shared.model.RawText;
+import io.fekav.req.shared.model.RetrievalEvidence;
+import io.fekav.req.shared.model.RetrievedCandidateNode;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.SourceMetadata;
@@ -52,8 +60,14 @@ class RequirementWorkflowOrchestratorTest {
     private final InMemoryEventStore eventStore = new InMemoryEventStore();
     private final RecordingCommandBus commandBus = new RecordingCommandBus();
     private final RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
+    private final IngestionOutcomeStore outcomeStore = new IngestionOutcomeStore();
     private final RequirementWorkflowOrchestrator orchestrator =
-        new RequirementWorkflowOrchestrator(eventStore, commandBus, eventPublisher);
+        new RequirementWorkflowOrchestrator(
+            eventStore,
+            commandBus,
+            eventPublisher,
+            outcomeStore
+        );
 
     @Test
     void ignoresEvents_whenOrchestrationIsDisabled() {
@@ -63,6 +77,7 @@ class RequirementWorkflowOrchestratorTest {
                 eventStore,
                 commandBus,
                 eventPublisher,
+                outcomeStore,
                 false
             );
         RequirementIngestedEvent event = ingestedEvent();
@@ -240,6 +255,28 @@ class RequirementWorkflowOrchestratorTest {
             );
     }
 
+    @Test
+    void recordsReviewRequiredOutcome_whenNodeResolutionRequiresReview() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+        NodeResolutionReviewRequiredEvent event =
+            NodeResolutionReviewRequiredEvent.create(correlationId, reviewRequest());
+
+        // Act
+        orchestrator.onNodeResolutionReviewRequired(event);
+
+        // Assert
+        assertThat(eventStore.load(correlationId)).containsExactly(event);
+        assertThat(eventPublisher.applicationEvents()).isEmpty();
+        assertThat(outcomeStore.consume(correlationId))
+            .hasValueSatisfying(result -> {
+                assertThat(result.correlationId()).isEqualTo(correlationId);
+                assertThat(result.status())
+                    .isEqualTo(IngestRequirementResult.Status.REVIEW_REQUIRED);
+                assertThat(result.message()).isEqualTo("Requirement requires review.");
+            });
+    }
+
     private RequirementIngestedEvent ingestedEvent() {
         return RequirementIngestedEvent.create(Provenance.create(
             ElementId.create(),
@@ -294,6 +331,21 @@ class RequirementWorkflowOrchestratorTest {
             NodeMatchDecisionStatus.AUTO_CREATE_NEW,
             List.of(),
             "No existing candidates found"
+        );
+    }
+
+    private NodeMatchReviewRequest reviewRequest() {
+        return new NodeMatchReviewRequest(
+            new RequirementElement(RequirementElementType.SUBJECT, "login form"),
+            List.of(new RetrievedCandidateNode(
+                new CandidateNode("login-form", "Login Form", NodeType.CONCEPT),
+                List.of(new RetrievalEvidence(
+                    "nodeName",
+                    "Matched login form to an existing graph node",
+                    0.82
+                ))
+            )),
+            "Candidate needs review before mapping"
         );
     }
 

@@ -21,6 +21,7 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
+import io.fekav.req.ingestion.application.IngestionOutcomeStore;
 import io.fekav.req.orchestration.infrastructure.InMemoryEventStore;
 import io.fekav.req.resolution.application.ResolveNodeCommand;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
@@ -49,11 +50,13 @@ class RequirementWorkflowIntegrationTest {
 
     private final RecordingCommandBus commandBus = new RecordingCommandBus();
     private final RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
+    private final IngestionOutcomeStore outcomeStore = new IngestionOutcomeStore();
     private final RequirementWorkflowOrchestrator orchestrator =
         new RequirementWorkflowOrchestrator(
             new InMemoryEventStore(),
             commandBus,
-            eventPublisher
+            eventPublisher,
+            outcomeStore
         );
 
     @Test

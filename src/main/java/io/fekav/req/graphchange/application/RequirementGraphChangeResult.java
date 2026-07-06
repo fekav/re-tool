@@ -5,6 +5,7 @@ import java.util.Objects;
 import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.graphchange.domain.AssertionIdentity;
+import io.fekav.req.ingestion.application.IngestRequirementResult;
 import io.fekav.req.shared.event.RequirementKnownEvent;
 
 public sealed interface RequirementGraphChangeResult
@@ -14,6 +15,8 @@ public sealed interface RequirementGraphChangeResult
         RequirementGraphChangeResult.RequirementUnchanged {
 
     void publishFollowUp(CorrelationId correlationId, EventPublisher eventPublisher);
+
+    IngestRequirementResult toIngestionResult(CorrelationId correlationId);
 
     static RequirementGraphChangeResult created() {
         return new RequirementCreated();
@@ -34,6 +37,11 @@ public sealed interface RequirementGraphChangeResult
             CorrelationId correlationId,
             EventPublisher eventPublisher
         ) {
+        }
+
+        @Override
+        public IngestRequirementResult toIngestionResult(CorrelationId correlationId) {
+            return IngestRequirementResult.recorded(correlationId);
         }
     }
 
@@ -61,6 +69,11 @@ public sealed interface RequirementGraphChangeResult
                 assertionIdentity.object()
             ));
         }
+
+        @Override
+        public IngestRequirementResult toIngestionResult(CorrelationId correlationId) {
+            return IngestRequirementResult.alreadyExists(correlationId);
+        }
     }
 
     record RequirementUnchanged() implements RequirementGraphChangeResult {
@@ -70,6 +83,11 @@ public sealed interface RequirementGraphChangeResult
             CorrelationId correlationId,
             EventPublisher eventPublisher
         ) {
+        }
+
+        @Override
+        public IngestRequirementResult toIngestionResult(CorrelationId correlationId) {
+            return IngestRequirementResult.alreadyExists(correlationId);
         }
     }
 }

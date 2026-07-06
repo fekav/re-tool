@@ -19,6 +19,8 @@ import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.graphchange.domain.AssertionIdentity;
+import io.fekav.req.ingestion.application.IngestRequirementResult;
+import io.fekav.req.ingestion.application.IngestionOutcomeStore;
 import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.event.RequirementKnownEvent;
 import io.fekav.req.shared.model.ElementId;
@@ -42,6 +44,7 @@ class RequirementGraphChangeServiceTest {
     private final RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
     private final RecordingGraphChangePort graphChangePort =
         new RecordingGraphChangePort();
+    private final IngestionOutcomeStore outcomeStore = new IngestionOutcomeStore();
 
     @Test
     void ignoresCompletionEvents_whenGraphChangeIsDisabled() {
@@ -50,15 +53,18 @@ class RequirementGraphChangeServiceTest {
             factory,
             graphChangePort,
             eventPublisher,
+            outcomeStore,
             false
         );
+        RequirementAnalysisCompletedEvent event = completedEvent();
 
         // Act
-        service.onRequirementAnalysisCompleted(completedEvent());
+        service.onRequirementAnalysisCompleted(event);
 
         // Assert
         assertThat(graphChangePort.graphChanges()).isEmpty();
         assertThat(eventPublisher.applicationEvents()).isEmpty();
+        assertThat(outcomeStore.consume(event.correlationId())).isEmpty();
     }
 
     @Test
@@ -81,6 +87,7 @@ class RequirementGraphChangeServiceTest {
                 assertThat(knownEvent.predicate()).isEqualTo(assertionIdentity().predicate());
                 assertThat(knownEvent.object()).isEqualTo(assertionIdentity().object());
             });
+        assertOutcome(event.correlationId(), IngestRequirementResult.Status.ALREADY_EXISTS);
     }
 
     @Test
@@ -88,13 +95,15 @@ class RequirementGraphChangeServiceTest {
         // Arrange
         RequirementGraphChangeService service = enabledService();
         graphChangePort.result = RequirementGraphChangeResult.created();
+        RequirementAnalysisCompletedEvent event = completedEvent();
 
         // Act
-        service.onRequirementAnalysisCompleted(completedEvent());
+        service.onRequirementAnalysisCompleted(event);
 
         // Assert
         assertThat(graphChangePort.graphChanges()).hasSize(1);
         assertThat(eventPublisher.applicationEvents()).isEmpty();
+        assertOutcome(event.correlationId(), IngestRequirementResult.Status.RECORDED);
     }
 
     @Test
@@ -102,13 +111,15 @@ class RequirementGraphChangeServiceTest {
         // Arrange
         RequirementGraphChangeService service = enabledService();
         graphChangePort.result = RequirementGraphChangeResult.unchanged();
+        RequirementAnalysisCompletedEvent event = completedEvent();
 
         // Act
-        service.onRequirementAnalysisCompleted(completedEvent());
+        service.onRequirementAnalysisCompleted(event);
 
         // Assert
         assertThat(graphChangePort.graphChanges()).hasSize(1);
         assertThat(eventPublisher.applicationEvents()).isEmpty();
+        assertOutcome(event.correlationId(), IngestRequirementResult.Status.ALREADY_EXISTS);
     }
 
     private RequirementGraphChangeService enabledService() {
@@ -116,8 +127,21 @@ class RequirementGraphChangeServiceTest {
             factory,
             graphChangePort,
             eventPublisher,
+            outcomeStore,
             true
         );
+    }
+
+    private void assertOutcome(
+        CorrelationId correlationId,
+        IngestRequirementResult.Status status
+    ) {
+        assertThat(outcomeStore.consume(correlationId))
+            .hasValueSatisfying(result -> {
+                assertThat(result.correlationId()).isEqualTo(correlationId);
+                assertThat(result.status()).isEqualTo(status);
+                assertThat(result.message()).isNotBlank();
+            });
     }
 
     private RequirementAnalysisCompletedEvent completedEvent() {

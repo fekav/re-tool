@@ -15,18 +15,23 @@ import jakarta.transaction.Transactional;
 
 @ApplicationScoped
 public class IngestRequirementCommandHandler
-        implements CommandHandler<RequirementIngestedEvent, IngestRequirementCommand> {
+        implements CommandHandler<IngestRequirementResult, IngestRequirementCommand> {
 
     private final EventPublisher eventPublisher;
+    private final IngestionOutcomeStore outcomeStore;
 
     @Inject
-    public IngestRequirementCommandHandler(EventPublisher eventPublisher) {
+    public IngestRequirementCommandHandler(
+        EventPublisher eventPublisher,
+        IngestionOutcomeStore outcomeStore
+    ) {
         this.eventPublisher = eventPublisher;
+        this.outcomeStore = outcomeStore;
     }
 
     @Override
     @Transactional
-    public RequirementIngestedEvent handle(IngestRequirementCommand command) {
+    public IngestRequirementResult handle(IngestRequirementCommand command) {
         OriginalText originalText = new OriginalText(command.originalText());
         Provenance provenance = Provenance.create(
             ElementId.create(),
@@ -36,9 +41,22 @@ public class IngestRequirementCommandHandler
         );
         RequirementIngestedEvent event = RequirementIngestedEvent.create(provenance);
 
-        eventPublisher.publish(event);
+        try {
+            eventPublisher.publish(event);
+        } catch (RuntimeException e) {
+            outcomeStore.consume(event.correlationId());
+            return IngestRequirementResult.internalError(
+                event.correlationId(),
+                "Requirement ingestion failed internally."
+            );
+        }
 
-        return event;
+        return outcomeStore
+            .consume(event.correlationId())
+            .orElseGet(() -> IngestRequirementResult.internalError(
+                event.correlationId(),
+                "No final ingestion outcome was recorded."
+            ));
     }
 
     @Override

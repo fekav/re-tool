@@ -6,37 +6,41 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Map;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 
 @ApplicationScoped
 public class Neo4jSchemaInitializer {
 
-    private static final String SAMPLE_GOAL_ID = "sample-goal-payment-support";
-    private static final String SAMPLE_SUPPORT_NEED_ID =
-        "sample-need-support-visibility";
-    private static final String SAMPLE_AUDIT_NEED_ID = "sample-need-audit-evidence";
-    private static final String SAMPLE_RECORD_FAILURE_REQUIREMENT_ID =
-        "sample-requirement-record-failure";
-    private static final String SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID =
-        "sample-requirement-normalize-codes";
-    private static final String SAMPLE_DASHBOARD_REQUIREMENT_ID =
-        "sample-requirement-support-dashboard";
-    private static final String SAMPLE_NOTIFICATION_REQUIREMENT_ID =
-        "sample-requirement-support-alert";
-    private static final String SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID =
-        "sample-requirement-audit-retention";
-    private static final String SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID =
-        "sample-requirement-audit-export";
-    private static final String SAMPLE_AUDIT_RECORD_REQUIREMENT_ID =
-        "sample-requirement-audit-record";
-    private static final String SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID =
-        "sample-requirement-retry-suppression";
-    private static final String SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID =
-        "sample-requirement-dashboard-masking";
+    private static final String PRUNE_GRAPH_STATEMENT = """
+        MATCH (n)
+        DETACH DELETE n
+        """;
 
-    private static final String RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY =
-        assertionKey("billing service", "record", "failed payment attempts");
+    private static final String SAMPLE_FUNCTIONAL_GOAL_ID =
+        "sample-goal-payment-recovery-flow";
+    private static final String SAMPLE_QUALITY_GOAL_ID =
+        "sample-goal-payment-recovery-resilience";
+    private static final String SAMPLE_FUNCTIONAL_NEED_ID =
+        "sample-need-automatic-retry-decision";
+    private static final String SAMPLE_QUALITY_NEED_ID =
+        "sample-need-payment-anomaly-evidence";
+    private static final String SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID =
+        "sample-requirement-automatic-retry";
+    private static final String SAMPLE_QUARANTINE_REQUIREMENT_ID =
+        "sample-requirement-quarantine-anomalies";
+
+    private static final String AUTOMATIC_RETRY_ASSERTION_KEY = assertionKey(
+        "payment recovery service",
+        "schedule",
+        "payment retries"
+    );
+    private static final String QUARANTINE_ANOMALIES_ASSERTION_KEY = assertionKey(
+        "payment recovery service",
+        "quarantine",
+        "failed renewal payments"
+    );
 
     private static final List<String> SCHEMA_STATEMENTS = List.of(
         """
@@ -173,569 +177,224 @@ public class Neo4jSchemaInitializer {
 
     private static final List<Map<String, String>> SAMPLE_REQUIREMENTS = List.of(
         sampleRequirement(
-            SAMPLE_GOAL_ID,
-            "Reduce payment-support escalations caused by failed payments by 25% in Q3.",
+            SAMPLE_FUNCTIONAL_GOAL_ID,
+            "Enable automatic recovery for eligible failed subscription payments.",
+            "GOAL",
+            "FUNCTIONAL",
+            "sample-provenance-goal-payment-recovery-flow"
+        ),
+        sampleRequirement(
+            SAMPLE_QUALITY_GOAL_ID,
+            "Keep duplicate payment retries below one per 10,000 renewal attempts during peak billing windows.",
             "GOAL",
             "QUALITY",
-            "sample-provenance-goal-payment-support"
+            "sample-provenance-goal-payment-recovery-resilience"
         ),
         sampleRequirement(
-            SAMPLE_SUPPORT_NEED_ID,
-            "Support agents need near-real-time visibility into failed payment attempts and decline reasons.",
+            SAMPLE_FUNCTIONAL_NEED_ID,
+            "Operations need eligible failed renewal payments to receive an automatic retry decision without manual triage.",
             "NEED",
             "FUNCTIONAL",
-            "sample-provenance-need-support-visibility"
+            "sample-provenance-need-automatic-retry-decision"
         ),
         sampleRequirement(
-            SAMPLE_AUDIT_NEED_ID,
-            "Finance auditors need complete evidence for failed payment attempts that affect customer invoices.",
+            SAMPLE_QUALITY_NEED_ID,
+            "Finance auditors need anomaly evidence when a failed payment has missing provider data, conflicting decline categories, or late-arriving events.",
             "NEED",
             "QUALITY",
-            "sample-provenance-need-audit-evidence"
+            "sample-provenance-need-payment-anomaly-evidence"
         ),
         sampleRequirement(
-            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-            "The billing service must record failed payment attempts with provider code, decline reason, payment method, and customer account.",
+            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+            "The payment recovery service must schedule one retry after every failed renewal payment is recorded.",
             "REQUIREMENT",
             "FUNCTIONAL",
-            "sample-provenance-requirement-record-failure"
+            "sample-provenance-requirement-automatic-retry"
         ),
         sampleRequirement(
-            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
-            "The payment adapter must normalize provider decline codes into standard reason categories before failed payment attempts are recorded.",
-            "REQUIREMENT",
-            "FUNCTIONAL",
-            "sample-provenance-requirement-normalize-codes"
-        ),
-        sampleRequirement(
-            SAMPLE_DASHBOARD_REQUIREMENT_ID,
-            "The support dashboard must display failed payment attempts for a customer account within five seconds.",
-            "REQUIREMENT",
-            "FUNCTIONAL",
-            "sample-provenance-requirement-support-dashboard"
-        ),
-        sampleRequirement(
-            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
-            "The notification service must alert support agents when three failed payment attempts occur for the same account within ten minutes.",
-            "REQUIREMENT",
-            "FUNCTIONAL",
-            "sample-provenance-requirement-support-alert"
-        ),
-        sampleRequirement(
-            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-            "The billing audit store must retain failed payment attempt records for 90 days in encrypted storage.",
+            SAMPLE_QUARANTINE_REQUIREMENT_ID,
+            "The payment recovery service must quarantine failed renewal payments that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late.",
             "REQUIREMENT",
             "QUALITY",
-            "sample-provenance-requirement-audit-retention"
-        ),
-        sampleRequirement(
-            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-            "The audit exporter must produce a daily exception report for failed payment attempts with missing reason categories.",
-            "REQUIREMENT",
-            "FUNCTIONAL",
-            "sample-provenance-requirement-audit-export"
-        ),
-        sampleRequirement(
-            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
-            "The billing service must record failed payment attempts for audit review.",
-            "REQUIREMENT",
-            "FUNCTIONAL",
-            "sample-provenance-requirement-audit-record"
-        ),
-        sampleRequirement(
-            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
-            "The retry scheduler must suppress automatic payment retries when the decline category is hard decline.",
-            "REQUIREMENT",
-            "FUNCTIONAL",
-            "sample-provenance-requirement-retry-suppression"
-        ),
-        sampleRequirement(
-            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
-            "The support dashboard must mask payment instrument identifiers unless the agent has billing-admin permission.",
-            "REQUIREMENT",
-            "QUALITY",
-            "sample-provenance-requirement-dashboard-masking"
+            "sample-provenance-requirement-quarantine-anomalies"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_ASSERTIONS = List.of(
         assertion(
-            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-            "billing service",
-            "record",
-            "failed payment attempts"
+            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+            "payment recovery service",
+            "schedule",
+            "payment retries"
         ),
         assertion(
-            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
-            "payment adapter",
-            "normalize",
-            "provider decline codes"
-        ),
-        assertion(
-            SAMPLE_DASHBOARD_REQUIREMENT_ID,
-            "support dashboard",
-            "display",
-            "failed payment attempts"
-        ),
-        assertion(
-            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
-            "notification service",
-            "alert",
-            "support agents"
-        ),
-        assertion(
-            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-            "billing audit store",
-            "retain",
-            "failed payment attempt records"
-        ),
-        assertion(
-            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-            "audit exporter",
-            "produce",
-            "exception report"
-        ),
-        assertion(
-            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
-            "billing service",
-            "record",
-            "failed payment attempts"
-        ),
-        assertion(
-            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
-            "retry scheduler",
-            "suppress",
-            "automatic payment retries"
-        ),
-        assertion(
-            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
-            "support dashboard",
-            "mask",
-            "payment instrument identifiers"
+            SAMPLE_QUARANTINE_REQUIREMENT_ID,
+            "payment recovery service",
+            "quarantine",
+            "failed renewal payments"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_ASSERTION_QUALIFIERS =
         List.of(
             assertionQualifier(
-                RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY,
+                AUTOMATIC_RETRY_ASSERTION_KEY,
                 "CONSTRAINT",
-                "with provider code, decline reason, payment method, and customer account"
+                "one"
             ),
             assertionQualifier(
-                assertionKey("payment adapter", "normalize", "provider decline codes"),
+                AUTOMATIC_RETRY_ASSERTION_KEY,
                 "CONDITION",
-                "before failed payment attempts are recorded"
+                "after every failed renewal payment is recorded"
             ),
             assertionQualifier(
-                assertionKey("payment adapter", "normalize", "provider decline codes"),
-                "CONSTRAINT",
-                "into standard reason categories"
-            ),
-            assertionQualifier(
-                assertionKey("support dashboard", "display", "failed payment attempts"),
-                "CONSTRAINT",
-                "for a customer account within five seconds"
-            ),
-            assertionQualifier(
-                assertionKey("notification service", "alert", "support agents"),
+                QUARANTINE_ANOMALIES_ASSERTION_KEY,
                 "CONDITION",
-                "when three failed payment attempts occur for the same account within ten minutes"
+                "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late"
             ),
             assertionQualifier(
-                assertionKey(
-                    "billing audit store",
-                    "retain",
-                    "failed payment attempt records"
-                ),
+                QUARANTINE_ANOMALIES_ASSERTION_KEY,
                 "CONSTRAINT",
-                "for 90 days in encrypted storage"
-            ),
-            assertionQualifier(
-                assertionKey("audit exporter", "produce", "exception report"),
-                "CONSTRAINT",
-                "daily"
-            ),
-            assertionQualifier(
-                assertionKey("audit exporter", "produce", "exception report"),
-                "CONSTRAINT",
-                "for failed payment attempts with missing reason categories"
-            ),
-            assertionQualifier(
-                RECORD_FAILED_PAYMENT_ATTEMPTS_ASSERTION_KEY,
-                "CONSTRAINT",
-                "for audit review"
-            ),
-            assertionQualifier(
-                assertionKey("retry scheduler", "suppress", "automatic payment retries"),
-                "CONDITION",
-                "when the decline category is hard decline"
-            ),
-            assertionQualifier(
-                assertionKey(
-                    "support dashboard",
-                    "mask",
-                    "payment instrument identifiers"
-                ),
-                "CONDITION",
-                "unless the agent has billing-admin permission"
+                "until billing operations reviews the anomaly"
             )
         );
 
     private static final List<Map<String, String>> SAMPLE_CONCEPT_MENTIONS = List.of(
         conceptMention(
-            "sample-mention-record-subject",
-            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-            "SUBJECT",
-            "billing service",
-            "billing service"
-        ),
-        conceptMention(
-            "sample-mention-record-object",
-            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-            "OBJECT",
-            "failed payment attempts",
-            "failed payment attempts"
-        ),
-        conceptMention(
-            "sample-mention-normalize-subject",
-            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
-            "SUBJECT",
-            "payment adapter",
-            "payment adapter"
-        ),
-        conceptMention(
-            "sample-mention-normalize-object",
-            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
-            "OBJECT",
-            "provider decline codes",
-            "provider decline codes"
-        ),
-        conceptMention(
-            "sample-mention-dashboard-subject",
-            SAMPLE_DASHBOARD_REQUIREMENT_ID,
-            "SUBJECT",
-            "support dashboard",
-            "support dashboard"
-        ),
-        conceptMention(
-            "sample-mention-dashboard-object",
-            SAMPLE_DASHBOARD_REQUIREMENT_ID,
-            "OBJECT",
-            "failed payment attempts",
-            "failed payment attempts"
-        ),
-        conceptMention(
-            "sample-mention-alert-subject",
-            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
-            "SUBJECT",
-            "notification service",
-            "notification service"
-        ),
-        conceptMention(
-            "sample-mention-alert-object",
-            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
-            "OBJECT",
-            "support agents",
-            "support agents"
-        ),
-        conceptMention(
-            "sample-mention-retention-subject",
-            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-            "SUBJECT",
-            "billing audit store",
-            "billing audit store"
-        ),
-        conceptMention(
-            "sample-mention-retention-object",
-            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-            "OBJECT",
-            "failed payment attempt records",
-            "failed payment attempt records"
-        ),
-        conceptMention(
-            "sample-mention-export-subject",
-            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-            "SUBJECT",
-            "audit exporter",
-            "audit exporter"
-        ),
-        conceptMention(
-            "sample-mention-export-object",
-            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-            "OBJECT",
-            "exception report",
-            "exception report"
-        ),
-        conceptMention(
-            "sample-mention-audit-record-subject",
-            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
-            "SUBJECT",
-            "billing service",
-            "billing service"
-        ),
-        conceptMention(
-            "sample-mention-audit-record-object",
-            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
-            "OBJECT",
-            "failed payment attempts",
-            "failed payment attempts"
-        ),
-        conceptMention(
             "sample-mention-retry-subject",
-            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
             "SUBJECT",
-            "retry scheduler",
-            "retry scheduler"
+            "payment recovery service",
+            "payment recovery service"
         ),
         conceptMention(
             "sample-mention-retry-object",
-            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
+            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
             "OBJECT",
-            "automatic payment retries",
-            "automatic payment retries"
+            "payment retries",
+            "payment retries"
         ),
         conceptMention(
-            "sample-mention-masking-subject",
-            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+            "sample-mention-quarantine-subject",
+            SAMPLE_QUARANTINE_REQUIREMENT_ID,
             "SUBJECT",
-            "support dashboard",
-            "support dashboard"
+            "payment recovery service",
+            "payment recovery service"
         ),
         conceptMention(
-            "sample-mention-masking-object",
-            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
+            "sample-mention-quarantine-object",
+            SAMPLE_QUARANTINE_REQUIREMENT_ID,
             "OBJECT",
-            "payment instrument identifiers",
-            "payment instrument identifiers"
+            "failed renewal payments",
+            "failed renewal payments"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_PREDICATE_MENTIONS = List.of(
         predicateMention(
-            "sample-mention-record-predicate",
-            SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-            "record"
-        ),
-        predicateMention(
-            "sample-mention-normalize-predicate",
-            SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
-            "normalize"
-        ),
-        predicateMention(
-            "sample-mention-dashboard-predicate",
-            SAMPLE_DASHBOARD_REQUIREMENT_ID,
-            "display"
-        ),
-        predicateMention(
-            "sample-mention-alert-predicate",
-            SAMPLE_NOTIFICATION_REQUIREMENT_ID,
-            "alert"
-        ),
-        predicateMention(
-            "sample-mention-retention-predicate",
-            SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-            "retain"
-        ),
-        predicateMention(
-            "sample-mention-export-predicate",
-            SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-            "produce"
-        ),
-        predicateMention(
-            "sample-mention-audit-record-predicate",
-            SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
-            "record"
-        ),
-        predicateMention(
             "sample-mention-retry-predicate",
-            SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
-            "suppress"
+            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+            "schedule"
         ),
         predicateMention(
-            "sample-mention-masking-predicate",
-            SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
-            "mask"
+            "sample-mention-quarantine-predicate",
+            SAMPLE_QUARANTINE_REQUIREMENT_ID,
+            "quarantine"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_QUALIFIER_MENTIONS =
         List.of(
             qualifierMention(
-                "sample-mention-record-constraint",
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
+                "sample-mention-retry-count-constraint",
+                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
                 "CONSTRAINT",
-                "with provider code, decline reason, payment method, and customer account",
-                "with provider code, decline reason, payment method, and customer account"
+                "one",
+                "one"
             ),
             qualifierMention(
-                "sample-mention-normalize-condition",
-                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
+                "sample-mention-retry-recorded-condition",
+                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
                 "CONDITION",
-                "before failed payment attempts are recorded",
-                "before failed payment attempts are recorded"
+                "after every failed renewal payment is recorded",
+                "after every failed renewal payment is recorded"
             ),
             qualifierMention(
-                "sample-mention-normalize-constraint",
-                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
-                "CONSTRAINT",
-                "into standard reason categories",
-                "into standard reason categories"
-            ),
-            qualifierMention(
-                "sample-mention-dashboard-constraint",
-                SAMPLE_DASHBOARD_REQUIREMENT_ID,
-                "CONSTRAINT",
-                "for a customer account within five seconds",
-                "for a customer account within five seconds"
-            ),
-            qualifierMention(
-                "sample-mention-alert-condition",
-                SAMPLE_NOTIFICATION_REQUIREMENT_ID,
+                "sample-mention-quarantine-anomaly-condition",
+                SAMPLE_QUARANTINE_REQUIREMENT_ID,
                 "CONDITION",
-                "when three failed payment attempts occur for the same account within ten minutes",
-                "when three failed payment attempts occur for the same account within ten minutes"
+                "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late",
+                "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late"
             ),
             qualifierMention(
-                "sample-mention-retention-constraint",
-                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
+                "sample-mention-quarantine-review-constraint",
+                SAMPLE_QUARANTINE_REQUIREMENT_ID,
                 "CONSTRAINT",
-                "for 90 days in encrypted storage",
-                "for 90 days in encrypted storage"
-            ),
-            qualifierMention(
-                "sample-mention-export-daily-constraint",
-                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-                "CONSTRAINT",
-                "daily",
-                "daily"
-            ),
-            qualifierMention(
-                "sample-mention-export-scope-constraint",
-                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-                "CONSTRAINT",
-                "for failed payment attempts with missing reason categories",
-                "for failed payment attempts with missing reason categories"
-            ),
-            qualifierMention(
-                "sample-mention-audit-record-constraint",
-                SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
-                "CONSTRAINT",
-                "for audit review",
-                "for audit review"
-            ),
-            qualifierMention(
-                "sample-mention-retry-condition",
-                SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
-                "CONDITION",
-                "when the decline category is hard decline",
-                "when the decline category is hard decline"
-            ),
-            qualifierMention(
-                "sample-mention-masking-condition",
-                SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
-                "CONDITION",
-                "unless the agent has billing-admin permission",
-                "unless the agent has billing-admin permission"
+                "until billing operations reviews the anomaly",
+                "until billing operations reviews the anomaly"
             )
         );
 
     private static final List<Map<String, String>> SAMPLE_SATISFIES_RELATIONS =
         List.of(
-            requirementRelation(SAMPLE_SUPPORT_NEED_ID, SAMPLE_GOAL_ID),
-            requirementRelation(SAMPLE_AUDIT_NEED_ID, SAMPLE_GOAL_ID)
+            requirementRelation(SAMPLE_FUNCTIONAL_NEED_ID, SAMPLE_FUNCTIONAL_GOAL_ID),
+            requirementRelation(SAMPLE_QUALITY_NEED_ID, SAMPLE_QUALITY_GOAL_ID)
         );
 
     private static final List<Map<String, String>> SAMPLE_REFINES_RELATIONS =
         List.of(
             requirementRelation(
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-                SAMPLE_SUPPORT_NEED_ID
+                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+                SAMPLE_FUNCTIONAL_NEED_ID
             ),
-            requirementRelation(
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-                SAMPLE_AUDIT_NEED_ID
-            ),
-            requirementRelation(
-                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID,
-                SAMPLE_SUPPORT_NEED_ID
-            ),
-            requirementRelation(SAMPLE_DASHBOARD_REQUIREMENT_ID, SAMPLE_SUPPORT_NEED_ID),
-            requirementRelation(
-                SAMPLE_NOTIFICATION_REQUIREMENT_ID,
-                SAMPLE_SUPPORT_NEED_ID
-            ),
-            requirementRelation(
-                SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
-                SAMPLE_SUPPORT_NEED_ID
-            ),
-            requirementRelation(
-                SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
-                SAMPLE_SUPPORT_NEED_ID
-            ),
-            requirementRelation(
-                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-                SAMPLE_AUDIT_NEED_ID
-            ),
-            requirementRelation(
-                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-                SAMPLE_AUDIT_NEED_ID
-            ),
-            requirementRelation(SAMPLE_AUDIT_RECORD_REQUIREMENT_ID, SAMPLE_AUDIT_NEED_ID)
+            requirementRelation(SAMPLE_QUARANTINE_REQUIREMENT_ID, SAMPLE_QUALITY_NEED_ID)
         );
 
     private static final List<Map<String, String>> SAMPLE_DEPENDS_ON_RELATIONS =
         List.of(
             requirementRelation(
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID,
-                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID
-            ),
+                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+                SAMPLE_QUARANTINE_REQUIREMENT_ID
+            )
+        );
+
+    private static final List<Map<String, String>> SAMPLE_CONFLICTS_WITH_RELATIONS =
+        List.of(
             requirementRelation(
-                SAMPLE_DASHBOARD_REQUIREMENT_ID,
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
-            ),
-            requirementRelation(
-                SAMPLE_NOTIFICATION_REQUIREMENT_ID,
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
-            ),
-            requirementRelation(
-                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID,
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
-            ),
-            requirementRelation(
-                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-                SAMPLE_AUDIT_RETENTION_REQUIREMENT_ID
-            ),
-            requirementRelation(
-                SAMPLE_AUDIT_EXPORT_REQUIREMENT_ID,
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
-            ),
-            requirementRelation(
-                SAMPLE_AUDIT_RECORD_REQUIREMENT_ID,
-                SAMPLE_RECORD_FAILURE_REQUIREMENT_ID
-            ),
-            requirementRelation(
-                SAMPLE_RETRY_SUPPRESSION_REQUIREMENT_ID,
-                SAMPLE_NORMALIZE_CODES_REQUIREMENT_ID
-            ),
-            requirementRelation(
-                SAMPLE_DASHBOARD_MASKING_REQUIREMENT_ID,
-                SAMPLE_DASHBOARD_REQUIREMENT_ID
+                SAMPLE_QUARANTINE_REQUIREMENT_ID,
+                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID
             )
         );
 
     private final Driver driver;
+    private final boolean pruneOnStart;
 
     @Inject
-    Neo4jSchemaInitializer(Driver driver) {
+    Neo4jSchemaInitializer(
+        Driver driver,
+        @ConfigProperty(name = "req.kg.neo4j.prune-on-start", defaultValue = "true")
+        boolean pruneOnStart
+    ) {
         this.driver = driver;
+        this.pruneOnStart = pruneOnStart;
+    }
+
+    Neo4jSchemaInitializer(Driver driver) {
+        this(driver, true);
     }
 
     void onStart(@Observes StartupEvent event) {
         try (Session session = driver.session()) {
+            pruneGraph(session);
             createSchema(session);
             seedOntology(session);
             seedSampleData(session);
+        }
+    }
+
+    private void pruneGraph(Session session) {
+        if (pruneOnStart) {
+            session.run(PRUNE_GRAPH_STATEMENT).consume();
         }
     }
 
@@ -921,6 +580,19 @@ public class Neo4jSchemaInitializer {
                 MERGE (source)-[:DEPENDS_ON]->(target)
                 """,
                 parameters("dependsOnRelations", SAMPLE_DEPENDS_ON_RELATIONS)
+            );
+
+            tx.run(
+                """
+                UNWIND $conflictsWithRelations AS relation
+                MATCH (source:Requirement {id: relation.sourceRequirementId})
+                MATCH (target:Requirement {id: relation.targetRequirementId})
+                MERGE (source)-[:CONFLICTS_WITH]->(target)
+                """,
+                parameters(
+                    "conflictsWithRelations",
+                    SAMPLE_CONFLICTS_WITH_RELATIONS
+                )
             );
 
             return null;

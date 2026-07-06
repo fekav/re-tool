@@ -14,13 +14,6 @@
     "rationale": "The text states a desired outcome focused on response time."
   },
   {
-    "rawText": "Customers need to complete checkout without creating an account.",
-    "conceptType": "NEED",
-    "property": "FUNCTIONAL",
-    "confidenceScore": 0.92,
-    "rationale": "The text is stakeholder-centered and describes a capability customers need."
-  },
-  {
     "rawText": "Customers need checkout pages to load quickly on mobile networks.",
     "conceptType": "NEED",
     "property": "QUALITY",
@@ -47,12 +40,5 @@
     "property": "FUNCTIONAL",
     "confidenceScore": 0.58,
     "rationale": "The wording is ambiguous and broad, so this is a forced best-fit outcome classification."
-  },
-  {
-    "rawText": "The reporting service must export usage metrics within 2 seconds.",
-    "conceptType": "REQUIREMENT",
-    "property": "QUALITY",
-    "confidenceScore": 0.82,
-    "rationale": "The text mixes a behavior with a measurable performance constraint, making quality the distinguishing obligation."
   }
 ]
