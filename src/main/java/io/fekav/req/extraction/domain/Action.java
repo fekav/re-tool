@@ -1,4 +1,4 @@
-package io.fekav.req.syntaxextraction.domain;
+package io.fekav.req.extraction.domain;
 
 import java.util.Objects;
 import java.util.Set;

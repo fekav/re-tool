@@ -9,6 +9,7 @@ import java.util.Set;
 
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.req.classification.domain.Classification;
+import io.fekav.req.extraction.domain.Action;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.RequirementClassifiedEvent;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
@@ -16,7 +17,6 @@ import io.fekav.req.shared.event.RequirementIngestedEvent;
 import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.req.shared.model.Provenance;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.syntaxextraction.domain.Action;
 
 public final class WorkflowState {
 

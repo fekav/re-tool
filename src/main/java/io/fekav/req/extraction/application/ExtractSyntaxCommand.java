@@ -1,4 +1,4 @@
-package io.fekav.req.syntaxextraction.application;
+package io.fekav.req.extraction.application;
 
 import io.fekav.platform.cqrs.Command;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;

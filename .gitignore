@@ -43,3 +43,4 @@ nb-configuration.xml
 
 # chainlit
 chainlit/.chainlit/translations
+chainlit/__pycache__

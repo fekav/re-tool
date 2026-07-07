@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import io.fekav.req.extraction.domain.Action;
+import io.fekav.req.extraction.domain.Condition;
+import io.fekav.req.extraction.domain.Constraint;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.RequirementElementType;
-import io.fekav.req.syntaxextraction.domain.Action;
-import io.fekav.req.syntaxextraction.domain.Condition;
-import io.fekav.req.syntaxextraction.domain.Constraint;
 
 public final class RequirementElementCollector {
 

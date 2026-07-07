@@ -102,16 +102,13 @@ async def on_chat_start() -> None:
 def build_welcome_message() -> str:
     tool_lines = "\n".join(format_tool(tool) for tool in TOOLS)
     return (
-        "Hallo. Ich kenne aktuell diese Werkzeuge:\n\n"
+        "Hello. I currently know these tools:\n\n"
         f"{tool_lines}\n\n"
-        "Robuste Direktbefehle ohne LLM:\n"
-        "- `/ingest <Requirement-Text>`\n"
+        "Commands for using Quarkus API directly (without LLM for intent recognition):\n"
         "- `ingest: <Requirement-Text>`\n"
         "- `/reviews`\n"
         "- `/review <reviewId> MAP_EXISTING <candidateKey> <rationale>`\n"
         "- `/review <reviewId> CREATE_NEW <rationale>`\n\n"
-        "Schreibe ein neues Requirement, frage nach offenen Reviews, "
-        "oder entscheide ein Review mit Review-ID und Entscheidung."
     )
 
 
@@ -268,7 +265,7 @@ async def ingest_requirement(
     original_text: str,
 ) -> str:
     if not original_text:
-        return "Bitte gib den Requirement-Text an."
+        return "Please provide the requirement text."
     result = await post_quarkus(
         client,
         "/app/c",
@@ -277,7 +274,7 @@ async def ingest_requirement(
             "payload": {"originalText": original_text},
         },
     )
-    return format_result("Requirement-Aufnahme", result)
+    return format_result("Requirement Ingestion", result)
 
 
 async def list_pending_reviews(client: httpx.AsyncClient) -> str:
@@ -289,7 +286,7 @@ async def list_pending_reviews(client: httpx.AsyncClient) -> str:
             "payload": {},
         },
     )
-    return format_result("Offene Reviews", result)
+    return format_result("Open Reviews", result)
 
 
 async def execute_direct_review_command(
@@ -299,12 +296,12 @@ async def execute_direct_review_command(
     try:
         parts = shlex.split(rest)
     except ValueError as error:
-        return f"Review-Befehl konnte nicht gelesen werden: {error}"
+        return f"Review command could not be parsed: {error}"
 
     if len(parts) < 3:
         return (
             "Format: `/review <reviewId> MAP_EXISTING <candidateKey> <rationale>` "
-            "oder `/review <reviewId> CREATE_NEW <rationale>`"
+            "or `/review <reviewId> CREATE_NEW <rationale>`"
         )
 
     review_id = parts[0]
@@ -325,7 +322,7 @@ async def execute_direct_review_command(
             "rationale": " ".join(parts[2:]),
         }
     else:
-        return "Entscheidung muss `MAP_EXISTING` oder `CREATE_NEW` sein."
+        return "Decision must be `MAP_EXISTING` or `CREATE_NEW`."
 
     result = await post_quarkus(
         client,
@@ -335,7 +332,7 @@ async def execute_direct_review_command(
             "payload": payload,
         },
     )
-    return format_result("Review-Entscheidung", result)
+    return format_result("Review Decision", result)
 
 
 async def post_quarkus(

@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.fekav.req.extraction.application.SyntaxExtraction;
 import io.fekav.req.shared.model.RawText;
-import io.fekav.req.syntaxextraction.application.SyntaxExtraction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;

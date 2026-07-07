@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import io.fekav.platform.messaging.DomainEvent;
 import io.fekav.req.classification.domain.Classification;
-import io.fekav.req.syntaxextraction.domain.Action;
+import io.fekav.req.extraction.domain.Action;
 
 // Domain Model / Aggregat-Root
 public class Requirement {

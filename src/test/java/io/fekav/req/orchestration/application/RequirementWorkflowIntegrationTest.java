@@ -21,6 +21,10 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
+import io.fekav.req.extraction.application.ExtractSyntaxCommand;
+import io.fekav.req.extraction.domain.Action;
+import io.fekav.req.extraction.domain.Subject;
+import io.fekav.req.extraction.domain.TargetObject;
 import io.fekav.req.ingestion.application.IngestionOutcomeStore;
 import io.fekav.req.orchestration.infrastructure.InMemoryEventStore;
 import io.fekav.req.review.application.NodeMatchReviewProjection;
@@ -48,10 +52,6 @@ import io.fekav.req.shared.model.RetrievedCandidateNode;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.RequirementElementType;
 import io.fekav.req.shared.model.SourceMetadata;
-import io.fekav.req.syntaxextraction.application.ExtractSyntaxCommand;
-import io.fekav.req.syntaxextraction.domain.Action;
-import io.fekav.req.syntaxextraction.domain.Subject;
-import io.fekav.req.syntaxextraction.domain.TargetObject;
 
 class RequirementWorkflowIntegrationTest {
 

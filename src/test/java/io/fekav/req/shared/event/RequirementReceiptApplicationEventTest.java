@@ -15,15 +15,15 @@ import io.fekav.req.classification.domain.ConfidenceScore;
 import io.fekav.req.classification.domain.Rationale;
 import io.fekav.req.classification.domain.RequirementProperty;
 import io.fekav.req.classification.domain.RequirementType;
+import io.fekav.req.extraction.domain.Action;
+import io.fekav.req.extraction.domain.Subject;
+import io.fekav.req.extraction.domain.TargetObject;
 import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.OriginalText;
 import io.fekav.req.shared.model.Provenance;
 import io.fekav.req.shared.model.RawText;
 import io.fekav.req.shared.model.SourceMetadata;
-import io.fekav.req.syntaxextraction.domain.Action;
-import io.fekav.req.syntaxextraction.domain.Subject;
-import io.fekav.req.syntaxextraction.domain.TargetObject;
 
 class RequirementReceiptApplicationEventTest {
 

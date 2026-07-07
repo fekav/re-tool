@@ -7,10 +7,10 @@ import java.util.Objects;
 import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventId;
 import io.fekav.req.classification.domain.Classification;
+import io.fekav.req.extraction.domain.Action;
 import io.fekav.req.shared.model.NodeMatchDecision;
 import io.fekav.platform.messaging.CorrelationId;
 import io.fekav.req.shared.model.Provenance;
-import io.fekav.req.syntaxextraction.domain.Action;
 
 public record RequirementAnalysisCompletedEvent(
     EventId eventId,

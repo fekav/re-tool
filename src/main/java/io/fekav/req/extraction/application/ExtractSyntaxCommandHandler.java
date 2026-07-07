@@ -1,9 +1,9 @@
-package io.fekav.req.syntaxextraction.application;
+package io.fekav.req.extraction.application;
 
 import io.fekav.platform.cqrs.CommandHandler;
 import io.fekav.platform.messaging.EventPublisher;
+import io.fekav.req.extraction.domain.Action;
 import io.fekav.req.shared.event.RequirementElementsExtractedEvent;
-import io.fekav.req.syntaxextraction.domain.Action;
 import io.fekav.req.shared.model.RawText;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

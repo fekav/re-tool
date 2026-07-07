@@ -7,14 +7,14 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.fekav.req.extraction.domain.Action;
+import io.fekav.req.extraction.domain.Condition;
+import io.fekav.req.extraction.domain.Constraint;
+import io.fekav.req.extraction.domain.Subject;
+import io.fekav.req.extraction.domain.TargetObject;
 import io.fekav.req.shared.model.ElementId;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.RequirementElementType;
-import io.fekav.req.syntaxextraction.domain.Action;
-import io.fekav.req.syntaxextraction.domain.Condition;
-import io.fekav.req.syntaxextraction.domain.Constraint;
-import io.fekav.req.syntaxextraction.domain.Subject;
-import io.fekav.req.syntaxextraction.domain.TargetObject;
 
 class RequirementElementCollectorTest {
 

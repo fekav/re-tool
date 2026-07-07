@@ -10,6 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import io.fekav.req.extraction.domain.Action;
+import io.fekav.req.extraction.domain.Condition;
+import io.fekav.req.extraction.domain.Constraint;
+import io.fekav.req.extraction.domain.Subject;
+import io.fekav.req.extraction.domain.TargetObject;
 import io.fekav.req.shared.model.ElementId;
 
 class ActionTest {

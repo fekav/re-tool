@@ -1,4 +1,4 @@
-package io.fekav.req.syntaxextraction.domain;
+package io.fekav.req.extraction.domain;
 
 public record Condition(String text) {
 

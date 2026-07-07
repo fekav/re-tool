@@ -1,15 +1,15 @@
-package io.fekav.req.syntaxextraction.infrastructure;
+package io.fekav.req.extraction.infrastructure;
 
 import java.util.Set;
 import java.util.function.Function;
 
 import io.fekav.platform.structuredoutput.StructuredOutputContract;
+import io.fekav.req.extraction.domain.Action;
+import io.fekav.req.extraction.domain.Condition;
+import io.fekav.req.extraction.domain.Constraint;
+import io.fekav.req.extraction.domain.Subject;
+import io.fekav.req.extraction.domain.TargetObject;
 import io.fekav.req.shared.model.ElementId;
-import io.fekav.req.syntaxextraction.domain.Action;
-import io.fekav.req.syntaxextraction.domain.Condition;
-import io.fekav.req.syntaxextraction.domain.Constraint;
-import io.fekav.req.syntaxextraction.domain.Subject;
-import io.fekav.req.syntaxextraction.domain.TargetObject;
 
 public record SyntaxExtractionOutput(
     RequirementElementsOutput requirementElements
