@@ -1,7 +1,9 @@
 package io.fekav.req.review.application;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -10,6 +12,7 @@ import io.fekav.req.review.domain.NodeMatchReviewId;
 import io.fekav.req.review.domain.PendingNodeMatchReview;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
+import io.fekav.req.shared.model.RequirementElement;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
@@ -27,16 +30,18 @@ public class NodeMatchReviewProjection {
     }
 
     public void apply(NodeResolutionDecidedEvent event) {
-        String reviewId = NodeMatchReviewId
-            .from(event.correlationId(), event.decision().requirementElement())
-            .value();
-        reviews.computeIfPresent(reviewId, (id, storedReview) ->
-            storedReview.close()
+        RequirementElement decidedElement = event.decision().requirementElement();
+        reviews.replaceAll((id, storedReview) ->
+            storedReview.review().requirementElement().equals(decidedElement)
+                ? storedReview.close()
+                : storedReview
         );
     }
 
     public List<PendingNodeMatchReview> pendingReviews() {
-        return reviews
+        Map<RequirementElement, PendingNodeMatchReview> earliestOpenReviewsByElement =
+            new LinkedHashMap<>();
+        reviews
             .values()
             .stream()
             .filter(StoredNodeMatchReview::isOpen)
@@ -46,7 +51,11 @@ public class NodeMatchReviewProjection {
                     .comparing(PendingNodeMatchReview::requestedAt)
                     .thenComparing(PendingNodeMatchReview::reviewId)
             )
-            .toList();
+            .forEach(review -> earliestOpenReviewsByElement.putIfAbsent(
+                review.requirementElement(),
+                review
+            ));
+        return List.copyOf(earliestOpenReviewsByElement.values());
     }
 
     public Optional<PendingNodeMatchReview> pendingReview(String reviewId) {

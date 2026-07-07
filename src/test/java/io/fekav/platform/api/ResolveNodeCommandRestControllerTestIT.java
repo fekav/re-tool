@@ -1,7 +1,9 @@
 package io.fekav.platform.api;
 
 import static io.fekav.platform.api.RestControllerCommandTestSupport.executeCommandAsJson;
+import static io.fekav.platform.api.RestControllerCommandTestSupport.postCommandForBody;
 import static io.fekav.platform.api.RestControllerCommandTestSupport.selectedTermCommandRequest;
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
@@ -9,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.stream.StreamSupport;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -34,6 +37,7 @@ import io.fekav.req.shared.model.RequirementElementType;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
 
 @QuarkusTest
 @TestHTTPEndpoint(RestController.class)
@@ -151,6 +155,80 @@ class ResolveNodeCommandRestControllerTestIT {
             .isEqualTo(SUBJECT_CANDIDATE.candidateKey());
         assertThat(responseJson.at("/reviewRequest/rationale").asText())
             .isEqualTo("Candidate needs review before mapping");
+    }
+
+    @Test
+    void    PendingReview_whenSameReviewRequiredNodeIsResolvedRepeatedly()
+        throws Exception {
+        // Given
+        RequirementElement repeatedElement =
+            new RequirementElement(RequirementElementType.SUBJECT, "notification component");
+        RetrievedCandidateNode candidate = new RetrievedCandidateNode(
+            new CandidateNode(
+                "notification service",
+                "notification service",
+                NodeType.CONCEPT
+            ),
+            List.of(new RetrievalEvidence(
+                "tokenOverlap",
+                "Matched selected term 'notification component' to graph candidate " +
+                    "'notification service' by token overlap",
+                0.5
+            ))
+        );
+        when(nodeRetrievalService.retrieveCandidates(any(RequirementElement.class)))
+            .thenAnswer(invocation -> new CandidateNodeMatch(
+                invocation.getArgument(0),
+                List.of(candidate)
+            ));
+        when(nodeMatchingService.evaluateMatch(any(CandidateNodeMatch.class)))
+            .thenAnswer(invocation -> {
+                CandidateNodeMatch match = invocation.getArgument(0);
+                return NodeMatchingResult.reviewRequired(new NodeMatchReviewRequest(
+                    match.requirementElement(),
+                    match.candidates(),
+                    "Top candidate score 0.5 is below auto-map threshold 1.0; " +
+                        "human review is required before mapping."
+                ));
+            });
+        String repeatedRequestBody =
+            selectedTermCommandRequest(objectMapper, COMMAND, repeatedElement);
+
+        // When
+        postCommandForBody(repeatedRequestBody);
+        postCommandForBody(repeatedRequestBody);
+        JsonNode responseJson = objectMapper.readTree(
+            given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(
+                    """
+                    {
+                      "query": "ListPendingNodeMatchReviewsQuery",
+                      "payload": {}
+                    }
+                    """
+                )
+            .when()
+                .post("/q")
+            .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .extract()
+                .asString()
+        );
+
+        // Then
+        List<JsonNode> repeatedElementReviews = StreamSupport
+            .stream(responseJson.path("reviews").spliterator(), false)
+            .filter(review ->
+                "SUBJECT".equals(review.at("/requirementElement/type").asText()) &&
+                    "notification component".equals(
+                        review.at("/requirementElement/text").asText()
+                    )
+            )
+            .toList();
+        assertThat(repeatedElementReviews).hasSize(1);
     }
 
     @Test

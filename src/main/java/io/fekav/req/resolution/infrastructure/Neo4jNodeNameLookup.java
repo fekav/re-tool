@@ -8,6 +8,7 @@ import org.neo4j.driver.Record;
 import org.neo4j.driver.Session;
 
 import io.fekav.req.resolution.domain.CandidateLookup;
+import io.fekav.req.resolution.domain.CompatibleCandidateLookup;
 import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RequirementElement;
@@ -15,7 +16,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
-public class Neo4jNodeNameLookup implements CandidateLookup {
+public class Neo4jNodeNameLookup
+    implements CandidateLookup, CompatibleCandidateLookup {
 
     private static final String CONCEPT_QUERY = """
         MATCH (candidate:Concept)
@@ -48,6 +50,34 @@ public class Neo4jNodeNameLookup implements CandidateLookup {
         ORDER BY candidateLabel ASC, candidateKey ASC
         """;
 
+    private static final String COMPATIBLE_CONCEPT_QUERY = """
+        MATCH (candidate:Concept)
+        WITH candidate,
+             toString(candidate.canonicalName) AS candidateLabel,
+             toString(candidate.canonicalName) AS candidateKey
+        RETURN candidateKey, candidateLabel, 'CONCEPT' AS nodeType
+        ORDER BY candidateLabel ASC, candidateKey ASC
+        """;
+
+    private static final String COMPATIBLE_PREDICATE_QUERY = """
+        MATCH (candidate:Predicate)
+        WITH candidate,
+             toString(candidate.canonicalName) AS candidateLabel,
+             toString(candidate.canonicalName) AS candidateKey
+        RETURN candidateKey, candidateLabel, 'PREDICATE' AS nodeType
+        ORDER BY candidateLabel ASC, candidateKey ASC
+        """;
+
+    private static final String COMPATIBLE_QUALIFIER_QUERY = """
+        MATCH (candidate:Qualifier)
+        WHERE candidate.qualifierKind = $qualifierKind
+        WITH candidate,
+             toString(candidate.canonicalText) AS candidateLabel,
+             toString(candidate.qualifierKind + '::' + candidate.canonicalText) AS candidateKey
+        RETURN candidateKey, candidateLabel, 'QUALIFIER' AS nodeType
+        ORDER BY candidateLabel ASC, candidateKey ASC
+        """;
+
     private final Driver driver;
 
     @Inject
@@ -71,11 +101,37 @@ public class Neo4jNodeNameLookup implements CandidateLookup {
         }
     }
 
+    @Override
+    public List<CandidateNode> findCompatibleCandidates(
+        RequirementElement requirementElement
+    ) {
+        try (Session session = driver.session()) {
+            return session.executeRead(transaction -> {
+                var result = transaction.run(
+                    compatibleQueryFor(requirementElement),
+                    compatibleParametersFor(requirementElement)
+                );
+                return result
+                    .stream()
+                    .map(this::candidateNode)
+                    .toList();
+            });
+        }
+    }
+
     private String queryFor(RequirementElement requirementElement) {
         return switch (requirementElement.type()) {
             case SUBJECT, OBJECT -> CONCEPT_QUERY;
             case ACTION -> PREDICATE_QUERY;
             case CONDITION, CONSTRAINT -> QUALIFIER_QUERY;
+        };
+    }
+
+    private String compatibleQueryFor(RequirementElement requirementElement) {
+        return switch (requirementElement.type()) {
+            case SUBJECT, OBJECT -> COMPATIBLE_CONCEPT_QUERY;
+            case ACTION -> COMPATIBLE_PREDICATE_QUERY;
+            case CONDITION, CONSTRAINT -> COMPATIBLE_QUALIFIER_QUERY;
         };
     }
 
@@ -85,6 +141,18 @@ public class Neo4jNodeNameLookup implements CandidateLookup {
             case CONDITION, CONSTRAINT -> Map.of(
                 "text",
                 requirementElement.text(),
+                "qualifierKind",
+                requirementElement.type().name()
+            );
+        };
+    }
+
+    private Map<String, Object> compatibleParametersFor(
+        RequirementElement requirementElement
+    ) {
+        return switch (requirementElement.type()) {
+            case SUBJECT, ACTION, OBJECT -> Map.of();
+            case CONDITION, CONSTRAINT -> Map.of(
                 "qualifierKind",
                 requirementElement.type().name()
             );

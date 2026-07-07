@@ -204,6 +204,196 @@ class Neo4jNodeNameLookupTest {
         assertThat(candidates).isEmpty();
     }
 
+    @Test
+    void returnsCompatibleConceptCandidatesForSubjectTerms() {
+        // Given
+        when(result.stream()).thenReturn(Stream.of(
+            record("billing service", "billing service", "CONCEPT"),
+            record("payment adapter", "payment adapter", "CONCEPT")
+        ));
+
+        // When
+        var candidates = lookup.findCompatibleCandidates(
+            new RequirementElement(RequirementElementType.SUBJECT, "billing")
+        );
+
+        // Then
+        assertThat(candidates)
+            .extracting(
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.nodeType()
+            )
+            .containsExactly(
+                tuple("billing service", "billing service", NodeType.CONCEPT),
+                tuple("payment adapter", "payment adapter", NodeType.CONCEPT)
+            );
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
+        verify(transaction).run(query.capture(), parameters.capture());
+        assertThat(singleLine(query.getValue()))
+            .contains("MATCH (candidate:Concept)")
+            .contains("RETURN candidateKey, candidateLabel, 'CONCEPT' AS nodeType")
+            .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
+            .doesNotContain("WHERE candidate.canonicalName = $text")
+            .doesNotContain("candidate.qualifierKind = $qualifierKind");
+        assertThat(parameters.getValue()).isEmpty();
+    }
+
+    @Test
+    void returnsCompatibleConceptCandidatesForObjectTerms() {
+        // Given
+        when(result.stream()).thenReturn(Stream.of(
+            record("invoice", "invoice", "CONCEPT")
+        ));
+
+        // When
+        var candidates = lookup.findCompatibleCandidates(
+            new RequirementElement(RequirementElementType.OBJECT, "invoice record")
+        );
+
+        // Then
+        assertThat(candidates)
+            .extracting(
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.nodeType()
+            )
+            .containsExactly(tuple("invoice", "invoice", NodeType.CONCEPT));
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
+        verify(transaction).run(query.capture(), parameters.capture());
+        assertThat(singleLine(query.getValue()))
+            .contains("MATCH (candidate:Concept)")
+            .contains("RETURN candidateKey, candidateLabel, 'CONCEPT' AS nodeType")
+            .doesNotContain("WHERE candidate.canonicalName = $text");
+        assertThat(parameters.getValue()).isEmpty();
+    }
+
+    @Test
+    void returnsCompatiblePredicateCandidatesForActionTerms() {
+        // Given
+        when(result.stream()).thenReturn(Stream.of(
+            record("log", "log", "PREDICATE")
+        ));
+
+        // When
+        var candidates = lookup.findCompatibleCandidates(
+            new RequirementElement(RequirementElementType.ACTION, "log event")
+        );
+
+        // Then
+        assertThat(candidates)
+            .extracting(
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.nodeType()
+            )
+            .containsExactly(tuple("log", "log", NodeType.PREDICATE));
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
+        verify(transaction).run(query.capture(), parameters.capture());
+        assertThat(singleLine(query.getValue()))
+            .contains("MATCH (candidate:Predicate)")
+            .contains("RETURN candidateKey, candidateLabel, 'PREDICATE' AS nodeType")
+            .contains("ORDER BY candidateLabel ASC, candidateKey ASC")
+            .doesNotContain("WHERE candidate.canonicalName = $text")
+            .doesNotContain("candidate.qualifierKind = $qualifierKind");
+        assertThat(parameters.getValue()).isEmpty();
+    }
+
+    @Test
+    void returnsCompatibleQualifierCandidatesForConditionTerms() {
+        // Given
+        when(result.stream()).thenReturn(Stream.of(
+            record(
+                "CONDITION::before payment capture",
+                "before payment capture",
+                "QUALIFIER"
+            )
+        ));
+
+        // When
+        var candidates = lookup.findCompatibleCandidates(
+            new RequirementElement(
+                RequirementElementType.CONDITION,
+                "before the billing service logs"
+            )
+        );
+
+        // Then
+        assertThat(candidates)
+            .extracting(
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.nodeType()
+            )
+            .containsExactly(tuple(
+                "CONDITION::before payment capture",
+                "before payment capture",
+                NodeType.QUALIFIER
+            ));
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
+        verify(transaction).run(query.capture(), parameters.capture());
+        assertThat(singleLine(query.getValue()))
+            .contains("MATCH (candidate:Qualifier)")
+            .contains("candidate.qualifierKind = $qualifierKind")
+            .contains("RETURN candidateKey, candidateLabel, 'QUALIFIER' AS nodeType")
+            .doesNotContain("candidate.canonicalText = $text");
+        assertThat(parameters.getValue())
+            .containsEntry("qualifierKind", "CONDITION")
+            .containsOnlyKeys("qualifierKind");
+    }
+
+    @Test
+    void returnsCompatibleQualifierCandidatesForConstraintTerms() {
+        // Given
+        when(result.stream()).thenReturn(Stream.of(
+            record(
+                "CONSTRAINT::within two seconds",
+                "within two seconds",
+                "QUALIFIER"
+            )
+        ));
+
+        // When
+        var candidates = lookup.findCompatibleCandidates(
+            new RequirementElement(
+                RequirementElementType.CONSTRAINT,
+                "within two seconds"
+            )
+        );
+
+        // Then
+        assertThat(candidates)
+            .extracting(
+                candidate -> candidate.candidateKey(),
+                candidate -> candidate.label(),
+                candidate -> candidate.nodeType()
+            )
+            .containsExactly(tuple(
+                "CONSTRAINT::within two seconds",
+                "within two seconds",
+                NodeType.QUALIFIER
+            ));
+
+        ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> parameters = parametersCaptor();
+        verify(transaction).run(query.capture(), parameters.capture());
+        assertThat(singleLine(query.getValue()))
+            .contains("MATCH (candidate:Qualifier)")
+            .contains("candidate.qualifierKind = $qualifierKind")
+            .doesNotContain("candidate.canonicalText = $text");
+        assertThat(parameters.getValue())
+            .containsEntry("qualifierKind", "CONSTRAINT")
+            .containsOnlyKeys("qualifierKind");
+    }
+
     private Record record(String candidateKey, String label, String nodeType) {
         return new InternalRecord(
             java.util.List.of("candidateKey", "candidateLabel", "nodeType"),

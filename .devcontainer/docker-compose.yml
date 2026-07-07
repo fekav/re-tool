@@ -44,6 +44,8 @@ services:
       context: ..
       dockerfile: chainlit/Dockerfile
     restart: unless-stopped
+    volumes:
+      - ../chainlit:/app:cached
     environment:
       QUARKUS_BASE_URL: http://app:8080
       OLLAMA_BASE_URL: http://ollama:11434
