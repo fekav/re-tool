@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fekav.platform.cqrs.Command;
 import io.fekav.platform.cqrs.CommandBus;
 import io.fekav.platform.cqrs.CommandHandlerRegistry;
+import io.fekav.platform.cqrs.Query;
+import io.fekav.platform.cqrs.QueryBus;
+import io.fekav.platform.cqrs.QueryHandlerRegistry;
 import io.fekav.platform.observability.Observability;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
@@ -27,21 +30,28 @@ public class RestController {
 
     private final CommandBus commandBus;
     private final CommandHandlerRegistry commandHandlerRegistry;
+    private final QueryBus queryBus;
+    private final QueryHandlerRegistry queryHandlerRegistry;
     private final ObjectMapper objectMapper;
 
     @ConfigProperty(name = "observability.log.raw-request", defaultValue = "true")
     boolean logRawRequest;
 
     private record CommandRequest(String command, JsonNode payload) {}
+    private record QueryRequest(String query, JsonNode payload) {}
 
     @Inject
     public RestController(
         CommandBus commandBus,
         CommandHandlerRegistry commandHandlerRegistry,
+        QueryBus queryBus,
+        QueryHandlerRegistry queryHandlerRegistry,
         ObjectMapper objectMapper
     ) {
         this.commandBus = commandBus;
         this.commandHandlerRegistry = commandHandlerRegistry;
+        this.queryBus = queryBus;
+        this.queryHandlerRegistry = queryHandlerRegistry;
         this.objectMapper = objectMapper;
     }
 
@@ -58,8 +68,7 @@ public class RestController {
         }
         logCommandRequest(request);
         // validate command
-        Class<? extends Command<?>> commandType =
-            commandHandlerRegistry.commandType(request.command());
+        Class<? extends Command<?>> commandType = commandType(request.command());
         if (commandType == null) {
             throw new BadRequestException(
                 "Unknown command: " + request.command()
@@ -76,8 +85,64 @@ public class RestController {
             throw new BadRequestException("command payload error");
         }
         // dispatch command
-        Object result = commandBus.dispatch(cmd);
+        Object result;
+        try {
+            result = commandBus.dispatch(cmd);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(e.getMessage());
+        }
         return Response.status(Response.Status.CREATED).entity(result).build();
+    }
+
+    @POST
+    @Path("/q")
+    public Response executeQuery(QueryRequest request) {
+        if (
+            request == null ||
+            request.query() == null ||
+            request.payload() == null
+        ) {
+            throw new BadRequestException("Request body error");
+        }
+
+        Class<? extends Query<?>> queryType = queryType(request.query());
+        if (queryType == null) {
+            throw new BadRequestException("Unknown query: " + request.query());
+        }
+
+        Query<?> query;
+        try {
+            JsonNode payload = request.payload();
+            query = payload.isTextual()
+                ? objectMapper.readValue(payload.asText(), queryType)
+                : objectMapper.treeToValue(payload, queryType);
+        } catch (Exception e) {
+            throw new BadRequestException("query payload error");
+        }
+
+        Object result;
+        try {
+            result = queryBus.execute(query);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(e.getMessage());
+        }
+        return Response.ok(result).build();
+    }
+
+    private Class<? extends Command<?>> commandType(String commandName) {
+        try {
+            return commandHandlerRegistry.commandType(commandName);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(e.getMessage());
+        }
+    }
+
+    private Class<? extends Query<?>> queryType(String queryName) {
+        try {
+            return queryHandlerRegistry.queryType(queryName);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(e.getMessage());
+        }
     }
 
     private void logCommandRequest(CommandRequest request) {

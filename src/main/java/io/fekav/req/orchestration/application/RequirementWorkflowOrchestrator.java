@@ -11,6 +11,7 @@ import io.fekav.req.classification.application.ClassifyRequirementCommand;
 import io.fekav.req.ingestion.application.IngestRequirementResult;
 import io.fekav.req.ingestion.application.IngestionOutcomeStore;
 import io.fekav.req.orchestration.domain.WorkflowState;
+import io.fekav.req.review.application.NodeMatchReviewProjection;
 import io.fekav.req.resolution.application.ResolveNodeCommand;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
@@ -33,6 +34,7 @@ public class RequirementWorkflowOrchestrator {
     private final CommandBus commandBus;
     private final EventPublisher eventPublisher;
     private final IngestionOutcomeStore outcomeStore;
+    private final NodeMatchReviewProjection reviewProjection;
     private final boolean enabled;
 
     @Inject
@@ -41,6 +43,7 @@ public class RequirementWorkflowOrchestrator {
         CommandBus commandBus,
         EventPublisher eventPublisher,
         IngestionOutcomeStore outcomeStore,
+        NodeMatchReviewProjection reviewProjection,
         @ConfigProperty(name = "req.orchestration.enabled", defaultValue = "false")
         boolean enabled
     ) {
@@ -48,6 +51,7 @@ public class RequirementWorkflowOrchestrator {
         this.commandBus = commandBus;
         this.eventPublisher = eventPublisher;
         this.outcomeStore = outcomeStore;
+        this.reviewProjection = reviewProjection;
         this.enabled = enabled;
     }
 
@@ -55,9 +59,10 @@ public class RequirementWorkflowOrchestrator {
         EventStore eventStore,
         CommandBus commandBus,
         EventPublisher eventPublisher,
-        IngestionOutcomeStore outcomeStore
+        IngestionOutcomeStore outcomeStore,
+        NodeMatchReviewProjection reviewProjection
     ) {
-        this(eventStore, commandBus, eventPublisher, outcomeStore, true);
+        this(eventStore, commandBus, eventPublisher, outcomeStore, reviewProjection, true);
     }
 
     public void onRequirementIngested(@Observes RequirementIngestedEvent event) {
@@ -108,6 +113,10 @@ public class RequirementWorkflowOrchestrator {
 
         WorkflowTransition transition = remember(event.correlationId(), event);
 
+        if (transition.stored()) {
+            reviewProjection.apply(event);
+        }
+
         publishCompletionIfAnalysisCompleted(event.correlationId(), transition);
     }
 
@@ -121,6 +130,7 @@ public class RequirementWorkflowOrchestrator {
         WorkflowTransition transition = remember(event.correlationId(), event);
 
         if (transition.stored()) {
+            reviewProjection.apply(event);
             outcomeStore.record(IngestRequirementResult.reviewRequired(
                 event.correlationId()
             ));

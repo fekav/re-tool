@@ -118,6 +118,58 @@ class CompletedAnalysisGraphChangeFactoryTest {
     }
 
     @Test
+    void mapsReviewExistingDecisionsLikeAutoExistingDecisions() {
+        // Arrange
+        RequirementAnalysisCompletedEvent event = event(
+            CorrelationId.create(),
+            actionWithoutQualifiers(),
+            List.of(
+                reviewMapDecision(
+                    RequirementElementType.SUBJECT,
+                    "login form",
+                    "concept-login-form",
+                    "Login Form",
+                    NodeType.CONCEPT
+                ),
+                autoCreateDecision(RequirementElementType.ACTION, "must validate"),
+                autoCreateDecision(RequirementElementType.OBJECT, "credentials")
+            )
+        );
+
+        // Act
+        PersistRequirementGraphChange graphChange = factory.from(event);
+
+        // Assert
+        assertThat(graphChange.assertionIdentity().subject().key())
+            .isEqualTo("concept-login-form");
+        assertThat(graphChange.assertionIdentity().subject().label())
+            .isEqualTo("Login Form");
+    }
+
+    @Test
+    void mapsReviewCreateDecisionsLikeAutoCreateDecisions() {
+        // Arrange
+        RequirementAnalysisCompletedEvent event = event(
+            CorrelationId.create(),
+            actionWithoutQualifiers(),
+            List.of(
+                reviewCreateDecision(RequirementElementType.SUBJECT, "login form"),
+                autoCreateDecision(RequirementElementType.ACTION, "must validate"),
+                autoCreateDecision(RequirementElementType.OBJECT, "credentials")
+            )
+        );
+
+        // Act
+        PersistRequirementGraphChange graphChange = factory.from(event);
+
+        // Assert
+        assertThat(graphChange.assertionIdentity().subject().key())
+            .isEqualTo("login form");
+        assertThat(graphChange.assertionIdentity().subject().label())
+            .isEqualTo("login form");
+    }
+
+    @Test
     void mapsConditionsAndConstraintsToQualifiersOutsideAssertionIdentity() {
         // Arrange
         RequirementAnalysisCompletedEvent event = event(
@@ -279,6 +331,36 @@ class CompletedAnalysisGraphChangeFactoryTest {
                 List.of(new RetrievalEvidence("nodeName", "matched node name", 1.0))
             )),
             "Existing candidate reached the automatic mapping threshold"
+        );
+    }
+
+    private NodeMatchDecision reviewCreateDecision(
+        RequirementElementType type,
+        String text
+    ) {
+        return new NodeMatchDecision(
+            new RequirementElement(type, text),
+            NodeMatchDecisionStatus.REVIEW_CREATE_NEW,
+            List.of(),
+            "Domain reviewer requested a new concept."
+        );
+    }
+
+    private NodeMatchDecision reviewMapDecision(
+        RequirementElementType type,
+        String text,
+        String candidateKey,
+        String label,
+        NodeType nodeType
+    ) {
+        return new NodeMatchDecision(
+            new RequirementElement(type, text),
+            NodeMatchDecisionStatus.REVIEW_MAP_EXISTING,
+            List.of(new RetrievedCandidateNode(
+                new CandidateNode(candidateKey, label, nodeType),
+                List.of(new RetrievalEvidence("nodeName", "matched node name", 1.0))
+            )),
+            "Domain reviewer selected this candidate."
         );
     }
 }

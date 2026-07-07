@@ -141,6 +141,60 @@ class NodeMatchDecisionTest {
             .hasMessage("auto-create-new decisions must not contain candidates");
     }
 
+    @Test
+    void acceptsReviewMapDecision_whenExactlyOneCandidateIsPresent() {
+        // Given / When
+        NodeMatchDecision decision = new NodeMatchDecision(
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
+            NodeMatchDecisionStatus.REVIEW_MAP_EXISTING,
+            List.of(candidate("concept-1", 1.0)),
+            "Domain reviewer selected this candidate."
+        );
+
+        // Then
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.REVIEW_MAP_EXISTING);
+    }
+
+    @Test
+    void acceptsReviewCreateNewDecision_whenNoCandidatesArePresent() {
+        // Given / When
+        NodeMatchDecision decision = new NodeMatchDecision(
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
+            NodeMatchDecisionStatus.REVIEW_CREATE_NEW,
+            List.of(),
+            "Domain reviewer requested a new concept."
+        );
+
+        // Then
+        assertThat(decision.status()).isEqualTo(NodeMatchDecisionStatus.REVIEW_CREATE_NEW);
+    }
+
+    @Test
+    void rejectsDecision_whenReviewMapHasNoCandidate() {
+        // Given / When / Then
+        assertThatThrownBy(() -> new NodeMatchDecision(
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
+            NodeMatchDecisionStatus.REVIEW_MAP_EXISTING,
+            List.of(),
+            "Domain reviewer selected this candidate."
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("review-map decisions must contain exactly one candidate");
+    }
+
+    @Test
+    void rejectsDecision_whenReviewCreateHasCandidate() {
+        // Given / When / Then
+        assertThatThrownBy(() -> new NodeMatchDecision(
+            new RequirementElement(RequirementElementType.SUBJECT, "billing service"),
+            NodeMatchDecisionStatus.REVIEW_CREATE_NEW,
+            List.of(candidate("concept-1", 1.0)),
+            "Domain reviewer requested a new concept."
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("review-create-new decisions must not contain candidates");
+    }
+
     private RetrievedCandidateNode candidate(String candidateKey, double score) {
         return new RetrievedCandidateNode(
             new CandidateNode(candidateKey, "Billing Service", NodeType.CONCEPT),

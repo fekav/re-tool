@@ -12,7 +12,6 @@ import io.fekav.req.shared.event.RequirementAnalysisCompletedEvent;
 import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.shared.model.GraphNodeReference;
 import io.fekav.req.shared.model.NodeMatchDecision;
-import io.fekav.req.shared.model.NodeMatchDecisionStatus;
 import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RequirementElement;
 import io.fekav.req.shared.model.RequirementElementType;
@@ -95,7 +94,7 @@ public class CompletedAnalysisGraphChangeFactory {
     }
 
     private GraphNodeReference graphNodeReference(NodeMatchDecision decision) {
-        if (decision.status() == NodeMatchDecisionStatus.AUTO_MAP_EXISTING) {
+        if (decision.status().mapsExistingNode()) {
             return existingGraphNodeReference(decision);
         }
 

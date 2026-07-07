@@ -24,6 +24,8 @@ import io.fekav.req.classification.domain.RequirementType;
 import io.fekav.req.ingestion.application.IngestRequirementResult;
 import io.fekav.req.ingestion.application.IngestionOutcomeStore;
 import io.fekav.req.orchestration.infrastructure.InMemoryEventStore;
+import io.fekav.req.review.application.NodeMatchReviewProjection;
+import io.fekav.req.review.domain.NodeMatchReviewId;
 import io.fekav.req.resolution.application.ResolveNodeCommand;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
@@ -61,12 +63,15 @@ class RequirementWorkflowOrchestratorTest {
     private final RecordingCommandBus commandBus = new RecordingCommandBus();
     private final RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
     private final IngestionOutcomeStore outcomeStore = new IngestionOutcomeStore();
+    private final NodeMatchReviewProjection reviewProjection =
+        new NodeMatchReviewProjection();
     private final RequirementWorkflowOrchestrator orchestrator =
         new RequirementWorkflowOrchestrator(
             eventStore,
             commandBus,
             eventPublisher,
-            outcomeStore
+            outcomeStore,
+            reviewProjection
         );
 
     @Test
@@ -78,6 +83,7 @@ class RequirementWorkflowOrchestratorTest {
                 commandBus,
                 eventPublisher,
                 outcomeStore,
+                reviewProjection,
                 false
             );
         RequirementIngestedEvent event = ingestedEvent();
@@ -261,6 +267,10 @@ class RequirementWorkflowOrchestratorTest {
         CorrelationId correlationId = CorrelationId.create();
         NodeResolutionReviewRequiredEvent event =
             NodeResolutionReviewRequiredEvent.create(correlationId, reviewRequest());
+        String reviewId = NodeMatchReviewId.from(
+            correlationId,
+            event.reviewRequest().requirementElement()
+        ).value();
 
         // Act
         orchestrator.onNodeResolutionReviewRequired(event);
@@ -275,6 +285,38 @@ class RequirementWorkflowOrchestratorTest {
                     .isEqualTo(IngestRequirementResult.Status.REVIEW_REQUIRED);
                 assertThat(result.message()).isEqualTo("Requirement requires review.");
             });
+        assertThat(reviewProjection.pendingReviews())
+            .singleElement()
+            .satisfies(review -> assertThat(review.reviewId()).isEqualTo(reviewId));
+    }
+
+    @Test
+    void closesPendingReview_whenMatchingResolutionDecisionIsStored() {
+        // Arrange
+        CorrelationId correlationId = CorrelationId.create();
+        NodeResolutionReviewRequiredEvent reviewRequiredEvent =
+            NodeResolutionReviewRequiredEvent.create(correlationId, reviewRequest());
+        orchestrator.onNodeResolutionReviewRequired(reviewRequiredEvent);
+        String reviewId = NodeMatchReviewId.from(
+            correlationId,
+            reviewRequiredEvent.reviewRequest().requirementElement()
+        ).value();
+        NodeResolutionDecidedEvent decisionEvent = NodeResolutionDecidedEvent.create(
+            correlationId,
+            new NodeMatchDecision(
+                reviewRequiredEvent.reviewRequest().requirementElement(),
+                NodeMatchDecisionStatus.REVIEW_MAP_EXISTING,
+                reviewRequiredEvent.reviewRequest().candidates(),
+                "Domain reviewer selected this candidate."
+            )
+        );
+
+        // Act
+        orchestrator.onNodeResolutionDecided(decisionEvent);
+
+        // Assert
+        assertThat(reviewProjection.pendingReviews()).isEmpty();
+        assertThat(reviewProjection.pendingReview(reviewId)).isEmpty();
     }
 
     private RequirementIngestedEvent ingestedEvent() {

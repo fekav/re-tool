@@ -7,11 +7,10 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.Session;
 
-import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.resolution.domain.CandidateLookup;
+import io.fekav.req.shared.model.CandidateNode;
 import io.fekav.req.shared.model.NodeType;
 import io.fekav.req.shared.model.RequirementElement;
-import io.fekav.req.shared.model.RequirementElementType;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
