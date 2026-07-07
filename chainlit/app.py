@@ -1,6 +1,5 @@
 import json
 import os
-import shlex
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,8 +17,8 @@ SYSTEM_MESSAGE = {
     "content": (
         "You are a concise requirements-review assistant. Use tools when the "
         "user asks to ingest a new requirement, asks about pending node-match "
-        "reviews, or submits a review decision. Do not invent requirement "
-        "text, review IDs, candidate keys, or decisions."
+        "reviews. Do not invent requirement text, review IDs, candidate keys, "
+        "or decisions."
     ),
 }
 
@@ -61,36 +60,6 @@ TOOLS = [
             },
         },
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "submit_node_match_review_decision",
-            "description": "Submit a human decision for one pending node-match review.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "reviewId": {
-                        "type": "string",
-                        "description": "The reviewId returned by list_pending_node_match_reviews.",
-                    },
-                    "decision": {
-                        "type": "string",
-                        "enum": ["MAP_EXISTING", "CREATE_NEW"],
-                    },
-                    "candidateKey": {
-                        "type": "string",
-                        "description": "Required for MAP_EXISTING; omit for CREATE_NEW.",
-                    },
-                    "rationale": {
-                        "type": "string",
-                        "description": "Short explanation of the human review decision.",
-                    },
-                },
-                "required": ["reviewId", "decision", "rationale"],
-                "additionalProperties": False,
-            },
-        },
-    },
 ]
 
 
@@ -112,11 +81,9 @@ def build_welcome_message() -> str:
     return (
         "Hello. I currently know these tools:\n\n"
         f"{tool_lines}\n\n"
-        "Commands for using Quarkus API directly (without LLM for intent recognition):\n"
-        "- `ingest: <Requirement-Text>`\n"
-        "- `/reviews`\n"
-        "- `/review <reviewId> MAP_EXISTING <candidateKey> <rationale>`\n"
-        "- `/review <reviewId> CREATE_NEW <rationale>`\n\n"
+        "Commands for using Quarkus REST API directly (similar to HTTP request, without using LLM for process prompt/response):\n"
+        "- `/ingest <Requirement-Text>`\n"
+        "- `/reviews`\n\n"
     )
 
 
@@ -220,16 +187,6 @@ async def execute_tool(
             },
         )
 
-    if name == "submit_node_match_review_decision":
-        return await post_quarkus(
-            client,
-            "/app/c",
-            {
-                "command": "SubmitNodeMatchReviewDecisionCommand",
-                "payload": arguments,
-            },
-        )
-
     return {"error": f"Unknown tool: {name}"}
 
 
@@ -255,14 +212,6 @@ async def execute_direct_command(
     if lower_content == "reviews":
         return DirectCommandResult(await list_pending_reviews(client))
 
-    if lower_content.startswith("review:"):
-        return DirectCommandResult(
-            await execute_direct_review_command(
-                client,
-                stripped_content.partition(":")[2].strip(),
-            )
-        )
-
     if not stripped_content.startswith("/"):
         return None
 
@@ -275,9 +224,6 @@ async def execute_direct_command(
 
     if command == "/reviews":
         return DirectCommandResult(await list_pending_reviews(client))
-
-    if command == "/review":
-        return DirectCommandResult(await execute_direct_review_command(client, rest))
 
     return None
 
@@ -305,45 +251,6 @@ async def ingest_requirement(
 async def list_pending_reviews(client: httpx.AsyncClient) -> str:
     result = await list_pending_reviews_result(client)
     return format_result("Open Reviews", result)
-
-
-async def execute_direct_review_command(
-    client: httpx.AsyncClient,
-    rest: str,
-) -> str:
-    try:
-        parts = shlex.split(rest)
-    except ValueError as error:
-        return f"Review command could not be parsed: {error}"
-
-    if len(parts) < 3:
-        return (
-            "Format: `/review <reviewId> MAP_EXISTING <candidateKey> <rationale>` "
-            "or `/review <reviewId> CREATE_NEW <rationale>`"
-        )
-
-    review_id = parts[0]
-    decision = parts[1].upper()
-    if decision == "MAP_EXISTING":
-        if len(parts) < 4:
-            return "Format: `/review <reviewId> MAP_EXISTING <candidateKey> <rationale>`"
-        payload = {
-            "reviewId": review_id,
-            "decision": decision,
-            "candidateKey": parts[2],
-            "rationale": " ".join(parts[3:]),
-        }
-    elif decision == "CREATE_NEW":
-        payload = {
-            "reviewId": review_id,
-            "decision": decision,
-            "rationale": " ".join(parts[2:]),
-        }
-    else:
-        return "Decision must be `MAP_EXISTING` or `CREATE_NEW`."
-
-    result = await submit_review_decision(client, payload)
-    return format_result("Review Decision", result)
 
 
 async def prompt_reviews_after_ingestion(

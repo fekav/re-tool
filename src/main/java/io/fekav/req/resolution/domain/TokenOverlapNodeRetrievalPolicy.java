@@ -15,6 +15,7 @@ import io.fekav.req.shared.model.CandidateNodeMatch;
 import io.fekav.req.shared.model.RetrievalEvidence;
 import io.fekav.req.shared.model.RetrievedCandidateNode;
 import io.fekav.req.shared.model.RequirementElement;
+import io.fekav.req.shared.model.RequirementElementType;
 
 public class TokenOverlapNodeRetrievalPolicy implements NodeRetrievalPolicy {
 
@@ -39,6 +40,10 @@ public class TokenOverlapNodeRetrievalPolicy implements NodeRetrievalPolicy {
     @Override
     public CandidateNodeMatch retrieveCandidates(RequirementElement selectedTerm) {
         Objects.requireNonNull(selectedTerm, "selectedTerm must not be null");
+
+        if (selectedTerm.type() == RequirementElementType.ACTION) {
+            return new CandidateNodeMatch(selectedTerm, List.of());
+        }
 
         Set<String> queryTokens = uniqueTokens(selectedTerm.text());
         List<RetrievedCandidateNode> retrievedCandidates = compatibleCandidateLookup

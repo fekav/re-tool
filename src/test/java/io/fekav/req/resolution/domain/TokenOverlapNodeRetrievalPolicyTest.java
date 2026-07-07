@@ -140,6 +140,26 @@ class TokenOverlapNodeRetrievalPolicyTest {
     }
 
     @Test
+    void returnsNoCandidatesWithoutLookup_whenSelectedTermIsAction() {
+        // Given
+        RequirementElement selectedTerm =
+            new RequirementElement(RequirementElementType.ACTION, "sollen liefern");
+        List<RequirementElement> lookupTerms = new ArrayList<>();
+        TokenOverlapNodeRetrievalPolicy policy = policyReturning(
+            lookupTerms,
+            List.of(candidate("predicate-1", "sollen behalten"))
+        );
+
+        // When
+        CandidateNodeMatch match = policy.retrieveCandidates(selectedTerm);
+
+        // Then
+        assertThat(lookupTerms).isEmpty();
+        assertThat(match.requirementElement()).isEqualTo(selectedTerm);
+        assertThat(match.candidates()).isEmpty();
+    }
+
+    @Test
     void rejectsRetrieval_whenSelectedTermIsNull() {
         // Given
         TokenOverlapNodeRetrievalPolicy policy = policyReturning(List.of());
