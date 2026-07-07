@@ -66,7 +66,6 @@ class Neo4jSchemaInitializerTest {
                 "MATCH (n) DETACH DELETE n",
                 "CREATE CONSTRAINT requirement_id IF NOT EXISTS FOR (r:Requirement) REQUIRE r.id IS UNIQUE",
                 "CREATE CONSTRAINT provenance_id IF NOT EXISTS FOR (p:Provenance) REQUIRE p.id IS UNIQUE",
-                "CREATE CONSTRAINT mention_id IF NOT EXISTS FOR (m:Mention) REQUIRE m.id IS UNIQUE",
                 "CREATE CONSTRAINT concept_canonical_name IF NOT EXISTS FOR (c:Concept) REQUIRE c.canonicalName IS UNIQUE",
                 "CREATE CONSTRAINT predicate_canonical_name IF NOT EXISTS FOR (p:Predicate) REQUIRE p.canonicalName IS UNIQUE",
                 "CREATE CONSTRAINT qualifier_identity IF NOT EXISTS FOR (q:Qualifier) REQUIRE (q.qualifierKind, q.canonicalText) IS UNIQUE",
@@ -81,7 +80,6 @@ class Neo4jSchemaInitializerTest {
                 "CREATE INDEX requirement_type IF NOT EXISTS FOR (r:Requirement) ON (r.type)",
                 "CREATE INDEX requirement_property IF NOT EXISTS FOR (r:Requirement) ON (r.property)",
                 "CREATE INDEX requirement_raw_text IF NOT EXISTS FOR (r:Requirement) ON (r.rawText)",
-                "CREATE INDEX mention_text IF NOT EXISTS FOR (m:Mention) ON (m.text)",
                 "CREATE INDEX qualifier_canonical_text IF NOT EXISTS FOR (q:Qualifier) ON (q.canonicalText)"
             )
             .allSatisfy(statement ->

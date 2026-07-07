@@ -73,10 +73,6 @@ public class Neo4jSchemaInitializer {
         FOR (p:Provenance) REQUIRE p.id IS UNIQUE
         """,
         """
-        CREATE CONSTRAINT mention_id IF NOT EXISTS
-        FOR (m:Mention) REQUIRE m.id IS UNIQUE
-        """,
-        """
         CREATE CONSTRAINT concept_canonical_name IF NOT EXISTS
         FOR (c:Concept) REQUIRE c.canonicalName IS UNIQUE
         """,
@@ -132,10 +128,6 @@ public class Neo4jSchemaInitializer {
         """
         CREATE INDEX requirement_raw_text IF NOT EXISTS
         FOR (r:Requirement) ON (r.rawText)
-        """,
-        """
-        CREATE INDEX mention_text IF NOT EXISTS
-        FOR (m:Mention) ON (m.text)
         """,
         """
         CREATE INDEX qualifier_canonical_text IF NOT EXISTS
@@ -325,215 +317,6 @@ public class Neo4jSchemaInitializer {
             )
         );
 
-    private static final List<Map<String, String>> SAMPLE_CONCEPT_MENTIONS = List.of(
-        conceptMention(
-            mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "SUBJECT", "subscribers"),
-            SAMPLE_FUNCTIONAL_GOAL_ID,
-            "SUBJECT",
-            "subscribers",
-            "subscribers"
-        ),
-        conceptMention(
-            mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "OBJECT", "outage updates"),
-            SAMPLE_FUNCTIONAL_GOAL_ID,
-            "OBJECT",
-            "outage updates",
-            "outage updates"
-        ),
-        conceptMention(
-            mentionId(SAMPLE_QUALITY_GOAL_ID, "SUBJECT", "outage updates"),
-            SAMPLE_QUALITY_GOAL_ID,
-            "SUBJECT",
-            "outage updates",
-            "outage updates"
-        ),
-        conceptMention(
-            mentionId(
-                SAMPLE_QUALITY_GOAL_ID,
-                "OBJECT",
-                "affected services and detection time"
-            ),
-            SAMPLE_QUALITY_GOAL_ID,
-            "OBJECT",
-            "affected services and detection time",
-            "affected services and detection time"
-        ),
-        conceptMention(
-            mentionId(SAMPLE_FUNCTIONAL_NEED_ID, "SUBJECT", "subscribers"),
-            SAMPLE_FUNCTIONAL_NEED_ID,
-            "SUBJECT",
-            "subscribers",
-            "subscribers"
-        ),
-        conceptMention(
-            mentionId(SAMPLE_FUNCTIONAL_NEED_ID, "OBJECT", "outage updates"),
-            SAMPLE_FUNCTIONAL_NEED_ID,
-            "OBJECT",
-            "outage updates",
-            "outage updates"
-        ),
-        conceptMention(
-            mentionId(SAMPLE_QUALITY_NEED_ID, "SUBJECT", "support agents"),
-            SAMPLE_QUALITY_NEED_ID,
-            "SUBJECT",
-            "support agents",
-            "support agents"
-        ),
-        conceptMention(
-            mentionId(SAMPLE_QUALITY_NEED_ID, "OBJECT", "incident updates"),
-            SAMPLE_QUALITY_NEED_ID,
-            "OBJECT",
-            "incident updates",
-            "incident updates"
-        ),
-        conceptMention(
-            mentionId(
-                SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
-                "SUBJECT",
-                "notification service"
-            ),
-            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
-            "SUBJECT",
-            "notification service",
-            "notification service"
-        ),
-        conceptMention(
-            mentionId(SAMPLE_SEND_UPDATES_REQUIREMENT_ID, "OBJECT", "outage updates"),
-            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
-            "OBJECT",
-            "outage updates",
-            "outage updates"
-        ),
-        conceptMention(
-            mentionId(
-                SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
-                "SUBJECT",
-                "monitoring service"
-            ),
-            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
-            "SUBJECT",
-            "monitoring service",
-            "monitoring service"
-        ),
-        conceptMention(
-            mentionId(
-                SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
-                "OBJECT",
-                "affected service and detection time"
-            ),
-            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
-            "OBJECT",
-            "affected service and detection time",
-            "affected service and detection time"
-        )
-    );
-
-    private static final List<Map<String, String>> SAMPLE_PREDICATE_MENTIONS = List.of(
-        predicateMention(
-            mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "ACTION", "receive"),
-            SAMPLE_FUNCTIONAL_GOAL_ID,
-            "receive"
-        ),
-        predicateMention(
-            mentionId(SAMPLE_QUALITY_GOAL_ID, "ACTION", "include"),
-            SAMPLE_QUALITY_GOAL_ID,
-            "include"
-        ),
-        predicateMention(
-            mentionId(SAMPLE_FUNCTIONAL_NEED_ID, "ACTION", "need"),
-            SAMPLE_FUNCTIONAL_NEED_ID,
-            "need"
-        ),
-        predicateMention(
-            mentionId(SAMPLE_QUALITY_NEED_ID, "ACTION", "need"),
-            SAMPLE_QUALITY_NEED_ID,
-            "need"
-        ),
-        predicateMention(
-            mentionId(SAMPLE_SEND_UPDATES_REQUIREMENT_ID, "ACTION", "must send"),
-            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
-            "must send"
-        ),
-        predicateMention(
-            mentionId(SAMPLE_STORE_CONTEXT_REQUIREMENT_ID, "ACTION", "must store"),
-            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
-            "must store"
-        )
-    );
-
-    private static final List<Map<String, String>> SAMPLE_QUALIFIER_MENTIONS =
-        List.of(
-            qualifierMention(
-                mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "CONSTRAINT", "automatically"),
-                SAMPLE_FUNCTIONAL_GOAL_ID,
-                "CONSTRAINT",
-                "automatically",
-                "automatically"
-            ),
-            qualifierMention(
-                mentionId(
-                    SAMPLE_FUNCTIONAL_GOAL_ID,
-                    "CONDITION",
-                    "during service incidents"
-                ),
-                SAMPLE_FUNCTIONAL_GOAL_ID,
-                "CONDITION",
-                "during service incidents",
-                "during service incidents"
-            ),
-            qualifierMention(
-                mentionId(SAMPLE_QUALITY_GOAL_ID, "CONDITION", "during incidents"),
-                SAMPLE_QUALITY_GOAL_ID,
-                "CONDITION",
-                "during incidents",
-                "during incidents"
-            ),
-            qualifierMention(
-                mentionId(
-                    SAMPLE_FUNCTIONAL_NEED_ID,
-                    "CONDITION",
-                    "platform detects an incident"
-                ),
-                SAMPLE_FUNCTIONAL_NEED_ID,
-                "CONDITION",
-                "platform detects an incident",
-                "platform detects an incident"
-            ),
-            qualifierMention(
-                mentionId(
-                    SAMPLE_QUALITY_NEED_ID,
-                    "CONSTRAINT",
-                    "with affected service and detection time"
-                ),
-                SAMPLE_QUALITY_NEED_ID,
-                "CONSTRAINT",
-                "with affected service and detection time",
-                "with affected service and detection time"
-            ),
-            qualifierMention(
-                mentionId(
-                    SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
-                    "CONDITION",
-                    "monitoring service stores an incident record"
-                ),
-                SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
-                "CONDITION",
-                "monitoring service stores an incident record",
-                "monitoring service stores an incident record"
-            ),
-            qualifierMention(
-                mentionId(
-                    SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
-                    "CONSTRAINT",
-                    "in each incident record"
-                ),
-                SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
-                "CONSTRAINT",
-                "in each incident record",
-                "in each incident record"
-            )
-        );
-
     private static final List<Map<String, String>> SAMPLE_SATISFIES_RELATIONS =
         List.of(
             requirementRelation(SAMPLE_FUNCTIONAL_NEED_ID, SAMPLE_FUNCTIONAL_GOAL_ID),
@@ -701,54 +484,6 @@ public class Neo4jSchemaInitializer {
 
             tx.run(
                 """
-                UNWIND $conceptMentions AS mention
-                MATCH (r:Requirement {id: mention.requirementId})
-                MATCH (c:Concept {canonicalName: mention.canonicalName})
-                MERGE (m:Mention {id: mention.id})
-                SET m.text = mention.text,
-                    m.role = mention.role,
-                    m.sample = true
-                MERGE (r)-[:HAS_MENTION]->(m)
-                MERGE (m)-[:DENOTES]->(c)
-                """,
-                parameters("conceptMentions", SAMPLE_CONCEPT_MENTIONS)
-            );
-
-            tx.run(
-                """
-                UNWIND $predicateMentions AS mention
-                MATCH (r:Requirement {id: mention.requirementId})
-                MATCH (p:Predicate {canonicalName: mention.canonicalName})
-                MERGE (m:Mention {id: mention.id})
-                SET m.text = mention.text,
-                    m.role = 'ACTION',
-                    m.sample = true
-                MERGE (r)-[:HAS_MENTION]->(m)
-                MERGE (m)-[:DENOTES]->(p)
-                """,
-                parameters("predicateMentions", SAMPLE_PREDICATE_MENTIONS)
-            );
-
-            tx.run(
-                """
-                UNWIND $qualifierMentions AS mention
-                MATCH (r:Requirement {id: mention.requirementId})
-                MATCH (q:Qualifier {
-                    qualifierKind: mention.qualifierKind,
-                    canonicalText: mention.canonicalText
-                })
-                MERGE (m:Mention {id: mention.id})
-                SET m.text = mention.text,
-                    m.role = mention.qualifierKind,
-                    m.sample = true
-                MERGE (r)-[:HAS_MENTION]->(m)
-                MERGE (m)-[:DENOTES]->(q)
-                """,
-                parameters("qualifierMentions", SAMPLE_QUALIFIER_MENTIONS)
-            );
-
-            tx.run(
-                """
                 UNWIND $satisfiesRelations AS relation
                 MATCH (need:Requirement {id: relation.sourceRequirementId})
                 MATCH (goal:Requirement {id: relation.targetRequirementId})
@@ -867,71 +602,8 @@ public class Neo4jSchemaInitializer {
         );
     }
 
-    private static Map<String, String> conceptMention(
-        String id,
-        String requirementId,
-        String role,
-        String text,
-        String canonicalName
-    ) {
-        return Map.of(
-            "id",
-            id,
-            "requirementId",
-            requirementId,
-            "role",
-            role,
-            "text",
-            text.strip(),
-            "canonicalName",
-            canonicalName.strip()
-        );
-    }
-
-    private static Map<String, String> predicateMention(
-        String id,
-        String requirementId,
-        String canonicalName
-    ) {
-        return Map.of(
-            "id",
-            id,
-            "requirementId",
-            requirementId,
-            "text",
-            canonicalName.strip(),
-            "canonicalName",
-            canonicalName.strip()
-        );
-    }
-
-    private static Map<String, String> qualifierMention(
-        String id,
-        String requirementId,
-        String qualifierKind,
-        String text,
-        String canonicalText
-    ) {
-        return Map.of(
-            "id",
-            id,
-            "requirementId",
-            requirementId,
-            "qualifierKind",
-            qualifierKind.strip(),
-            "text",
-            text.strip(),
-            "canonicalText",
-            canonicalText.strip()
-        );
-    }
-
     private static String assertionKey(String subjectName, String predicateName, String objectName) {
         return subjectName.strip() + "|" + predicateName.strip() + "|" + objectName.strip();
-    }
-
-    private static String mentionId(String requirementId, String role, String text) {
-        return requirementId.strip() + "::" + role.strip() + "::" + text.strip();
     }
 
     private Map<String, Object> parameters(String key, Object value) {

@@ -280,7 +280,6 @@ After Task 5:
 - Qualifier-based identity.
 - Classification confidence and rationale persistence.
 - Versioned classifications.
-- Mention nodes.
 - Requirement relation inference such as `REFINES`, `SATISFIES`,
   `DEPENDS_ON`, or `CONFLICTS_WITH`.
 - Inbox/outbox infrastructure.

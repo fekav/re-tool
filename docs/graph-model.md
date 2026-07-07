@@ -4,10 +4,10 @@
 
 The graph model separates requirement-domain language from generic graph
 language. `Requirement` remains the source of a statement. Extracted domain
-syntax is persisted as mentions and canonical semantic nodes, not as extraction
-DTO or domain entity nodes. Classification is stored on the `Requirement` as
-closed vocabulary codes, while the vocabulary nodes document and validate the
-allowed values and requirement-to-requirement relation names.
+syntax is persisted as canonical semantic nodes, not as extraction DTO or
+domain entity nodes. Classification is stored on the `Requirement` as closed
+vocabulary codes, while the vocabulary nodes document and validate the allowed
+values and requirement-to-requirement relation names.
 
 ## Labels
 
@@ -15,7 +15,6 @@ allowed values and requirement-to-requirement relation names.
 |---|---|---|
 | `Requirement` | Normalized raw requirement text, classification type/property, and source of assertions | `id` |
 | `Provenance` | Source, original text (excerpt) and ingestion metadata for a requirement | `id` |
-| `Mention` | Concrete text span or phrase found in a requirement | `id` |
 | `Concept` | Reusable domain object used as assertion subject or object | `canonicalName.strip()` |
 | `Predicate` | Reusable relation or action term | `canonicalName.strip()` |
 | `Qualifier` | Condition or constraint enriching an assertion | `(qualifierKind, canonicalText.strip())` |
@@ -33,8 +32,6 @@ allowed values and requirement-to-requirement relation names.
 
 ```text
 (Requirement)-[:HAS_PROVENANCE]->(Provenance)
-(Requirement)-[:HAS_MENTION]->(Mention)
-(Mention)-[:DENOTES]->(Concept|Predicate|Qualifier)
 (Requirement)-[:ASSERTS]->(Assertion)
 (Assertion)-[:HAS_SUBJECT]->(Concept)
 (Assertion)-[:HAS_PREDICATE]->(Predicate)
@@ -97,7 +94,7 @@ participate in graph identity and are not requirement relation vocabulary.
 |---|---|
 | `Requirement` aggregate | `Requirement` source node |
 | `Provenance` value | `Provenance` node |
-| `RequirementElement` | `Mention` node |
+| `RequirementElement` | Not persisted as its own graph node |
 | `Action` semantics | `Assertion` node |
 | `actionText` | `Predicate` node |
 | `Subject` / `TargetObject` | `Concept` node |
