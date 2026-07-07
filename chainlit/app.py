@@ -1,6 +1,7 @@
 import json
 import os
 import shlex
+from dataclasses import dataclass
 from typing import Any
 
 import chainlit as cl
@@ -21,6 +22,13 @@ SYSTEM_MESSAGE = {
         "text, review IDs, candidate keys, or decisions."
     ),
 }
+
+
+@dataclass(frozen=True)
+class DirectCommandResult:
+    content: str
+    ingestion_result: dict[str, Any] | None = None
+
 
 TOOLS = [
     {
@@ -127,9 +135,13 @@ async def on_message(message: cl.Message) -> None:
     async with httpx.AsyncClient(timeout=60.0) as client:
         direct_response = await execute_direct_command(client, message.content)
         if direct_response is not None:
-            messages.append({"role": "assistant", "content": direct_response})
+            messages.append({"role": "assistant", "content": direct_response.content})
             cl.user_session.set("messages", messages)
-            await cl.Message(content=direct_response).send()
+            await cl.Message(content=direct_response.content).send()
+            await prompt_reviews_after_ingestion(
+                client,
+                direct_response.ingestion_result,
+            )
             return
 
         first_response = await ollama_chat(client, messages, TOOLS)
@@ -158,6 +170,8 @@ async def on_message(message: cl.Message) -> None:
         messages.append({"role": "assistant", "content": content})
         cl.user_session.set("messages", messages)
         await cl.Message(content=content).send()
+        if tool_call_name(tool_call) == "ingest_requirement":
+            await prompt_reviews_after_ingestion(client, tool_result)
 
 
 async def ollama_chat(
@@ -222,23 +236,31 @@ async def execute_tool(
 async def execute_direct_command(
     client: httpx.AsyncClient,
     content: str,
-) -> str | None:
+) -> DirectCommandResult | None:
     stripped_content = content.strip()
     lower_content = stripped_content.lower()
 
     if lower_content.startswith("ingest:"):
-        return await ingest_requirement(client, stripped_content.partition(":")[2].strip())
-
-    if lower_content.startswith("requirement:"):
-        return await ingest_requirement(client, stripped_content.partition(":")[2].strip())
-
-    if lower_content == "reviews":
-        return await list_pending_reviews(client)
-
-    if lower_content.startswith("review:"):
-        return await execute_direct_review_command(
+        return await ingest_requirement(
             client,
             stripped_content.partition(":")[2].strip(),
+        )
+
+    if lower_content.startswith("requirement:"):
+        return await ingest_requirement(
+            client,
+            stripped_content.partition(":")[2].strip(),
+        )
+
+    if lower_content == "reviews":
+        return DirectCommandResult(await list_pending_reviews(client))
+
+    if lower_content.startswith("review:"):
+        return DirectCommandResult(
+            await execute_direct_review_command(
+                client,
+                stripped_content.partition(":")[2].strip(),
+            )
         )
 
     if not stripped_content.startswith("/"):
@@ -252,10 +274,10 @@ async def execute_direct_command(
         return await ingest_requirement(client, rest)
 
     if command == "/reviews":
-        return await list_pending_reviews(client)
+        return DirectCommandResult(await list_pending_reviews(client))
 
     if command == "/review":
-        return await execute_direct_review_command(client, rest)
+        return DirectCommandResult(await execute_direct_review_command(client, rest))
 
     return None
 
@@ -263,9 +285,9 @@ async def execute_direct_command(
 async def ingest_requirement(
     client: httpx.AsyncClient,
     original_text: str,
-) -> str:
+) -> DirectCommandResult:
     if not original_text:
-        return "Please provide the requirement text."
+        return DirectCommandResult("Please provide the requirement text.")
     result = await post_quarkus(
         client,
         "/app/c",
@@ -274,18 +296,14 @@ async def ingest_requirement(
             "payload": {"originalText": original_text},
         },
     )
-    return format_result("Requirement Ingestion", result)
+    return DirectCommandResult(
+        format_result("Requirement Ingestion", result),
+        result,
+    )
 
 
 async def list_pending_reviews(client: httpx.AsyncClient) -> str:
-    result = await post_quarkus(
-        client,
-        "/app/q",
-        {
-            "query": "ListPendingNodeMatchReviewsQuery",
-            "payload": {},
-        },
-    )
+    result = await list_pending_reviews_result(client)
     return format_result("Open Reviews", result)
 
 
@@ -324,7 +342,145 @@ async def execute_direct_review_command(
     else:
         return "Decision must be `MAP_EXISTING` or `CREATE_NEW`."
 
-    result = await post_quarkus(
+    result = await submit_review_decision(client, payload)
+    return format_result("Review Decision", result)
+
+
+async def prompt_reviews_after_ingestion(
+    client: httpx.AsyncClient,
+    ingestion_result: dict[str, Any] | None,
+) -> None:
+    if not is_review_required(ingestion_result):
+        return
+
+    pending_reviews = await list_pending_reviews_result(client)
+    if "error" in pending_reviews:
+        await cl.Message(
+            content=format_result("Could not load pending reviews", pending_reviews)
+        ).send()
+        return
+
+    correlation_id = correlation_id_value(ingestion_result.get("correlationId"))
+    matching_reviews = [
+        review
+        for review in pending_reviews.get("reviews", [])
+        if correlation_id_value(review.get("correlationId")) == correlation_id
+    ]
+
+    if not matching_reviews:
+        await cl.Message(
+            content=(
+                "Requirement requires review, but no matching pending review "
+                "was returned by Quarkus."
+            )
+        ).send()
+        return
+
+    for review in matching_reviews:
+        await prompt_review_decision(client, review)
+
+
+async def prompt_review_decision(
+    client: httpx.AsyncClient,
+    review: dict[str, Any],
+) -> None:
+    actions = [
+        cl.Action(
+            name="map_existing",
+            payload={
+                "decision": "MAP_EXISTING",
+                "candidateKey": candidate["candidate"]["candidateKey"],
+            },
+            label=f"Map existing: {candidate['candidate']['label']}",
+        )
+        for candidate in review.get("candidates", [])
+        if candidate.get("candidate", {}).get("candidateKey")
+    ]
+    actions.append(
+        cl.Action(
+            name="create_new",
+            payload={"decision": "CREATE_NEW"},
+            label="Create new node",
+        )
+    )
+
+    response = await cl.AskActionMessage(
+        content=review_prompt_content(review),
+        actions=actions,
+        timeout=600,
+    ).send()
+    payload = action_response_payload(response)
+    if payload is None:
+        await cl.Message(content="Review decision timed out.").send()
+        return
+
+    submit_payload = {
+        "reviewId": review["reviewId"],
+        "decision": payload["decision"],
+        "rationale": "Selected via Chat UI review action by human.",
+    }
+    if payload["decision"] == "MAP_EXISTING":
+        submit_payload["candidateKey"] = payload["candidateKey"]
+
+    result = await submit_review_decision(client, submit_payload)
+    await cl.Message(content=format_result("Review Decision", result)).send()
+
+
+def review_prompt_content(review: dict[str, Any]) -> str:
+    element = review.get("requirementElement", {})
+    candidates = review.get("candidates", [])
+    candidate_lines = "\n".join(
+        "- {label} (`{key}`)".format(
+            label=candidate.get("candidate", {}).get("label", "Unknown candidate"),
+            key=candidate.get("candidate", {}).get("candidateKey", "unknown"),
+        )
+        for candidate in candidates
+    )
+    if not candidate_lines:
+        candidate_lines = "- No existing candidate returned."
+
+    return (
+        "Node match review required.\n\n"
+        f"Review ID: `{review.get('reviewId', 'unknown')}`\n"
+        "Element: `{type}` `{text}`\n"
+        "Rationale: {rationale}\n\n"
+        "Candidates:\n"
+        "{candidate_lines}"
+    ).format(
+        type=element.get("type", "UNKNOWN"),
+        text=element.get("text", ""),
+        rationale=review.get("rationale", "No rationale returned."),
+        candidate_lines=candidate_lines,
+    )
+
+
+def action_response_payload(response: Any) -> dict[str, Any] | None:
+    if response is None:
+        return None
+    if isinstance(response, dict):
+        return response.get("payload") or response
+    payload = getattr(response, "payload", None)
+    if isinstance(payload, dict):
+        return payload
+    return None
+
+
+async def list_pending_reviews_result(client: httpx.AsyncClient) -> dict[str, Any]:
+    return await post_quarkus(
+        client,
+        "/app/q",
+        {
+            "query": "ListPendingNodeMatchReviewsQuery",
+            "payload": {},
+        },
+    )
+
+
+async def submit_review_decision(
+    client: httpx.AsyncClient,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    return await post_quarkus(
         client,
         "/app/c",
         {
@@ -332,7 +488,19 @@ async def execute_direct_review_command(
             "payload": payload,
         },
     )
-    return format_result("Review Decision", result)
+
+
+def is_review_required(result: dict[str, Any] | None) -> bool:
+    return bool(result) and result.get("status") == "REVIEW_REQUIRED"
+
+
+def correlation_id_value(correlation_id: Any) -> str | None:
+    if isinstance(correlation_id, dict):
+        value = correlation_id.get("value")
+        return str(value) if value is not None else None
+    if correlation_id is not None:
+        return str(correlation_id)
+    return None
 
 
 async def post_quarkus(
@@ -378,6 +546,12 @@ def parse_arguments(arguments: Any) -> dict[str, Any]:
 
 def format_result(title: str, result: dict[str, Any]) -> str:
     return f"{title}:\n\n```json\n{json.dumps(result, indent=2, ensure_ascii=False)}\n```"
+
+
+def tool_call_name(tool_call: dict[str, Any]) -> str | None:
+    function = tool_call.get("function") or {}
+    name = function.get("name")
+    return str(name) if name is not None else None
 
 
 def tool_message(
