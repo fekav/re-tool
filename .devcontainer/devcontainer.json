@@ -8,7 +8,8 @@
 
   "runServices": [
     "ollama",
-    "neo4j"
+    "neo4j",
+    "chat"
   ],
 
   "forwardPorts": [
@@ -16,7 +17,8 @@
     5005,
     11434,
     7474,
-    7687
+    7687, 
+    8000
   ],
 
   "portsAttributes": {
@@ -35,6 +37,9 @@
     },
     "7687": {
       "label": "Neo4j Bolt"
+    },
+    "8000": {
+        "label": "Chainlit"
     }
   },
 	"otherPortsAttributes": {
