@@ -18,28 +18,49 @@ public class Neo4jSchemaInitializer {
         DETACH DELETE n
         """;
 
+    private static final String SAMPLE_SOURCE = "API-Request";
     private static final String SAMPLE_FUNCTIONAL_GOAL_ID =
-        "sample-goal-payment-recovery-flow";
+        "sample-goal-subscriber-incident-updates";
     private static final String SAMPLE_QUALITY_GOAL_ID =
-        "sample-goal-payment-recovery-resilience";
+        "sample-goal-incident-update-context";
     private static final String SAMPLE_FUNCTIONAL_NEED_ID =
-        "sample-need-automatic-retry-decision";
+        "sample-need-subscriber-outage-updates";
     private static final String SAMPLE_QUALITY_NEED_ID =
-        "sample-need-payment-anomaly-evidence";
-    private static final String SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID =
-        "sample-requirement-automatic-retry";
-    private static final String SAMPLE_QUARANTINE_REQUIREMENT_ID =
-        "sample-requirement-quarantine-anomalies";
+        "sample-need-incident-update-context";
+    private static final String SAMPLE_SEND_UPDATES_REQUIREMENT_ID =
+        "sample-requirement-send-outage-updates";
+    private static final String SAMPLE_STORE_CONTEXT_REQUIREMENT_ID =
+        "sample-requirement-store-incident-context";
 
-    private static final String AUTOMATIC_RETRY_ASSERTION_KEY = assertionKey(
-        "payment recovery service",
-        "schedule",
-        "payment retries"
+    private static final String FUNCTIONAL_GOAL_ASSERTION_KEY = assertionKey(
+        "subscribers",
+        "receive",
+        "outage updates"
     );
-    private static final String QUARANTINE_ANOMALIES_ASSERTION_KEY = assertionKey(
-        "payment recovery service",
-        "quarantine",
-        "failed renewal payments"
+    private static final String QUALITY_GOAL_ASSERTION_KEY = assertionKey(
+        "outage updates",
+        "include",
+        "affected services and detection time"
+    );
+    private static final String FUNCTIONAL_NEED_ASSERTION_KEY = assertionKey(
+        "subscribers",
+        "need",
+        "outage updates"
+    );
+    private static final String QUALITY_NEED_ASSERTION_KEY = assertionKey(
+        "support agents",
+        "need",
+        "incident updates"
+    );
+    private static final String SEND_UPDATES_ASSERTION_KEY = assertionKey(
+        "notification service",
+        "must send",
+        "outage updates"
+    );
+    private static final String STORE_CONTEXT_ASSERTION_KEY = assertionKey(
+        "monitoring service",
+        "must store",
+        "affected service and detection time"
     );
 
     private static final List<String> SCHEMA_STATEMENTS = List.of(
@@ -178,160 +199,338 @@ public class Neo4jSchemaInitializer {
     private static final List<Map<String, String>> SAMPLE_REQUIREMENTS = List.of(
         sampleRequirement(
             SAMPLE_FUNCTIONAL_GOAL_ID,
-            "Enable automatic recovery for eligible failed subscription payments.",
+            "Subscribers receive outage updates automatically during service incidents.",
             "GOAL",
             "FUNCTIONAL",
-            "sample-provenance-goal-payment-recovery-flow"
+            "sample-provenance-goal-subscriber-incident-updates",
+            "2026-07-02T10:00:00Z"
         ),
         sampleRequirement(
             SAMPLE_QUALITY_GOAL_ID,
-            "Keep duplicate payment retries below one per 10,000 renewal attempts during peak billing windows.",
+            "Outage updates include affected services and detection time during incidents.",
             "GOAL",
             "QUALITY",
-            "sample-provenance-goal-payment-recovery-resilience"
+            "sample-provenance-goal-incident-update-context",
+            "2026-07-02T10:01:00Z"
         ),
         sampleRequirement(
             SAMPLE_FUNCTIONAL_NEED_ID,
-            "Operations need eligible failed renewal payments to receive an automatic retry decision without manual triage.",
+            "Subscribers need outage updates after the platform detects an incident.",
             "NEED",
             "FUNCTIONAL",
-            "sample-provenance-need-automatic-retry-decision"
+            "sample-provenance-need-subscriber-outage-updates",
+            "2026-07-02T10:02:00Z"
         ),
         sampleRequirement(
             SAMPLE_QUALITY_NEED_ID,
-            "Finance auditors need anomaly evidence when a failed payment has missing provider data, conflicting decline categories, or late-arriving events.",
+            "Support agents need incident updates with affected service and detection time.",
             "NEED",
             "QUALITY",
-            "sample-provenance-need-payment-anomaly-evidence"
+            "sample-provenance-need-incident-update-context",
+            "2026-07-02T10:03:00Z"
         ),
         sampleRequirement(
-            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
-            "The payment recovery service must schedule one retry after every failed renewal payment is recorded.",
+            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+            "The notification service must send outage updates after the monitoring service stores an incident record.",
             "REQUIREMENT",
             "FUNCTIONAL",
-            "sample-provenance-requirement-automatic-retry"
+            "sample-provenance-requirement-send-outage-updates",
+            "2026-07-02T10:04:00Z"
         ),
         sampleRequirement(
-            SAMPLE_QUARANTINE_REQUIREMENT_ID,
-            "The payment recovery service must quarantine failed renewal payments that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late.",
+            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+            "The monitoring service must store the affected service and detection time in each incident record.",
             "REQUIREMENT",
             "QUALITY",
-            "sample-provenance-requirement-quarantine-anomalies"
+            "sample-provenance-requirement-store-incident-context",
+            "2026-07-02T10:05:00Z"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_ASSERTIONS = List.of(
         assertion(
-            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
-            "payment recovery service",
-            "schedule",
-            "payment retries"
+            SAMPLE_FUNCTIONAL_GOAL_ID,
+            "subscribers",
+            "receive",
+            "outage updates"
         ),
         assertion(
-            SAMPLE_QUARANTINE_REQUIREMENT_ID,
-            "payment recovery service",
-            "quarantine",
-            "failed renewal payments"
+            SAMPLE_QUALITY_GOAL_ID,
+            "outage updates",
+            "include",
+            "affected services and detection time"
+        ),
+        assertion(
+            SAMPLE_FUNCTIONAL_NEED_ID,
+            "subscribers",
+            "need",
+            "outage updates"
+        ),
+        assertion(
+            SAMPLE_QUALITY_NEED_ID,
+            "support agents",
+            "need",
+            "incident updates"
+        ),
+        assertion(
+            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+            "notification service",
+            "must send",
+            "outage updates"
+        ),
+        assertion(
+            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+            "monitoring service",
+            "must store",
+            "affected service and detection time"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_ASSERTION_QUALIFIERS =
         List.of(
             assertionQualifier(
-                AUTOMATIC_RETRY_ASSERTION_KEY,
+                FUNCTIONAL_GOAL_ASSERTION_KEY,
                 "CONSTRAINT",
-                "one"
+                "automatically"
             ),
             assertionQualifier(
-                AUTOMATIC_RETRY_ASSERTION_KEY,
+                FUNCTIONAL_GOAL_ASSERTION_KEY,
                 "CONDITION",
-                "after every failed renewal payment is recorded"
+                "during service incidents"
             ),
             assertionQualifier(
-                QUARANTINE_ANOMALIES_ASSERTION_KEY,
+                QUALITY_GOAL_ASSERTION_KEY,
                 "CONDITION",
-                "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late"
+                "during incidents"
             ),
             assertionQualifier(
-                QUARANTINE_ANOMALIES_ASSERTION_KEY,
+                FUNCTIONAL_NEED_ASSERTION_KEY,
+                "CONDITION",
+                "platform detects an incident"
+            ),
+            assertionQualifier(
+                QUALITY_NEED_ASSERTION_KEY,
                 "CONSTRAINT",
-                "until billing operations reviews the anomaly"
+                "with affected service and detection time"
+            ),
+            assertionQualifier(
+                SEND_UPDATES_ASSERTION_KEY,
+                "CONDITION",
+                "monitoring service stores an incident record"
+            ),
+            assertionQualifier(
+                STORE_CONTEXT_ASSERTION_KEY,
+                "CONSTRAINT",
+                "in each incident record"
             )
         );
 
     private static final List<Map<String, String>> SAMPLE_CONCEPT_MENTIONS = List.of(
         conceptMention(
-            "sample-mention-retry-subject",
-            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+            mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "SUBJECT", "subscribers"),
+            SAMPLE_FUNCTIONAL_GOAL_ID,
             "SUBJECT",
-            "payment recovery service",
-            "payment recovery service"
+            "subscribers",
+            "subscribers"
         ),
         conceptMention(
-            "sample-mention-retry-object",
-            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+            mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "OBJECT", "outage updates"),
+            SAMPLE_FUNCTIONAL_GOAL_ID,
             "OBJECT",
-            "payment retries",
-            "payment retries"
+            "outage updates",
+            "outage updates"
         ),
         conceptMention(
-            "sample-mention-quarantine-subject",
-            SAMPLE_QUARANTINE_REQUIREMENT_ID,
+            mentionId(SAMPLE_QUALITY_GOAL_ID, "SUBJECT", "outage updates"),
+            SAMPLE_QUALITY_GOAL_ID,
             "SUBJECT",
-            "payment recovery service",
-            "payment recovery service"
+            "outage updates",
+            "outage updates"
         ),
         conceptMention(
-            "sample-mention-quarantine-object",
-            SAMPLE_QUARANTINE_REQUIREMENT_ID,
+            mentionId(
+                SAMPLE_QUALITY_GOAL_ID,
+                "OBJECT",
+                "affected services and detection time"
+            ),
+            SAMPLE_QUALITY_GOAL_ID,
             "OBJECT",
-            "failed renewal payments",
-            "failed renewal payments"
+            "affected services and detection time",
+            "affected services and detection time"
+        ),
+        conceptMention(
+            mentionId(SAMPLE_FUNCTIONAL_NEED_ID, "SUBJECT", "subscribers"),
+            SAMPLE_FUNCTIONAL_NEED_ID,
+            "SUBJECT",
+            "subscribers",
+            "subscribers"
+        ),
+        conceptMention(
+            mentionId(SAMPLE_FUNCTIONAL_NEED_ID, "OBJECT", "outage updates"),
+            SAMPLE_FUNCTIONAL_NEED_ID,
+            "OBJECT",
+            "outage updates",
+            "outage updates"
+        ),
+        conceptMention(
+            mentionId(SAMPLE_QUALITY_NEED_ID, "SUBJECT", "support agents"),
+            SAMPLE_QUALITY_NEED_ID,
+            "SUBJECT",
+            "support agents",
+            "support agents"
+        ),
+        conceptMention(
+            mentionId(SAMPLE_QUALITY_NEED_ID, "OBJECT", "incident updates"),
+            SAMPLE_QUALITY_NEED_ID,
+            "OBJECT",
+            "incident updates",
+            "incident updates"
+        ),
+        conceptMention(
+            mentionId(
+                SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+                "SUBJECT",
+                "notification service"
+            ),
+            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+            "SUBJECT",
+            "notification service",
+            "notification service"
+        ),
+        conceptMention(
+            mentionId(SAMPLE_SEND_UPDATES_REQUIREMENT_ID, "OBJECT", "outage updates"),
+            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+            "OBJECT",
+            "outage updates",
+            "outage updates"
+        ),
+        conceptMention(
+            mentionId(
+                SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+                "SUBJECT",
+                "monitoring service"
+            ),
+            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+            "SUBJECT",
+            "monitoring service",
+            "monitoring service"
+        ),
+        conceptMention(
+            mentionId(
+                SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+                "OBJECT",
+                "affected service and detection time"
+            ),
+            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+            "OBJECT",
+            "affected service and detection time",
+            "affected service and detection time"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_PREDICATE_MENTIONS = List.of(
         predicateMention(
-            "sample-mention-retry-predicate",
-            SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
-            "schedule"
+            mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "ACTION", "receive"),
+            SAMPLE_FUNCTIONAL_GOAL_ID,
+            "receive"
         ),
         predicateMention(
-            "sample-mention-quarantine-predicate",
-            SAMPLE_QUARANTINE_REQUIREMENT_ID,
-            "quarantine"
+            mentionId(SAMPLE_QUALITY_GOAL_ID, "ACTION", "include"),
+            SAMPLE_QUALITY_GOAL_ID,
+            "include"
+        ),
+        predicateMention(
+            mentionId(SAMPLE_FUNCTIONAL_NEED_ID, "ACTION", "need"),
+            SAMPLE_FUNCTIONAL_NEED_ID,
+            "need"
+        ),
+        predicateMention(
+            mentionId(SAMPLE_QUALITY_NEED_ID, "ACTION", "need"),
+            SAMPLE_QUALITY_NEED_ID,
+            "need"
+        ),
+        predicateMention(
+            mentionId(SAMPLE_SEND_UPDATES_REQUIREMENT_ID, "ACTION", "must send"),
+            SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+            "must send"
+        ),
+        predicateMention(
+            mentionId(SAMPLE_STORE_CONTEXT_REQUIREMENT_ID, "ACTION", "must store"),
+            SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+            "must store"
         )
     );
 
     private static final List<Map<String, String>> SAMPLE_QUALIFIER_MENTIONS =
         List.of(
             qualifierMention(
-                "sample-mention-retry-count-constraint",
-                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+                mentionId(SAMPLE_FUNCTIONAL_GOAL_ID, "CONSTRAINT", "automatically"),
+                SAMPLE_FUNCTIONAL_GOAL_ID,
                 "CONSTRAINT",
-                "one",
-                "one"
+                "automatically",
+                "automatically"
             ),
             qualifierMention(
-                "sample-mention-retry-recorded-condition",
-                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+                mentionId(
+                    SAMPLE_FUNCTIONAL_GOAL_ID,
+                    "CONDITION",
+                    "during service incidents"
+                ),
+                SAMPLE_FUNCTIONAL_GOAL_ID,
                 "CONDITION",
-                "after every failed renewal payment is recorded",
-                "after every failed renewal payment is recorded"
+                "during service incidents",
+                "during service incidents"
             ),
             qualifierMention(
-                "sample-mention-quarantine-anomaly-condition",
-                SAMPLE_QUARANTINE_REQUIREMENT_ID,
+                mentionId(SAMPLE_QUALITY_GOAL_ID, "CONDITION", "during incidents"),
+                SAMPLE_QUALITY_GOAL_ID,
                 "CONDITION",
-                "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late",
-                "that lack a provider code, contain an unknown decline category, or arrive more than 24 hours late"
+                "during incidents",
+                "during incidents"
             ),
             qualifierMention(
-                "sample-mention-quarantine-review-constraint",
-                SAMPLE_QUARANTINE_REQUIREMENT_ID,
+                mentionId(
+                    SAMPLE_FUNCTIONAL_NEED_ID,
+                    "CONDITION",
+                    "platform detects an incident"
+                ),
+                SAMPLE_FUNCTIONAL_NEED_ID,
+                "CONDITION",
+                "platform detects an incident",
+                "platform detects an incident"
+            ),
+            qualifierMention(
+                mentionId(
+                    SAMPLE_QUALITY_NEED_ID,
+                    "CONSTRAINT",
+                    "with affected service and detection time"
+                ),
+                SAMPLE_QUALITY_NEED_ID,
                 "CONSTRAINT",
-                "until billing operations reviews the anomaly",
-                "until billing operations reviews the anomaly"
+                "with affected service and detection time",
+                "with affected service and detection time"
+            ),
+            qualifierMention(
+                mentionId(
+                    SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+                    "CONDITION",
+                    "monitoring service stores an incident record"
+                ),
+                SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+                "CONDITION",
+                "monitoring service stores an incident record",
+                "monitoring service stores an incident record"
+            ),
+            qualifierMention(
+                mentionId(
+                    SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+                    "CONSTRAINT",
+                    "in each incident record"
+                ),
+                SAMPLE_STORE_CONTEXT_REQUIREMENT_ID,
+                "CONSTRAINT",
+                "in each incident record",
+                "in each incident record"
             )
         );
 
@@ -344,27 +543,22 @@ public class Neo4jSchemaInitializer {
     private static final List<Map<String, String>> SAMPLE_REFINES_RELATIONS =
         List.of(
             requirementRelation(
-                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
+                SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
                 SAMPLE_FUNCTIONAL_NEED_ID
             ),
-            requirementRelation(SAMPLE_QUARANTINE_REQUIREMENT_ID, SAMPLE_QUALITY_NEED_ID)
+            requirementRelation(SAMPLE_STORE_CONTEXT_REQUIREMENT_ID, SAMPLE_QUALITY_NEED_ID)
         );
 
     private static final List<Map<String, String>> SAMPLE_DEPENDS_ON_RELATIONS =
         List.of(
             requirementRelation(
-                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID,
-                SAMPLE_QUARANTINE_REQUIREMENT_ID
+                SAMPLE_SEND_UPDATES_REQUIREMENT_ID,
+                SAMPLE_STORE_CONTEXT_REQUIREMENT_ID
             )
         );
 
     private static final List<Map<String, String>> SAMPLE_CONFLICTS_WITH_RELATIONS =
-        List.of(
-            requirementRelation(
-                SAMPLE_QUARANTINE_REQUIREMENT_ID,
-                SAMPLE_AUTOMATIC_RETRY_REQUIREMENT_ID
-            )
-        );
+        List.of();
 
     private final Driver driver;
     private final boolean pruneOnStart;
@@ -460,8 +654,9 @@ public class Neo4jSchemaInitializer {
                     r.property = requirement.property,
                     r.sample = true
                 MERGE (p:Provenance {id: requirement.provenanceId})
-                SET p.source = 'sample',
-                    p.rawText = requirement.rawText
+                SET p.source = requirement.source,
+                    p.rawText = requirement.rawText,
+                    p.ingestedAt = requirement.ingestedAt
                 MERGE (r)-[:HAS_PROVENANCE]->(p)
                 """,
                 parameters("requirements", SAMPLE_REQUIREMENTS)
@@ -624,7 +819,8 @@ public class Neo4jSchemaInitializer {
         String rawText,
         String type,
         String property,
-        String provenanceId
+        String provenanceId,
+        String ingestedAt
     ) {
         return Map.of(
             "id",
@@ -636,7 +832,11 @@ public class Neo4jSchemaInitializer {
             "property",
             property.strip(),
             "provenanceId",
-            provenanceId.strip()
+            provenanceId.strip(),
+            "source",
+            SAMPLE_SOURCE,
+            "ingestedAt",
+            ingestedAt.strip()
         );
     }
 
@@ -728,6 +928,10 @@ public class Neo4jSchemaInitializer {
 
     private static String assertionKey(String subjectName, String predicateName, String objectName) {
         return subjectName.strip() + "|" + predicateName.strip() + "|" + objectName.strip();
+    }
+
+    private static String mentionId(String requirementId, String role, String text) {
+        return requirementId.strip() + "::" + role.strip() + "::" + text.strip();
     }
 
     private Map<String, Object> parameters(String key, Object value) {
