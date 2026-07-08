@@ -1,9 +1,7 @@
 # Glossary
 
-This glossary is limited to terms that are present in `src/main/java` as Java
-types, enum values, package/slice names, or stable method-level concepts. It
-does not describe obsolete workflow-state names or planned terminology that is
-not represented in the current code.
+This glossary defines terms that are present in `src/main/java` as Java types,
+enum values, package/slice names, or stable method-level concepts.
 
 ## Requirement Core
 
@@ -14,7 +12,7 @@ not represented in the current code.
 | `RawText` | `io.fekav.req.shared.model.RawText` | Validated non-blank text used as the normalized raw requirement input. |
 | `OriginalText` | `io.fekav.req.shared.model.OriginalText` | Validated original text preserved in provenance. |
 | `Provenance` | `io.fekav.req.shared.model.Provenance` | Traceability value containing original text, source metadata, and ingestion timestamp. |
-| `SourceMetadata` | `io.fekav.req.shared.model.SourceMetadata` | Source information for a requirement. The current factory represents API requests. |
+| `SourceMetadata` | `io.fekav.req.shared.model.SourceMetadata` | Source information for a requirement. The factory records API request provenance. |
 | `SourceName` | `io.fekav.req.shared.model.SourceName` | Validated source-name value. |
 | `RequirementStatus` | `io.fekav.req.shared.model.RequirementStatus` | Requirement aggregate status: `PENDING`, `INGESTED`, `EXTRACTED`, or `CLASSIFIED`. |
 
@@ -50,9 +48,9 @@ not represented in the current code.
 
 | Term | Java Reference | Meaning |
 |---|---|---|
-| `extraction` | `io.fekav.req.extraction` | Slice that extracts requirement elements from raw text. This is the current package/slice name. |
-| `SyntaxExtraction` | `io.fekav.req.extraction.application.SyntaxExtraction` | Application port whose current Java name still contains `Syntax`; it extracts an `Action` from `RawText`. |
-| `ExtractSyntaxCommand` | `io.fekav.req.extraction.application.ExtractSyntaxCommand` | Command whose current Java name still contains `Syntax`; it requests requirement element extraction for raw text. |
+| `extraction` | `io.fekav.req.extraction` | Slice that extracts requirement elements from raw text. |
+| `SyntaxExtraction` | `io.fekav.req.extraction.application.SyntaxExtraction` | Application port for extracting an `Action` from `RawText`. |
+| `ExtractSyntaxCommand` | `io.fekav.req.extraction.application.ExtractSyntaxCommand` | Command for requirement element extraction from raw text. |
 | `ExtractSyntaxCommandHandler` | `io.fekav.req.extraction.application.ExtractSyntaxCommandHandler` | Command handler that calls `SyntaxExtraction` and publishes `RequirementElementsExtractedEvent`. |
 | `LlmSyntaxExtraction` | `io.fekav.req.extraction.infrastructure.LlmSyntaxExtraction` | LLM-backed extraction adapter. |
 | `SyntaxExtractionOutput` | `io.fekav.req.extraction.infrastructure.SyntaxExtractionOutput` | Infrastructure DTO for structured model output before mapping to `Action`. |
@@ -76,14 +74,14 @@ not represented in the current code.
 | `NodeRetrievalService` | `io.fekav.req.resolution.domain.NodeRetrievalService` | Domain service that applies the configured `NodeRetrievalPolicy`. |
 | `NodeRetrievalPolicy` | `io.fekav.req.resolution.domain.NodeRetrievalPolicy` | Policy interface for retrieving candidates for one `RequirementElement`. |
 | `NodeNameRetrievalPolicy` | `io.fekav.req.resolution.domain.NodeNameRetrievalPolicy` | Retrieval policy that performs exact node-name lookup and emits `nodeName` evidence with score `1.0`. |
-| `TokenOverlapNodeRetrievalPolicy` | `io.fekav.req.resolution.domain.TokenOverlapNodeRetrievalPolicy` | Retrieval policy that scores compatible candidates by token overlap. It skips `ACTION` elements. |
+| `TokenOverlapNodeRetrievalPolicy` | `io.fekav.req.resolution.domain.TokenOverlapNodeRetrievalPolicy` | Retrieval policy that scores compatible non-action candidates by token overlap. |
 | `EvidenceBasedNodeRetrievalPolicy` | `io.fekav.req.resolution.domain.EvidenceBasedNodeRetrievalPolicy` | Composite retrieval policy that combines candidates from multiple retrieval policies by candidate key. |
 | `CandidateLookup` | `io.fekav.req.resolution.domain.CandidateLookup` | Port for finding candidates compatible with one `RequirementElement`. |
 | `CompatibleCandidateLookup` | `io.fekav.req.resolution.domain.CompatibleCandidateLookup` | Port for broader compatible-candidate lookup used by token-overlap retrieval. |
 | `Neo4jNodeNameLookup` | `io.fekav.req.resolution.infrastructure.Neo4jNodeNameLookup` | Neo4j adapter for exact name lookup. It maps element types to graph node labels. |
 | `NodeMatchingService` | `io.fekav.req.resolution.domain.NodeMatchingService` | Domain service that applies the configured `NodeMatchingPolicy`. |
 | `NodeMatchingPolicy` | `io.fekav.req.resolution.domain.NodeMatchingPolicy` | Policy interface for turning one candidate match into a final decision or review request. |
-| `ThresholdNodeMatchingPolicy` | `io.fekav.req.resolution.domain.ThresholdNodeMatchingPolicy` | Matching policy with default auto-map threshold `1.0`. It auto-creates when no candidates exist, auto-maps one candidate at threshold, and requests review for ambiguous or below-threshold matches. |
+| `ThresholdNodeMatchingPolicy` | `io.fekav.req.resolution.domain.ThresholdNodeMatchingPolicy` | Matching policy with default auto-map threshold `1.0`. It auto-creates for an empty candidate set, auto-maps one candidate at threshold, and requests review for ambiguous or below-threshold matches. |
 | `NodeMatchingResult` | `io.fekav.req.resolution.domain.NodeMatchingResult` | Sealed result of node matching: either a decided match or a review-required result. |
 | `CandidateNode` | `io.fekav.req.shared.model.CandidateNode` | Graph-node candidate identity containing candidate key, label, and node type. |
 | `CandidateNodeMatch` | `io.fekav.req.shared.model.CandidateNodeMatch` | Pairing of one `RequirementElement` with zero or more retrieved candidate nodes. |
@@ -140,7 +138,7 @@ not represented in the current code.
 | `AssertionIdentity` | `io.fekav.req.graphchange.domain.AssertionIdentity` | Deterministic identity for a subject-predicate-object assertion. |
 | `GraphQualifier` | `io.fekav.req.graphchange.domain.GraphQualifier` | Graph qualifier derived from a condition or constraint node decision. |
 | `GraphNodeReference` | `io.fekav.req.shared.model.GraphNodeReference` | Reference to an existing or new graph node by type, key, and label. |
-| `InvalidGraphChangeException` | `io.fekav.req.graphchange.domain.InvalidGraphChangeException` | Exception raised when a completed analysis cannot be converted into a valid graph change. |
+| `InvalidGraphChangeException` | `io.fekav.req.graphchange.domain.InvalidGraphChangeException` | Exception raised for graph-change conversion failures. |
 | `Neo4jSchemaInitializer` | `io.fekav.req.shared.kg.Neo4jSchemaInitializer` | Initializes Neo4j constraints and vocabulary data used by the requirement graph. |
 
 ## Platform
@@ -161,7 +159,7 @@ not represented in the current code.
 | `StructuredOutputContract` | `io.fekav.platform.structuredoutput.StructuredOutputContract` | App-owned validation contract for structured model output DTOs. |
 | `StructuredOutputValidator` | `io.fekav.platform.structuredoutput.StructuredOutputValidator` | Validator for structured model output DTOs. |
 | `StructuredOutputValidationException` | `io.fekav.platform.structuredoutput.StructuredOutputValidationException` | Exception for DTOs that violate a structured-output contract. |
-| `InvalidStructuredOutputException` | `io.fekav.platform.structuredoutput.InvalidStructuredOutputException` | Exception for model output that cannot be parsed, validated, or mapped. |
+| `InvalidStructuredOutputException` | `io.fekav.platform.structuredoutput.InvalidStructuredOutputException` | Exception for model-output parsing, validation, or mapping failures. |
 | `ApplicationEvent` | `io.fekav.platform.messaging.ApplicationEvent` | Base contract for application events. |
 | `DomainEvent` | `io.fekav.platform.messaging.DomainEvent` | Base contract for domain events. |
 | `EventPublisher` | `io.fekav.platform.messaging.EventPublisher` | Publishes events to the application. |

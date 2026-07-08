@@ -38,7 +38,7 @@ public class OllamaClientAdapter implements LlmClientPort {
     @ConfigProperty(name = "llm.options.temperature", defaultValue = "0.0")
     Double llmTemperature;
 
-    @ConfigProperty(name = "llm.model", defaultValue = "granite4.1:8b")
+    @ConfigProperty(name = "llm.model", defaultValue = "granite4.1:3b")
     String llmModel;
 
     @ConfigProperty(name = "observability.log.llm-prompt", defaultValue = "true")

@@ -14,14 +14,14 @@ The central question is:
 > which already known concepts or statements in product knowledge does it refer
 > to?
 
-## Business Goal
+## Goal
 
 Requirements are often written as free language. Goals, stakeholder needs,
 binding system requirements, quality expectations, constraints, and context are
 frequently phrased in similar sentences. RE-Tool makes this language
 structurable without losing the original text.
 
-The project pursues four business goals:
+The project pursues four goals:
 
 1. Classify requirements by their role in requirements engineering.
 2. Decompose the core statement of a requirement into subject, action, object,
@@ -32,7 +32,7 @@ The project pursues four business goals:
 The result is a graph that contains not only individual requirements, but also
 the derived business concepts, predicates, qualifiers, and assertions.
 
-## Business Model
+## Model
 
 An incoming requirement is understood on two levels.
 
@@ -188,7 +188,7 @@ decisions back to the backend.
 
 ## Technical Start
 
-The project is based on:
+### Stack Overview
 
 - Java 25
 - Quarkus
@@ -197,8 +197,202 @@ The project is based on:
 - Ollama
 - Chainlit
 
-The local development environment in `.devcontainer/docker-compose.yml` is set
-up for Quarkus, Neo4j, Ollama, and Chainlit.
+The recommended local setup is the VS Code devcontainer. It starts the services
+from `.devcontainer/docker-compose.yml` and opens the repository in the `app`
+container.
+
+- `app`: development container for Java, Gradle, and Quarkus.
+- `neo4j`: local graph database.
+- `ollama`: local LLM runtime.
+- `ollama-init`: one-shot model download and verification for Ollama.
+- `chat`: Chainlit UI.
+
+### Addresses
+
+- Quarkus backend: `http://localhost:8080`
+- Chainlit UI: `http://localhost:8000`
+- Neo4j Browser: `http://localhost:7474`
+- Neo4j Bolt: `bolt://localhost:7687`
+- Ollama API: `http://localhost:11434`
+
+Neo4j development credentials:
+
+- username: `neo4j`
+- password: `devpassword`
+
+Inside the Docker network, services use container hostnames:
+
+- Backend to Neo4j: `bolt://neo4j:7687`
+- Backend to Ollama: `http://ollama:11434`
+- Chainlit to backend: `http://app:8080`
+
+### Model Configuration
+
+The devcontainer downloads the configured Ollama model automatically during
+startup. The model is configured once in `.devcontainer/devcontainer.env`:
+
+```env
+OLLAMA_MODEL=granite4.1:8b
+```
+
+That value is used by:
+
+- `ollama-init`, which pulls and verifies the model.
+- The Quarkus app through `llm.model=${OLLAMA_MODEL:granite4.1:8b}` in
+  `src/main/resources/application.properties`.
+- The Chainlit UI through its `OLLAMA_MODEL` environment variable.
+
+To try a smaller local model, change the env file, for example:
+
+```env
+OLLAMA_MODEL=granite4.1:3b
+```
+
+Then rebuild or reopen the devcontainer so the services are recreated and the
+new env file is loaded.
+
+### Get Started
+
+Prerequesites: <paste here>
+
+From VS Code, run `Dev Containers: Reopen in Container`.
+
+The first startup may take a while because `ollama-init` downloads the model into
+the `ollama-data` Docker volume. Subsequent starts reuse that volume.
+
+Once the devcontainer is open, start the Quarkus backend manually inside the
+container:
+
+```bash
+./gradlew quarkusDev
+```
+
+This will also initialize the graph database. The `app` container intentionally runs `sleep infinity`; this keeps the
+development container alive while leaving backend startup under developer
+control.
+
+Alternative to VS Code Dev container: from a shell, start the same Compose stack directly:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml up -d --build
+docker compose -f .devcontainer/docker-compose.yml exec app bash
+```
+
+### Smoke Tests
+
+Check that Ollama has the configured model:
+
+```bash
+curl -fsS http://ollama:11434/api/tags | jq '.models[].name'
+```
+
+After Quarkus is running, ingest a requirement:
+
+```bash
+curl http://localhost:8080/app/c \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "command": "IngestRequirementCommand",
+    "payload": {
+      "originalText": "The system shall notify the customer when a payment fails."
+    }
+  }'
+```
+
+List open node-match reviews:
+
+```bash
+curl http://localhost:8080/app/q \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": "ListPendingNodeMatchReviewsQuery",
+    "payload": {}
+  }'
+```
+
+### Chat UI Smoke Test
+
+Open `http://localhost:8000`.
+
+Direct command path:
+
+```text
+User:
+/ingest The system shall notify the customer when a payment fails.
+
+Assistant:
+Requirement ingested...
+
+User:
+/reviews
+
+Assistant:
+Pending node-match reviews...
+```
+
+LLM-assisted path:
+
+```text
+User:
+Please ingest this requirement: The system shall notify the customer when a payment fails.
+
+Assistant:
+Uses the ingest_requirement tool and reports the result.
+
+User:
+Show me the pending node match reviews.
+
+Assistant:
+Uses the list_pending_node_match_reviews tool and summarizes the open reviews.
+```
+
+The direct commands avoid using the LLM for command interpretation. The
+LLM-assisted path uses Ollama and the configured `OLLAMA_MODEL`.
+
+### Useful Commands
+
+Run all tests:
+
+```bash
+./gradlew test
+```
+
+Run the backend in dev mode:
+
+```bash
+./gradlew quarkusDev
+```
+
+Build the application:
+
+```bash
+./gradlew build
+```
+
+Inspect Neo4j in the browser:
+
+1. Open `http://localhost:7474`.
+2. Connect with username `neo4j` and password `devpassword`.
+3. The app seeds ontology and sample requirement data on startup from
+   `src/main/java/io/fekav/req/shared/kg/Neo4jSchemaInitializer.java`.
+4. Run a query that shows all requirements and their relationships:
+
+```cypher
+MATCH (source:Requirement)-[relationship]->(target:Requirement)
+RETURN source, relationship, target;
+```
+
+Stop the devcontainer services:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml down
+```
+
+Stop and remove local service data volumes:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml down -v
+```
 
 Useful entry points:
 
@@ -206,9 +400,3 @@ Useful entry points:
 - Graph model: `docs/graph-model.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Chainlit UI: `chainlit/app.py`
-
-Run tests with:
-
-```bash
-./gradlew test
-```
