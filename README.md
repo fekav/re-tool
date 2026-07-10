@@ -229,31 +229,32 @@ Inside the Docker network, services use container hostnames:
 ### Model Configuration
 
 The devcontainer downloads the configured Ollama model automatically during
-startup. The model is configured once in `.devcontainer/devcontainer.env`:
-
-```env
-OLLAMA_MODEL=granite4.1:8b
-```
-
-That value is used by:
-
-- `ollama-init`, which pulls and verifies the model.
-- The Quarkus app through `llm.model=${OLLAMA_MODEL:granite4.1:8b}` in
-  `src/main/resources/application.properties`.
-- The Chainlit UI through its `OLLAMA_MODEL` environment variable.
-
-To try a smaller local model, change the env file, for example:
+dev container startup. The model is configured once in `.devcontainer/devcontainer.env`, for example:
 
 ```env
 OLLAMA_MODEL=granite4.1:3b
 ```
 
-Then rebuild or reopen the devcontainer so the services are recreated and the
-new env file is loaded.
+That value is used by:
+
+- `ollama-init`, which pulls and verifies the model.
+- The Quarkus app through `llm.model=${OLLAMA_MODEL:granite4.1:3b}` in
+  `src/main/resources/application.properties`.
+- The Chainlit UI through its `OLLAMA_MODEL` environment variable.
+
+To try another local model, you can change the `OLLAMA_MODEL` in `.devcontainer/devcontainer.env`, then rebuild the devcontainer.
+
+Alternatively, you can pull a model manually into the running `ollama` service without rebuilding:
+
+1. Pull the new model (e.g., `llama3:8b`):
+   ```bash
+   docker compose -f .devcontainer/docker-compose.yml exec ollama ollama pull llama3:8b
+   ```
+2. Update `llm.model` in quarkus app and `OLLAMA_MODEL` in `chainlit/app.py` manually
 
 ### Get Started
 
-Prerequesites: <paste here>
+Prerequisites: Docker, VS Code, and the "Dev Containers" extension.
 
 From VS Code, run `Dev Containers: Reopen in Container`.
 
@@ -286,7 +287,7 @@ Check that Ollama has the configured model:
 curl -fsS http://ollama:11434/api/tags | jq '.models[].name'
 ```
 
-After Quarkus is running, ingest a requirement:
+After Quarkus is running, ingest a requirement (may take a few minutes, depending on model):
 
 ```bash
 curl http://localhost:8080/app/c \
@@ -321,13 +322,29 @@ User:
 /ingest The system shall notify the customer when a payment fails.
 
 Assistant:
-Requirement ingested...
+{
+  "correlationId": {
+    "value": "b32b1a2b-bc78-4777-a90d-b82939aac1a5"
+  },
+  "status": "RECORDED",
+  "message": "Requirement recorded."
+}
+
 
 User:
-/reviews
+/find system
 
 Assistant:
-Pending node-match reviews...
+{
+  "requirements": [
+    {
+      "rawText": "the system shall notify the customer when a payment fails",
+      "type": "REQUIREMENT",
+      "property": "FUNCTIONAL"
+    }
+  ]
+}
+
 ```
 
 LLM-assisted path:
@@ -337,17 +354,17 @@ User:
 Please ingest this requirement: The system shall notify the customer when a payment fails.
 
 Assistant:
-Uses the ingest_requirement tool and reports the result.
+Interprets the prompt, uses the ingest_requirement tool and reports the result.
 
 User:
-Show me the pending node match reviews.
+List all requirements about customer portal
 
 Assistant:
-Uses the list_pending_node_match_reviews tool and summarizes the open reviews.
+Uses the find_requirements tool and reports the result.
 ```
 
 The direct commands avoid using the LLM for command interpretation. The
-LLM-assisted path uses Ollama and the configured `OLLAMA_MODEL`.
+LLM-assisted path uses the configured `OLLAMA_MODEL`.
 
 ### Useful Commands
 
@@ -373,14 +390,12 @@ Inspect Neo4j in the browser:
 
 1. Open `http://localhost:7474`.
 2. Connect with username `neo4j` and password `devpassword`.
-3. The app seeds ontology and sample requirement data on startup from
+3. The app seeds sample requirement data on startup from
    `src/main/java/io/fekav/req/shared/kg/Neo4jSchemaInitializer.java`.
-4. Run a query that shows all requirements and their relationships:
+4. Explore all requirements and their relationships:
+- simply click on `Requirement` in `Database Information` -> `Nodes` on the landing page 
+- double click on a Requirement node in the graph view to expand it.
 
-```cypher
-MATCH (source:Requirement)-[relationship]->(target:Requirement)
-RETURN source, relationship, target;
-```
 
 Stop the devcontainer services:
 
@@ -400,3 +415,11 @@ Useful entry points:
 - Graph model: `docs/graph-model.md`
 - Architecture overview: `docs/ARCHITECTURE.md`
 - Chainlit UI: `chainlit/app.py`
+
+todos:
+- artikel in objekt wird manchmal mit extrahiert
+- funktionale anforderung wie "Kunden sollen ihre rechung per brief bekommen" wird als quality klassifiziert
+- anforderungen ohne objekt extraktion werfen exception, z.b. "der login service soll schnell sein"
+- qwen model schreibt response in "thinking", nicht "response" -> boolean `think` in request
+- api response status anpassen, z.b. chat ui antwortet mit 'wurde erstellt' obwohl review nötig: liegt an response code 201
+- find listet direkte anforderungen

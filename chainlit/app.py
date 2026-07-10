@@ -16,9 +16,9 @@ SYSTEM_MESSAGE = {
     "role": "system",
     "content": (
         "You are a concise requirements-review assistant. Use tools when the "
-        "user asks to ingest a new requirement, asks about pending node-match "
-        "reviews, or wants to find/search for existing requirements. Do not invent requirement text, review IDs, candidate keys, "
-        "or decisions."
+        "user asks to ingest/record/intake a new requirement, asks about pending node-match "
+        "reviews, or wants to find/search/list for existing requirements with given concept name argument. Do not invent anything, "
+        "just summarize the tool response. Do not counter with questions."
     ),
 }
 
