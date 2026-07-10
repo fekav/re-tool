@@ -17,7 +17,7 @@ SYSTEM_MESSAGE = {
     "content": (
         "You are a concise requirements-review assistant. Use tools when the "
         "user asks to ingest a new requirement, asks about pending node-match "
-        "reviews. Do not invent requirement text, review IDs, candidate keys, "
+        "reviews, or wants to find/search for existing requirements. Do not invent requirement text, review IDs, candidate keys, "
         "or decisions."
     ),
 }
@@ -60,6 +60,24 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_requirements",
+            "description": "Find or search for existing requirements, filtered by a concept name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "concept": {
+                        "type": "string",
+                        "description": "The concept to filter the requirements by.",
+                    },
+                },
+                "required": ["concept"],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]
 
 
@@ -83,7 +101,8 @@ def build_welcome_message() -> str:
         f"{tool_lines}\n\n"
         "Commands for using Quarkus REST API directly (similar to HTTP request, without using LLM for process prompt/response):\n"
         "- `/ingest <Requirement-Text>`\n"
-        "- `/reviews`\n\n"
+        "- `/reviews`\n"
+        "- `/find [concept]`\n\n"
     )
 
 
@@ -187,6 +206,16 @@ async def execute_tool(
             },
         )
 
+    if name == "find_requirements":
+        return await post_quarkus(
+            client,
+            "/app/q",
+            {
+                "query": "FindRequirementsQuery",
+                "payload": arguments,
+            },
+        )
+
     return {"error": f"Unknown tool: {name}"}
 
 
@@ -212,6 +241,11 @@ async def execute_direct_command(
     if lower_content == "reviews":
         return DirectCommandResult(await list_pending_reviews(client))
 
+    if lower_content.startswith("find:"):
+        return DirectCommandResult(
+            await find_requirements(client, stripped_content.partition(":")[2].strip())
+        )
+
     if not stripped_content.startswith("/"):
         return None
 
@@ -224,6 +258,9 @@ async def execute_direct_command(
 
     if command == "/reviews":
         return DirectCommandResult(await list_pending_reviews(client))
+
+    if command == "/find":
+        return DirectCommandResult(await find_requirements(client, rest))
 
     return None
 
@@ -251,6 +288,21 @@ async def ingest_requirement(
 async def list_pending_reviews(client: httpx.AsyncClient) -> str:
     result = await list_pending_reviews_result(client)
     return format_result("Open Reviews", result)
+
+
+async def find_requirements(client: httpx.AsyncClient, concept: str) -> str:
+    if not concept:
+        return DirectCommandResult("Please provide a search concept.")
+
+    result = await post_quarkus(
+        client,
+        "/app/q",
+        {
+            "query": "FindRequirementsQuery",
+            "payload": {"concept": concept},
+        },
+    )
+    return format_result("Found Requirements", result)
 
 
 async def prompt_reviews_after_ingestion(
