@@ -104,6 +104,7 @@ public class RestController {
         ) {
             throw new BadRequestException("Request body error");
         }
+        logQueryRequest(request);
 
         Class<? extends Query<?>> queryType = queryType(request.query());
         if (queryType == null) {
@@ -168,6 +169,23 @@ public class RestController {
             log.info(
                 Observability.event("api.command.received") + " " +
                     Observability.kv("command", request.command())
+            );
+        }
+    }
+
+    private void logQueryRequest(QueryRequest request) {
+        if (logRawRequest) {
+            log.info(
+                Observability.block(
+                    "api.query.received",
+                    Observability.kv("query", request.query()),
+                    Observability.section("query_payload", request.payload())
+                )
+            );
+        } else {
+            log.info(
+                Observability.event("api.query.received") + " " +
+                    Observability.kv("query", request.query())
             );
         }
     }
