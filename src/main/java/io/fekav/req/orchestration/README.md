@@ -5,7 +5,7 @@ workflow. It reacts to application events, dispatches the next slice commands,
 tracks workflow state, opens reviews when needed, and publishes completion when
 all required decisions exist.
 
-## Business Responsibility
+## Domain Responsibility
 
 Orchestration is event-driven and correlation-id based. For one requirement
 workflow it expects:

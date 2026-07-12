@@ -4,7 +4,7 @@ The Resolution slice connects extracted requirement elements to existing or new
 Knowledge Graph nodes. It turns a selected requirement element into either a
 node match decision or a human review request.
 
-## Business Responsibility
+## Domain Responsibility
 
 Resolution receives one `RequirementElement` at a time. The element type
 determines the compatible graph node type:

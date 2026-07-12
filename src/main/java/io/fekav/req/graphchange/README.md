@@ -5,7 +5,7 @@ Graph change. It turns final workflow decisions into graph node references,
 constructs the assertion identity, writes Neo4j data, and records the final
 ingestion outcome.
 
-## Business Responsibility
+## Domain Responsibility
 
 Graph Change receives `RequirementAnalysisCompletedEvent`. At that point the
 workflow has:

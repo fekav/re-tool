@@ -25,203 +25,325 @@ import org.jboss.logging.Logger;
 @ApplicationScoped
 public class LlmSyntaxExtraction implements SyntaxExtraction {
 
-    private static final Logger log = Logger.getLogger(LlmSyntaxExtraction.class);
+  private static final Logger log = Logger.getLogger(LlmSyntaxExtraction.class);
 
-    private static final String SYNTAX_FORMAT =
-        "/contracts/ai/v1/requirement-syntax.schema.json";
+  private static final String SYNTAX_FORMAT = "/contracts/ai/v1/requirement-syntax.schema.json";
 
-    private final LlmClientPort llmClientPort;
-    private final ObjectMapper objectMapper;
-    private final StructuredOutputValidator structuredOutputValidator;
-    private final JsonNode syntaxFormat;
+  private final LlmClientPort llmClientPort;
+  private final ObjectMapper objectMapper;
+  private final StructuredOutputValidator structuredOutputValidator;
+  private final JsonNode syntaxFormat;
 
-    @ConfigProperty(name = "observability.log.llm-response", defaultValue = "true")
-    boolean logLlmResponse;
+  @ConfigProperty(name = "observability.log.llm-response", defaultValue = "true")
+  boolean logLlmResponse;
 
-    @Inject
-    public LlmSyntaxExtraction(
-        LlmClientPort llmClientPort,
-        ObjectMapper objectMapper,
-        StructuredOutputValidator structuredOutputValidator
-    ) {
-        this.llmClientPort = Objects.requireNonNull(llmClientPort, "llmClientPort must not be null");
-        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
-        this.structuredOutputValidator = Objects.requireNonNull(
-            structuredOutputValidator,
-            "structuredOutputValidator must not be null"
-        );
-        this.syntaxFormat = readSyntaxFormat();
+  @Inject
+  public LlmSyntaxExtraction(
+      LlmClientPort llmClientPort,
+      ObjectMapper objectMapper,
+      StructuredOutputValidator structuredOutputValidator) {
+    this.llmClientPort = Objects.requireNonNull(llmClientPort, "llmClientPort must not be null");
+    this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
+    this.structuredOutputValidator = Objects.requireNonNull(
+        structuredOutputValidator,
+        "structuredOutputValidator must not be null");
+    this.syntaxFormat = readSyntaxFormat();
+  }
+
+  @Override
+  public Action extractSyntax(RawText rawRequirementText) {
+    Objects.requireNonNull(rawRequirementText, "rawRequirementText must not be null");
+
+    String llmResponse = llmClientPort.generate(
+        buildPrompt(rawRequirementText),
+        syntaxFormat.deepCopy());
+    JsonNode modelOutput = modelOutputFrom(llmResponse);
+
+    if (logLlmResponse) {
+      log.info(
+          Observability.block(
+              "llm.response.model_output",
+              Observability.kv("service", "syntax-extraction"),
+              Observability.section("model_output", modelOutput)));
     }
 
-    @Override
-    public Action extractSyntax(RawText rawRequirementText) {
-        Objects.requireNonNull(rawRequirementText, "rawRequirementText must not be null");
+    SyntaxExtractionOutput syntaxExtractionOutput = readSyntaxExtractionOutput(modelOutput);
 
-        String llmResponse = llmClientPort.generate(
-            buildPrompt(rawRequirementText),
-            syntaxFormat.deepCopy()
-        );
-        JsonNode modelOutput = modelOutputFrom(llmResponse);
+    structuredOutputValidator.validate(
+        SyntaxExtractionOutput.contract(),
+        syntaxExtractionOutput);
 
-        if (logLlmResponse) {
-            log.info(
-                Observability.block(
-                    "llm.response.model_output",
-                    Observability.kv("service", "syntax-extraction"),
-                    Observability.section("model_output", modelOutput)
-                )
-            );
-        }
+    return syntaxExtractionOutput.toAction();
+  }
 
-        SyntaxExtractionOutput syntaxExtractionOutput = readSyntaxExtractionOutput(modelOutput);
+  private JsonNode readSyntaxFormat() {
+    try (InputStream input = LlmSyntaxExtraction.class.getResourceAsStream(SYNTAX_FORMAT)) {
+      if (input == null) {
+        throw new InvalidStructuredOutputException("requirement syntax format contract is missing");
+      }
 
-        structuredOutputValidator.validate(
-            SyntaxExtractionOutput.contract(),
-            syntaxExtractionOutput
-        );
+      return objectMapper.readTree(input);
+    } catch (IOException e) {
+      throw new InvalidStructuredOutputException("requirement syntax format contract cannot be read", e);
+    }
+  }
 
-        return syntaxExtractionOutput.toAction();
+  private JsonNode modelOutputFrom(String llmResponse) {
+    JsonNode responseWrapper = readJson(llmResponse, "llm response is not valid JSON");
+    JsonNode response = responseWrapper.path("response");
+
+    if (!response.isTextual() || response.asText().isBlank()) {
+      throw new InvalidStructuredOutputException("llm response does not contain model output");
     }
 
-    private JsonNode readSyntaxFormat() {
-        try (InputStream input = LlmSyntaxExtraction.class.getResourceAsStream(SYNTAX_FORMAT)) {
-            if (input == null) {
-                throw new InvalidStructuredOutputException("requirement syntax format contract is missing");
-            }
+    return readJson(response.asText(), "model output is not valid JSON");
+  }
 
-            return objectMapper.readTree(input);
-        } catch (IOException e) {
-            throw new InvalidStructuredOutputException("requirement syntax format contract cannot be read", e);
-        }
+  private SyntaxExtractionOutput readSyntaxExtractionOutput(JsonNode modelOutput) {
+    try {
+      return objectMapper.treeToValue(modelOutput, SyntaxExtractionOutput.class);
+    } catch (JsonProcessingException e) {
+      throw new InvalidStructuredOutputException(
+          "model output does not match SyntaxExtractionOutput",
+          e);
+    }
+  }
+
+  private JsonNode readJson(String json, String failureMessage) {
+    if (json == null || json.isBlank()) {
+      throw new InvalidStructuredOutputException(failureMessage);
     }
 
-    private JsonNode modelOutputFrom(String llmResponse) {
-        JsonNode responseWrapper = readJson(llmResponse, "llm response is not valid JSON");
-        JsonNode response = responseWrapper.path("response");
-
-        if (!response.isTextual() || response.asText().isBlank()) {
-            throw new InvalidStructuredOutputException("llm response does not contain model output");
-        }
-
-        return readJson(response.asText(), "model output is not valid JSON");
+    try {
+      return objectMapper.readTree(json);
+    } catch (JsonProcessingException e) {
+      throw new InvalidStructuredOutputException(failureMessage, e);
     }
+  }
 
-    private SyntaxExtractionOutput readSyntaxExtractionOutput(JsonNode modelOutput) {
-        try {
-            return objectMapper.treeToValue(modelOutput, SyntaxExtractionOutput.class);
-        } catch (JsonProcessingException e) {
-            throw new InvalidStructuredOutputException(
-                "model output does not match SyntaxExtractionOutput",
-                e
-            );
-        }
-    }
+private Prompt buildPrompt(RawText rawRequirementText) {
+    return PromptFactory
+        .fromTemplate(
+            """
+                TASK
 
-    private JsonNode readJson(String json, String failureMessage) {
-        if (json == null || json.isBlank()) {
-            throw new InvalidStructuredOutputException(failureMessage);
-        }
+                Extract the linguistic parts of the requirement sentence and return only valid JSON.
 
-        try {
-            return objectMapper.readTree(json);
-        } catch (JsonProcessingException e) {
-            throw new InvalidStructuredOutputException(failureMessage, e);
-        }
-    }
+                Extract text spans from the requirement only.
+                Do not paraphrase, summarize, translate, or invent wording.
 
-    private Prompt buildPrompt(RawText rawRequirementText) {
-        return PromptFactory.fromTemplate("""
-        Extract the linguistic parts of the requirement sentence and map them to the JSON keys.
+                A requirement can contain zero, one, or several CONDITION phrases, and zero, one,
+                or several CONSTRAINT phrases. Every qualifying phrase must be represented in the
+                output. Never drop a phrase, and never merge two unrelated phrases together just
+                to make the output fit a single value.
 
-        Linguistic parts:
-        - SUBJECT is the grammatical subject (Subjekt): the noun phrase that performs, owns, or is responsible for
-          the predicate.
-        - ACTION is the predicate (Prädikat): the full required verb phrase, including modal or auxiliary verbs such as
-          "shall", "must", "soll", or "muss" plus the main verb. Do not omit the verb.
-        - OBJECT is the grammatical object (Objekt): the noun phrase affected, created, read, notified, stored,
-          displayed, or otherwise governed by the predicate. A core object is not a CONSTRAINT, even when it follows
-          a preposition.
-        - CONDITION is a conditional or temporal clause/adverbial that states when, if, or under which trigger the
-          whole predication applies. Typical cues include "if", "when", "whenever", "unless", "after", "before",
-          "during", "once", "as soon as", "on", "upon", "in case of", "wenn", "falls", "sobald", "nachdem",
-          "bevor", "während", "bei", and "im fall von".
-        - CONSTRAINT is a non-core modifier of the predicate: a limit, format, deadline, frequency, manner, quality,
-          quantity, location, permission boundary, or other restriction on how the predicate must be fulfilled.
-          Typical cues include "within", "by", "for", "as", "via", "with", "without", "only", "at least",
-          "at most", "no more than", "immediately", "automatically", "innerhalb", "bis", "als", "per",
-          "über", "mit", "ohne", "nur", "mindestens", "maximal", "höchstens", "sofort", and "automatisch".
+                DEFINITIONS
 
-        Extraction process:
-        1. Identify SUBJECT, ACTION, and OBJECT from the main predication.
-        2. Scan every remaining phrase before, inside, and after the main predication.
-        3. If a remaining phrase changes when or whether the requirement applies, put it in CONDITION.
-        4. If a remaining phrase restricts how, how well, how fast, how often, how long, where, in which format,
-           by which channel, for whom, or under which permission boundary the action must be fulfilled, put it in
-           CONSTRAINT.
-        5. Do not drop a qualifier because SUBJECT, ACTION, and OBJECT already make a complete sentence. Completeness
-           of the main predication is not evidence that CONDITION or CONSTRAINT is absent.
-        6. If multiple condition phrases exist, combine them in reading order in CONDITION. If multiple constraint
-           phrases exist, combine them in reading order in CONSTRAINT.
+                SUBJECT
+                The grammatical subject (Subjekt): the noun, or actor without its leading article or determiner, that performs, owns, or is responsible for the main predicate. 
 
-        CONDITION versus CONSTRAINT tie-breakers:
-        - Use CONDITION for triggers, preconditions, states, events, or time windows that decide when the requirement
-          is active.
-        - Use CONSTRAINT for measurable limits, deadlines, durations, formats, channels, quality levels, manner words,
-          access or permission boundaries, locations, target groups, and other fulfillment restrictions.
-        - Phrases that name the interface or channel used to perform the action are CONSTRAINT, for example
-          "via API", "by email", "per E-Mail", or "über die Chatoberfläche".
-        - When a temporal phrase is a trigger such as "after login" or "during incidents", prefer CONDITION.
-        - When a temporal phrase is a fulfillment limit such as "within 10 seconds" or "for 15 minutes", prefer
-          CONSTRAINT.
+                ACTION
+                The complete predicate (Prädikat): the modal or auxiliary verb together with the main verb, ALWAYS including any negation marker that negates the predicate
+                Examples:
+                - shall export
+                - must notify
+                - soll speichern
+                - darf nicht anzeigen
 
-        Normalize extracted values with these rules:
-        - Use lowercase and singular form for all extracted values.
-        - SUBJECT and OBJECT omit leading articles or determiners such as "a", "an", "the", "der", "die", "das",
-          "ein", or "eine".
-        - ACTION keeps the modal or auxiliary verb together with the main verb.
-        - SUBJECT, ACTION, and OBJECT are required and must never be empty. If wording is elliptical, choose the
-          closest noun phrase or verb phrase from the requirement that completes the predication.
-        - For copular or availability requirements without a direct object, treat a required role, beneficiary,
-          recipient, or target group as OBJECT instead of leaving OBJECT empty.
-        - CONDITION omits leading condition markers such as "if", "when", "whenever", "unless", "wenn", "falls",
-          "sobald", "nachdem", and "bevor"; omit trailing commas.
-        - CONDITION keeps meaningful temporal prepositions when removing them would change the meaning, such as
-          "before authentication", "during incidents", "after timeout", or "on request".
-        - CONSTRAINT keeps meaningful prepositions and particles such as "within", "for", "as", "by",
-          "via", "per", "über", "innerhalb von", and "nur nach".
-        - Always emit the CONDITION and CONSTRAINT keys. Use an empty string only after the extraction process found
-          no phrase in the requirement that belongs to that key.
+                OBJECT
+                The grammatical object (Objekt): the noun without its leading article or determiner, that is governed by the predicate.
 
-        Respond only with valid JSON matching this shape:
-        {
-          "requirementElements": {
-            "SUBJECT": "non-empty subject text",
-            "ACTION": "non-empty predicate text",
-            "OBJECT": "non-empty object text",
-            "CONSTRAINT": "constraint text or empty string",
-            "CONDITION": "condition text or empty string"
-          }
-        }
+                CONDITION
+                A trigger that determines whether or when the requirement applies.
 
-        Requirement:
-        {{requirement}}
-        """)
-            .systemPrompt("""
-            You extract linguistic parts from requirement sentences.
-            You must respond with valid JSON only.
-            SUBJECT, ACTION, and OBJECT are mandatory and must never be empty.
-            Extract exactly as requested by the prompt.
-            Before answering, audit every adverbial and prepositional phrase in the requirement.
-            Use an empty string for CONDITION or CONSTRAINT only when no phrase in the raw requirement belongs there.
-            Normalize extracted values exactly as requested by the prompt.
+                Typical examples:
+                if
+                when
+                whenever
+                unless
+                after
+                before
+                during
+                once
+                upon
+                falls
+                wenn
+                sobald
+                nachdem
+                bevor
+                während
+                bei
+                im fall von
+
+                CONSTRAINT
+                A restriction describing how, where, or in which context the action must be fulfilled.
+
+                Typical examples:
+                within
+                by
+                via
+                with
+                without
+                only
+                at least
+                at most
+                immediately
+                automatically
+                in
+                im
+                innerhalb
+                bis
+                über
+                per
+                mit
+                ohne
+                nur
+                mindestens
+                höchstens
+                sofort
+                automatisch
+
+
+                PRIORITY RULES
+
+                Apply these rules in order.
+
+                1.
+                Identify SUBJECT, ACTION and OBJECT from the main predication.
+
+                2.
+                If OBJECT cannot be identified because the requirement is copular or describes availability, use the required role, recipient, beneficiary or target group as OBJECT.
+
+                3.
+                SUBJECT, ACTION and OBJECT must never be empty.
+
+                4.
+                All remaining phrases must become candidates for CONDITION or CONSTRAINT.                 
+
+                5.
+                Normalize every extracted value according to the normalization rules below.
+
+
+                CONDITION VS CONSTRAINT
+
+                Apply the following test separately to every remaining phrase identified in the audit step, one phrase at a time. 
+                A requirement can contain several qualifying phrases; evaluate each one on its own and do not stop after finding the first match.
+
+                For every remaining phrase ask:
+
+                Question 1
+
+                Does removing this phrase change WHEN or WHETHER the requirement applies?
+
+                Examples:
+                after login
+                during maintenance
+                if payment fails
+                when authenticated
+
+                YES → CONDITION
+
+                NO → continue.
+
+
+                Question 2
+
+                Does removing this phrase change HOW or WHERE or in WHICH CONTEXT the requirement must be fulfilled?
+
+                Examples:
+                within 10 seconds
+                via API
+                by email
+                as CSV
+                only for administrators
+                with AES-256 encryption
+                immediately
+                once per day
+                im Kontaktformular 
+
+                YES → CONSTRAINT
+
+                NO → ignore.
+
+                
+                NORMALIZATION
+
+                Normalize only as follows:
+
+                - convert to lowercase
+                - remove articles or determiners from SUBJECT and OBJECT, such as "the", "a", "an", "der", "die", "das", "ein", "eine"
+                - keep the modal or auxiliary verb together with the main verb
+                - remove leading condition markers from CONDITION
+                - remove trailing commas from CONDITION
+                - preserve meaningful prepositions such as:
+                  before
+                  after
+                  during
+                  on
+                  within
+                  via
+                  by
+                  per
+                  über
+                  innerhalb von
+                  nur nach
+
+                Always singularize nouns.
+
+                Every extracted value must be a contiguous span from the requirement after normalization. 
+
+                Do not merge unrelated phrases.
+
+                Each phrase may belong to only one field.
+
+                COMPLETENESS CHECK
+
+                Before emitting the JSON, silently re-scan the requirement one more time.
+                Recall every adverbial and prepositional phrase you found during the audit step.
+                Confirm that each one appears in exactly one field of your draft output, or has deliberately been ignored under Rule 5.
+                If any phrase from your audit is missing from the draft output, add it to the correct array now.
+                Do not describe, list, or explain this check. Respond with the final JSON only.
+
+
+                OUTPUT
+
+                Always return:
+
+                {
+                  "requirementElements": {
+                    "SUBJECT": "...",
+                    "ACTION": "...",
+                    "OBJECT": "...",
+                    "CONSTRAINT": "...",
+                    "CONDITION": "..."
+                  }
+                }
+
+                Always emit every key.
+
+                SUBJECT, ACTION and OBJECT must never be empty, and must be plain strings.
+
+                CONSTRAINT and CONDITION are always arrays of strings. Use an empty string "" only if no corresponding phrase exists.
+
+
+                Requirement:
+
+                {{requirement}}
+                        """)
+        .systemPrompt("""
+            You are an information extraction engine.
+            Return valid JSON only.
+            Never explain your reasoning.
+            Never invent missing information.
+            Follow the extraction specification exactly.
             """)
-            .variable("requirement", rawRequirementText.text())
-            .addFewShotExample(
-                """
+        .variable("requirement", rawRequirementText.text())
+        .addFewShotExample(
+            """
                 Requirement:
                 When a customer submits a refund request, the payment service must credit the original payment method within 3 business days.
                 """,
-                """
+            """
                 {
                   "requirementElements": {
                     "SUBJECT": "payment service",
@@ -231,14 +353,13 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
                     "CONDITION": "customer submits refund request"
                   }
                 }
-                """
-            )
-            .addFewShotExample(
-                """
+                """)
+        .addFewShotExample(
+            """
                 Requirement:
                 The reporting dashboard shall export monthly usage metrics as a CSV file within 10 seconds.
                 """,
-                """
+            """
                 {
                   "requirementElements": {
                     "SUBJECT": "reporting dashboard",
@@ -248,14 +369,13 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
                     "CONDITION": ""
                   }
                 }
-                """
-            )
-            .addFewShotExample(
-                """
+                """)
+        .addFewShotExample(
+            """
                 Requirement:
                 If sensor temperature exceeds 80 degrees Celsius, the monitoring service must notify the operator by email immediately.
                 """,
-                """
+            """
                 {
                   "requirementElements": {
                     "SUBJECT": "monitoring service",
@@ -265,42 +385,39 @@ public class LlmSyntaxExtraction implements SyntaxExtraction {
                     "CONDITION": "sensor temperature exceeds 80 degrees celsius"
                   }
                 }
-                """
-            )
-            .addFewShotExample(
-                """
+                """)
+        .addFewShotExample(
+            """
                 Requirement:
-                Die User-management seite soll für admin nur nach einwilligung sein.
+                Die Nutzer sollen im Kontaktformular ihr Anliegen bequemer senden können.
                 """,
-                """
+            """
                 {
                   "requirementElements": {
-                    "SUBJECT": "user-management seite",
-                    "ACTION": "soll sein",
-                    "OBJECT": "admin",
-                    "CONSTRAINT": "nur nach einwilligung",
+                    "SUBJECT": "nutzer",
+                    "ACTION": "sollen senden",
+                    "OBJECT": "anliegen",
+                    "CONSTRAINT": "bequemer, im kontaktformular",
                     "CONDITION": ""
                   }
                 }
-                """
-            )
-            .addFewShotExample(
-                """
+                """)
+        .addFewShotExample(
+            """
                 Requirement:
-                Kunden sollen leichter ihre Software liefern können.
+                Ein neuer Kunde soll keine Bestätigungsemail nach der Registrierung erhalten.
                 """,
-                """
+            """
                 {
                   "requirementElements": {
-                    "SUBJECT": "kunden",
-                    "ACTION": "sollen liefern",
-                    "OBJECT": "software",
-                    "CONSTRAINT": "leichter",
+                    "SUBJECT": "neuer kunde",
+                    "ACTION": "sollen keine erhalten",
+                    "OBJECT": "bestätigungsemail",
+                    "CONSTRAINT": "nach registrierung",
                     "CONDITION": ""
                   }
                 }
-                """
-            )
-            .build();
-    }
+                """)
+        .build();
+  }
 }

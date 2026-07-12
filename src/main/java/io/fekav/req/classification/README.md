@@ -5,7 +5,7 @@ text. It does not decide which terms will later become Knowledge Graph nodes.
 Instead, it identifies the requirement engineering role of the text and the
 primary kind of statement it carries.
 
-## Business Responsibility
+## Domain Responsibility
 
 A classification has two independent axes:
 

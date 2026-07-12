@@ -5,7 +5,7 @@ traceable requirement analysis. Its responsibility is not classification,
 extraction, node resolution, or graph persistence. It creates provenance and
 opens the workflow for the downstream slices.
 
-## Business Responsibility
+## Domain Responsibility
 
 Ingestion treats the submitted text as the source statement that all later
 business facts must remain traceable to. The slice creates a `Provenance`

@@ -4,7 +4,7 @@ The Review slice manages human decisions for node matches that Resolution could
 not decide automatically. It keeps pending review requests queryable and turns a
 reviewer's choice into a final node resolution decision.
 
-## Business Responsibility
+## Domain Responsibility
 
 Review starts when Resolution publishes `NodeResolutionReviewRequiredEvent`.
 The event contains a `NodeMatchReviewRequest` with:

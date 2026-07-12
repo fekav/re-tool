@@ -4,7 +4,7 @@ The Extraction slice turns raw requirement text into a structured linguistic
 statement. It identifies the core Subject-Predicate-Object statement and the
 qualifiers that constrain or activate that statement.
 
-## Business Responsibility
+## Domain Responsibility
 
 The slice extracts one `Action` from a requirement:
 

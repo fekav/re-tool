@@ -86,10 +86,10 @@ persisted as a graph change.
 Requirement Text
   -> Ingestion + Provenance
   -> Classification
-  -> Requirement Element Extraction
-  -> Node Resolution
-  -> Human Review, if required
-  -> Requirement Graph Change
+  -> Extraction
+  -> Resolution
+  -> Review, if required
+  -> Graph Change
 ```
 
 ## Knowledge Graph
@@ -102,7 +102,7 @@ Central node types are:
 - `Requirement`: normalized original text including classification.
 - `Provenance`: source, original text, and ingestion timestamp.
 - `Concept`: reusable business subjects and objects.
-- `Predicate`: reusable actions or relationships.
+- `Predicate`: reusable actions
 - `Qualifier`: conditions and constraints.
 - `Assertion`: canonical Subject-Predicate-Object statement.
 
@@ -125,7 +125,7 @@ known, and where new terms or new business facts emerge.
 
 RE-Tool treats uncertainty as part of the business process.
 
-Low classification confidence is not a technical failure. It is a signal for
+Low confidence value is not a technical failure. It is a signal for
 review or triage. Node mapping is handled with the same discipline: clear
 matches can be mapped automatically, ambiguous matches create an open
 Node-Match Review.
@@ -177,10 +177,9 @@ Business-relevant commands and queries include:
 - `ListPendingNodeMatchReviewsQuery`
 
 There is also a Chainlit UI for interactive work with requirements and open
-reviews. It can ingest requirements, list open reviews, and send review
-decisions back to the backend.
+reviews. It can ingest requirements, list open reviews, and look for existing requirements.
 
-## Technical Start
+## Technical Information
 
 ### Stack Overview
 
@@ -195,11 +194,11 @@ The recommended local setup is the VS Code devcontainer. It starts the services
 from `.devcontainer/docker-compose.yml` and opens the repository in the `app`
 container.
 
-- `app`: development container for Java, Gradle, and Quarkus.
+- `app`: development container for Quarkus.
 - `neo4j`: local graph database.
 - `ollama`: local LLM runtime.
 - `ollama-init`: one-shot model download and verification for Ollama.
-- `chat`: Chainlit UI.
+- `chat`: Chat UI with Chainlit.
 
 ### Addresses
 
@@ -244,7 +243,7 @@ Alternatively, you can pull a model manually into the running `ollama` service w
    ```bash
    docker compose -f .devcontainer/docker-compose.yml exec ollama ollama pull llama3:8b
    ```
-2. Update `llm.model` in quarkus app and `OLLAMA_MODEL` in `chainlit/app.py` manually
+2. Update `llm.model` in quarkus app and/or `OLLAMA_MODEL` in `chainlit/app.py` manually
 
 ### Get Started
 
@@ -252,8 +251,7 @@ Prerequisites: Docker, VS Code, and the "Dev Containers" extension.
 
 From VS Code, run `Dev Containers: Reopen in Container`.
 
-The first startup may take a while because `ollama-init` downloads the model into
-the `ollama-data` Docker volume. Subsequent starts reuse that volume.
+The first startup may take a while because docker images, LLM and gradle dependencies are downloaded (~7GB)
 
 Once the devcontainer is open, start the Quarkus backend manually inside the
 container:
@@ -262,9 +260,7 @@ container:
 ./gradlew quarkusDev
 ```
 
-This will also initialize the graph database. The `app` container intentionally runs `sleep infinity`; this keeps the
-development container alive while leaving backend startup under developer
-control.
+This will also initialize the graph database. 
 
 Alternative to VS Code Dev container: from a shell, start the same Compose stack directly:
 
@@ -291,17 +287,6 @@ curl http://localhost:8080/app/c \
     "payload": {
       "originalText": "The system shall notify the customer when a payment fails."
     }
-  }'
-```
-
-List open node-match reviews:
-
-```bash
-curl http://localhost:8080/app/q \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "query": "ListPendingNodeMatchReviewsQuery",
-    "payload": {}
   }'
 ```
 
@@ -351,34 +336,16 @@ Assistant:
 Interprets the prompt, uses the ingest_requirement tool and reports the result.
 
 User:
-List all requirements about customer portal
+Find all requirements about outage updates
 
 Assistant:
 Uses the find_requirements tool and reports the result.
 ```
 
-The direct commands avoid using the LLM for command interpretation. The
+> The direct commands avoid using the LLM for command interpretation. The
 LLM-assisted path uses the configured `OLLAMA_MODEL`.
 
-### Useful Commands
-
-Run all tests:
-
-```bash
-./gradlew test
-```
-
-Run the backend in dev mode:
-
-```bash
-./gradlew quarkusDev
-```
-
-Build the application:
-
-```bash
-./gradlew build
-```
+### Tips
 
 Inspect Neo4j in the browser:
 
@@ -387,7 +354,7 @@ Inspect Neo4j in the browser:
 3. The app seeds sample requirement data on startup from
    `src/main/java/io/fekav/req/shared/kg/Neo4jSchemaInitializer.java`.
 4. Explore all requirements and their relationships:
-- simply click on `Requirement` in `Database Information` -> `Nodes` on the landing page 
+- simply click on `Requirement` in `Database Information` -> `Nodes` on the Neo4j browser UI's landing page 
 - double click on a Requirement node in the graph view to expand it.
 
 
@@ -411,11 +378,15 @@ Useful entry points:
 - Chainlit UI: `chainlit/app.py`
 
 todos:
-- artikel in objekt wird manchmal mit extrahiert
+- neuer slice `normalization`, im workflow nach `ingestion`. Bisher "vermischt" in extraktion prompt, dadurch probleme wie:
+  - anforderungen mit implizitem subjekt oder passiver verbform, führt zu falscher extraktion, z.b. "Für langjährige Kunden soll nach 10 Jahren Mitgliedschaft ein Rabattcode zugesandt werden" 
+  - artikel werden manchmal mit extrahiert.
+  - weitere normalisierungen (am besten direkt als domain policy) überlegen (ins englische übersetzen; bei nicht atomaren-reqs mehrere reqs erstellen, etc.)
+- condition / constraint bisher nicht an domänkonzepten gebunden, könnte aber welche referenzieren
+- extraktion ausgabe erweitern:
 - funktionale anforderung wie "Kunden sollen ihre rechung per brief bekommen" wird als quality klassifiziert
-- anforderungen ohne objekt extraktion werfen exception, z.b. "der login service soll schnell sein"
-- qwen model schreibt response in "thinking", nicht "response" -> boolean `think` in request
+- anforderungen ohne objekt extraktion werfen exception, z.b. "der login service soll schnell sein". Besser: Review/Nutzer fragen
 - api response status anpassen, z.b. chat ui antwortet mit 'wurde erstellt' obwohl review nötig: liegt an response code 201
 - /find listet nur direkte anforderungen
-- anforderungen mit implizitem subjekt oder passiver verbform, führt zu falscher extraktion, z.b. "Für langjährige Kunden soll nach 10 Jahren Mitgliedschaft ein Rabattcode zugesandt werden" -> neuer slice `normalization`, weil normalisierung ist umfangreich und mehr als nur "whitespace trimmen, klein schreiben usw."
 - mehrere conditions/constraints bei extraction prompt
+- verb negationen
