@@ -1,4 +1,4 @@
-package io.fekav.req.queryrequirements.domain;
+package io.fekav.req.search.domain;
 
 public record RequirementView(
     String rawText,

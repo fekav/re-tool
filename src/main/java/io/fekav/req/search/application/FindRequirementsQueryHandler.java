@@ -1,7 +1,7 @@
-package io.fekav.req.queryrequirements.application;
+package io.fekav.req.search.application;
 
 import io.fekav.platform.cqrs.QueryHandler;
-import io.fekav.req.queryrequirements.domain.RequirementsResult;
+import io.fekav.req.search.domain.RequirementsResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

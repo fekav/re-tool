@@ -1,10 +1,10 @@
-package io.fekav.req.queryrequirements.application;
+package io.fekav.req.search.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-class QueryRequirementsQueryTest {
+class FindRequirementsQueryTest {
 
     @Test
     void stripsConceptText() {

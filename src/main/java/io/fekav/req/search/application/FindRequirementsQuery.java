@@ -1,7 +1,7 @@
-package io.fekav.req.queryrequirements.application;
+package io.fekav.req.search.application;
 
 import io.fekav.platform.cqrs.Query;
-import io.fekav.req.queryrequirements.domain.RequirementsResult;
+import io.fekav.req.search.domain.RequirementsResult;
 
 public record FindRequirementsQuery(
     String concept

@@ -1,4 +1,4 @@
-package io.fekav.req.queryrequirements.domain;
+package io.fekav.req.search.domain;
 
 import java.util.List;
 import java.util.Objects;

@@ -1,4 +1,4 @@
-package io.fekav.req.queryrequirements.infrastructure;
+package io.fekav.req.search.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +28,7 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
 
-import io.fekav.req.queryrequirements.application.FindRequirementsQuery;
+import io.fekav.req.search.application.FindRequirementsQuery;
 
 @ExtendWith(MockitoExtension.class)
 class Neo4jRequirementsReaderTest {

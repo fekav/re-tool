@@ -14,10 +14,10 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.fekav.req.queryrequirements.application.FindRequirementsQuery;
-import io.fekav.req.queryrequirements.application.RequirementsFinder;
-import io.fekav.req.queryrequirements.domain.RequirementView;
-import io.fekav.req.queryrequirements.domain.RequirementsResult;
+import io.fekav.req.search.application.FindRequirementsQuery;
+import io.fekav.req.search.application.RequirementsFinder;
+import io.fekav.req.search.domain.RequirementView;
+import io.fekav.req.search.domain.RequirementsResult;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -27,7 +27,7 @@ import jakarta.inject.Inject;
 @QuarkusTest
 @TestHTTPEndpoint(RestController.class)
 @Tag("integration")
-class QueryRequirementsQueryRestControllerTestIT {
+class FindRequirementsQueryRestControllerTestIT {
 
     @InjectMock
     RequirementsFinder requirementsReader;
@@ -90,7 +90,7 @@ class QueryRequirementsQueryRestControllerTestIT {
             .body(
                 """
                 {
-                  "query": "QueryRequirementsQuery",
+                  "query": "FindRequirementsQuery",
                   "payload": {
                     "concept": " "
                   }

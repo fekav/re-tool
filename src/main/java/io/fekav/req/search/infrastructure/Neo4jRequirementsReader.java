@@ -1,22 +1,20 @@
-package io.fekav.req.queryrequirements.infrastructure;
+package io.fekav.req.search.infrastructure;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.Session;
 
-import io.fekav.req.queryrequirements.application.FindRequirementsQuery;
-import io.fekav.req.queryrequirements.application.RequirementsFinder;
-import io.fekav.req.queryrequirements.domain.RequirementView;
-import io.fekav.req.queryrequirements.domain.RequirementsResult;
+import io.fekav.req.search.application.FindRequirementsQuery;
+import io.fekav.req.search.application.RequirementsFinder;
+import io.fekav.req.search.domain.RequirementView;
+import io.fekav.req.search.domain.RequirementsResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
