@@ -60,17 +60,13 @@ class RequirementWorkflowIntegrationTest {
 
     private final RecordingCommandBus commandBus = new RecordingCommandBus();
     private final RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
-    private final IngestionOutcomeStore outcomeStore = new IngestionOutcomeStore();
     private final InMemoryEventStore eventStore = new InMemoryEventStore();
-    private final NodeMatchReviewProjection reviewProjection =
-        new NodeMatchReviewProjection();
+    private final NodeMatchReviewProjection reviewProjection = new NodeMatchReviewProjection();
     private final RequirementWorkflowOrchestrator orchestrator =
         new RequirementWorkflowOrchestrator(
             eventStore,
             commandBus,
-            eventPublisher,
-            outcomeStore,
-            reviewProjection
+            eventPublisher
         );
 
     @Test
@@ -147,11 +143,12 @@ class RequirementWorkflowIntegrationTest {
             ))
             .forEach(orchestrator::onNodeResolutionDecided);
         orchestrator.onNodeResolutionReviewRequired(reviewRequiredEvent);
+        reviewProjection.apply(reviewRequiredEvent);
 
         SubmitNodeMatchReviewDecisionCommandHandler reviewHandler =
             new SubmitNodeMatchReviewDecisionCommandHandler(
                 reviewProjection,
-                new RoutingEventPublisher(orchestrator)
+                new RoutingEventPublisher(orchestrator, reviewProjection)
             );
         String reviewId = NodeMatchReviewId.from(correlationId, reviewElement).value();
 
@@ -285,9 +282,14 @@ class RequirementWorkflowIntegrationTest {
     private static final class RoutingEventPublisher implements EventPublisher {
 
         private final RequirementWorkflowOrchestrator orchestrator;
+        private final NodeMatchReviewProjection reviewProjection;
 
-        private RoutingEventPublisher(RequirementWorkflowOrchestrator orchestrator) {
+        private RoutingEventPublisher(
+            RequirementWorkflowOrchestrator orchestrator,
+            NodeMatchReviewProjection reviewProjection
+        ) {
             this.orchestrator = orchestrator;
+            this.reviewProjection = reviewProjection;
         }
 
         @Override
@@ -302,6 +304,7 @@ class RequirementWorkflowIntegrationTest {
         public void publish(ApplicationEvent event) {
             if (event instanceof NodeResolutionDecidedEvent decidedEvent) {
                 orchestrator.onNodeResolutionDecided(decidedEvent);
+                reviewProjection.apply(decidedEvent);
             }
         }
 

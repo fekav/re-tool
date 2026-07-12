@@ -14,6 +14,7 @@ import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
 import io.fekav.req.shared.model.RequirementElement;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 
 @ApplicationScoped
 public class NodeMatchReviewProjection {
@@ -21,7 +22,7 @@ public class NodeMatchReviewProjection {
     private final ConcurrentMap<String, StoredNodeMatchReview> reviews =
         new ConcurrentHashMap<>();
 
-    public void apply(NodeResolutionReviewRequiredEvent event) {
+    public void apply(@Observes NodeResolutionReviewRequiredEvent event) {
         PendingNodeMatchReview review = pendingReviewFrom(event);
         reviews.putIfAbsent(
             review.reviewId(),
@@ -29,7 +30,7 @@ public class NodeMatchReviewProjection {
         );
     }
 
-    public void apply(NodeResolutionDecidedEvent event) {
+    public void apply(@Observes NodeResolutionDecidedEvent event) {
         RequirementElement decidedElement = event.decision().requirementElement();
         reviews.replaceAll((id, storedReview) ->
             storedReview.review().requirementElement().equals(decidedElement)

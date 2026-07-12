@@ -8,12 +8,6 @@ classifies their intent, decomposes their semantic structure, matches extracted
 terms against known graph concepts, and persists the result as a traceable
 Requirement Graph.
 
-The central question is:
-
-> What business statement is contained in a requirement, how binding is it, and
-> which already known concepts or statements in product knowledge does it refer
-> to?
-
 ## Goal
 
 Requirements are often written as free language. Goals, stakeholder needs,
@@ -30,7 +24,7 @@ The project pursues four goals:
 4. Turn uncertain mappings into explicit human review decisions.
 
 The result is a graph that contains not only individual requirements, but also
-the derived business concepts, predicates, qualifiers, and assertions.
+the derived business concepts, assertions, conditions, and constraints.
 
 ## Model
 
@@ -422,4 +416,6 @@ todos:
 - anforderungen ohne objekt extraktion werfen exception, z.b. "der login service soll schnell sein"
 - qwen model schreibt response in "thinking", nicht "response" -> boolean `think` in request
 - api response status anpassen, z.b. chat ui antwortet mit 'wurde erstellt' obwohl review nötig: liegt an response code 201
-- find listet direkte anforderungen
+- /find listet nur direkte anforderungen
+- anforderungen mit implizitem subjekt oder passiver verbform, führt zu falscher extraktion, z.b. "Für langjährige Kunden soll nach 10 Jahren Mitgliedschaft ein Rabattcode zugesandt werden" -> neuer slice `normalization`, weil normalisierung ist umfangreich und mehr als nur "whitespace trimmen, klein schreiben usw."
+- mehrere conditions/constraints bei extraction prompt

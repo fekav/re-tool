@@ -9,10 +9,7 @@ import io.fekav.platform.messaging.ApplicationEvent;
 import io.fekav.platform.messaging.EventPublisher;
 import io.fekav.req.classification.application.ClassifyRequirementCommand;
 import io.fekav.req.extraction.application.ExtractSyntaxCommand;
-import io.fekav.req.ingestion.application.IngestRequirementResult;
-import io.fekav.req.ingestion.application.IngestionOutcomeStore;
 import io.fekav.req.orchestration.domain.WorkflowState;
-import io.fekav.req.review.application.NodeMatchReviewProjection;
 import io.fekav.req.resolution.application.ResolveNodeCommand;
 import io.fekav.req.shared.event.NodeResolutionDecidedEvent;
 import io.fekav.req.shared.event.NodeResolutionReviewRequiredEvent;
@@ -33,8 +30,6 @@ public class RequirementWorkflowOrchestrator {
     private final EventStore eventStore;
     private final CommandBus commandBus;
     private final EventPublisher eventPublisher;
-    private final IngestionOutcomeStore outcomeStore;
-    private final NodeMatchReviewProjection reviewProjection;
     private final boolean enabled;
 
     @Inject
@@ -42,27 +37,21 @@ public class RequirementWorkflowOrchestrator {
         EventStore eventStore,
         CommandBus commandBus,
         EventPublisher eventPublisher,
-        IngestionOutcomeStore outcomeStore,
-        NodeMatchReviewProjection reviewProjection,
         @ConfigProperty(name = "req.orchestration.enabled", defaultValue = "false")
         boolean enabled
     ) {
         this.eventStore = eventStore;
         this.commandBus = commandBus;
         this.eventPublisher = eventPublisher;
-        this.outcomeStore = outcomeStore;
-        this.reviewProjection = reviewProjection;
         this.enabled = enabled;
     }
 
     RequirementWorkflowOrchestrator(
         EventStore eventStore,
         CommandBus commandBus,
-        EventPublisher eventPublisher,
-        IngestionOutcomeStore outcomeStore,
-        NodeMatchReviewProjection reviewProjection
+        EventPublisher eventPublisher
     ) {
-        this(eventStore, commandBus, eventPublisher, outcomeStore, reviewProjection, true);
+        this(eventStore, commandBus, eventPublisher, true);
     }
 
     public void onRequirementIngested(@Observes RequirementIngestedEvent event) {
@@ -113,10 +102,6 @@ public class RequirementWorkflowOrchestrator {
 
         WorkflowTransition transition = remember(event.correlationId(), event);
 
-        if (transition.stored()) {
-            reviewProjection.apply(event);
-        }
-
         publishCompletionIfAnalysisCompleted(event.correlationId(), transition);
     }
 
@@ -127,14 +112,7 @@ public class RequirementWorkflowOrchestrator {
             return;
         }
 
-        WorkflowTransition transition = remember(event.correlationId(), event);
-
-        if (transition.stored()) {
-            reviewProjection.apply(event);
-            outcomeStore.record(IngestRequirementResult.reviewRequired(
-                event.correlationId()
-            ));
-        }
+        remember(event.correlationId(), event);
     }
 
     private WorkflowTransition remember(
